@@ -5,12 +5,17 @@ import Home from "./component/Home"
 import Register from "./component/Register"
 import MapLeaflet from "./component/MapLeaflet"
 import React from 'react';
+import 'react-toastify/dist/ReactToastify.css';
+import { useLocation } from "react-router-dom";
+import 'bootstrap/dist/css/bootstrap.min.css';
 
-const App = () => {
+const AppContent = () => {
+  const location = useLocation();
+  const isAuthPage = location.pathname === "/register";
+
   return (
-
-    <BrowserRouter>
-      <Header />
+    <>
+      {!isAuthPage && <Header />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/map"
@@ -23,9 +28,17 @@ const App = () => {
         />
         <Route path="/register" element={<Register />} />
       </Routes>
-      <Footer />
+      {!isAuthPage && <Footer />}
+    </>
+  );
+};
+
+const App = () => {
+  return (
+    <BrowserRouter>
+      <AppContent />
     </BrowserRouter>
-  )
-}
+  );
+};
 
 export default App

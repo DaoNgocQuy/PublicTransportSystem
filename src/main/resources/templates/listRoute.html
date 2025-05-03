@@ -1,31 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
     <head>
         <title>Danh sách tuyến</title>
-    </head>
-    <body>
-        <h1>Danh sách tuyến</h1>
-        <a th:href="@{/routes/add}">Thêm tuyến mới</a>
-        <table border="1">
-            <tr>
-                <th>ID</th>
-                <th>Tên</th>
-                <th>Điểm bắt đầu</th>
-                <th>Điểm kết thúc</th>
-                <th>Số trạm</th>
-                <th>Hành động</th>
-            </tr>
-            <tr th:each="route : ${routes}">
-                <td th:text="${route.id}"></td>
-                <td th:text="${route.name}"></td>
-                <td th:text="${route.startLocation}"></td>
-                <td th:text="${route.endLocation}"></td>
-                <td th:text="${route.totalStops}"></td>
-                <td>
-                    <a th:href="@{/routes/edit/{id}(id=${route.id})}">Sửa</a>
-                    <a th:href="@{/routes/delete/{id}(id=${route.id})}">Xóa</a>
-                </td>
-            </tr>
+    <th:block th:replace="base :: bootstrap"></th:block>
+</head>
+<body>
+    <main class="container">
+        <div th:replace="base :: header"></div>
+        <h1 class="text-center text-info mt-1">DANH SÁCH TUYẾN</h1>
+
+        <!-- Hiển thị danh sách tuyến -->
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Tên tuyến</th>
+                    <th>Thời gian hoạt động</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="route : ${routes}">
+                    <td th:text="${route.id}"></td>
+                    <td th:text="${route.name}"></td>
+
+                    <td th:text="${route.totalStops}"></td>
+                    <td>
+                        <a class="btn btn-primary btn-sm" th:href="@{/routes/edit/{id}(id=${route.id})}">Sửa</a>
+                        <a class="btn btn-danger btn-sm" th:href="@{/routes/delete/{id}(id=${route.id})}">Xóa</a>
+                    </td>
+                </tr>
+            </tbody>
         </table>
-    </body>
+
+
+        <div th:replace="base :: footer"></div>
+    </main>
+</body>
 </html>

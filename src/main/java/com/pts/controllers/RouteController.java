@@ -41,14 +41,14 @@ public class RouteController {
 
     // Hiển thị form chỉnh sửa tuyến
     @GetMapping("/edit/{id}")
-    public String editRouteForm(@PathVariable Integer id, Model model) {
+    public String editRouteForm(@PathVariable("id") Integer id, Model model) {
         model.addAttribute("route", routesService.getRouteById(id).orElse(null));
         return "editRoute"; // Trả về view "edit.html"
     }
 
     // Xử lý cập nhật tuyến
     @PostMapping("/edit/{id}")
-    public String updateRoute(@PathVariable Integer id, @ModelAttribute("route") Routes route) {
+    public String updateRoute(@PathVariable("id") Integer id, @ModelAttribute("route") Routes route) {
         route.setId(id);
         routesService.saveRoute(route);
         return "redirect:/routes";
@@ -56,7 +56,7 @@ public class RouteController {
 
     // Xóa tuyến
     @GetMapping("/delete/{id}")
-    public String deleteRoute(@PathVariable Integer id) {
+    public String deleteRoute(@PathVariable("id") Integer id) {
         routesService.deleteRoute(id);
         return "redirect:/routes";
     }

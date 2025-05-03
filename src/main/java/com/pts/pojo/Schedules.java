@@ -4,19 +4,59 @@
  */
 package com.pts.pojo;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.Basic;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
+import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.io.Serializable;
+import java.util.Date;
 
 /**
  *
  * @author LEGION
  */
-public class Schedules {
+@Entity
+@Table(name = "schedules")
+@NamedQueries({
+    @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
+    @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
+    @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
+    @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime"),
+    @NamedQuery(name = "Schedules.findByStatus", query = "SELECT s FROM Schedules s WHERE s.status = :status")})
+public class Schedules implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "id")
     private Long id;
-    private Long vehicleId;
-    private Long routeId;
-    private LocalDateTime departureTime;
-    private LocalDateTime arrivalTime;
+    @Column(name = "departure_time")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date departureTime;
+    @Column(name = "arrival_time")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date arrivalTime;
+    @Size(max = 20)
+    @Column(name = "status")
     private String status;
+    @JoinColumn(name = "vehicle_id", referencedColumnName = "id")
+    @ManyToOne
+    private Vehicles vehicleId;
+    @JoinColumn(name = "route_id", referencedColumnName = "id")
+    @ManyToOne
+    private Routes routeId;
 
     public Schedules() {
     }
@@ -33,35 +73,19 @@ public class Schedules {
         this.id = id;
     }
 
-    public Long getVehicleId() {
-        return vehicleId;
-    }
-
-    public void setVehicleId(Long vehicleId) {
-        this.vehicleId = vehicleId;
-    }
-
-    public Long getRouteId() {
-        return routeId;
-    }
-
-    public void setRouteId(Long routeId) {
-        this.routeId = routeId;
-    }
-
-    public LocalDateTime getDepartureTime() {
+    public Date getDepartureTime() {
         return departureTime;
     }
 
-    public void setDepartureTime(LocalDateTime departureTime) {
+    public void setDepartureTime(Date departureTime) {
         this.departureTime = departureTime;
     }
 
-    public LocalDateTime getArrivalTime() {
+    public Date getArrivalTime() {
         return arrivalTime;
     }
 
-    public void setArrivalTime(LocalDateTime arrivalTime) {
+    public void setArrivalTime(Date arrivalTime) {
         this.arrivalTime = arrivalTime;
     }
 
@@ -73,15 +97,44 @@ public class Schedules {
         this.status = status;
     }
 
+    public Vehicles getVehicleId() {
+        return vehicleId;
+    }
+
+    public void setVehicleId(Vehicles vehicleId) {
+        this.vehicleId = vehicleId;
+    }
+
+    public Routes getRouteId() {
+        return routeId;
+    }
+
+    public void setRouteId(Routes routeId) {
+        this.routeId = routeId;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        hash += (id != null ? id.hashCode() : 0);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
+        if (!(object instanceof Schedules)) {
+            return false;
+        }
+        Schedules other = (Schedules) object;
+        if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
+            return false;
+        }
+        return true;
+    }
+
     @Override
     public String toString() {
-        return "Schedules{" +
-                "id=" + id +
-                ", vehicleId=" + vehicleId +
-                ", routeId=" + routeId +
-                ", departureTime=" + departureTime +
-                ", arrivalTime=" + arrivalTime +
-                ", status='" + status + '\'' +
-                '}';
+        return "com.pts.pojo.Schedules[ id=" + id + " ]";
     }
 }

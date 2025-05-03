@@ -1,7 +1,9 @@
 package com.pts.services;
 
 import com.pts.pojo.Schedules;
-import java.time.LocalDateTime;
+import com.pts.pojo.Vehicles;
+import com.pts.pojo.Routes;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,21 +12,21 @@ public interface ScheduleService {
 
     Optional<Schedules> getScheduleById(Long id);
 
-    List<Schedules> getSchedulesByVehicle(Long vehicleId);
+    List<Schedules> getSchedulesByVehicle(Vehicles vehicleId);
 
-    List<Schedules> getSchedulesByRoute(Long routeId);
+    List<Schedules> getSchedulesByRoute(Routes routeId);
 
-    List<Schedules> getSchedulesByTimeRange(LocalDateTime startTime, LocalDateTime endTime);
+    List<Schedules> getSchedulesByTimeRange(Date startTime, Date endTime);
 
     List<Schedules> getSchedulesByStatus(String status);
 
-    List<Schedules> getSchedulesByVehicleAndStatus(Long vehicleId, String status);
+    List<Schedules> getSchedulesByVehicleAndStatus(Vehicles vehicleId, String status);
 
-    List<Schedules> getSchedulesByRouteAndStatus(Long routeId, String status);
+    List<Schedules> getSchedulesByRouteAndStatus(Routes routeId, String status);
 
-    List<Schedules> getSchedulesByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime, String status);
+    List<Schedules> getSchedulesByTimeRangeAndStatus(Date startTime, Date endTime, String status);
 
-    List<Schedules> getSchedulesByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime, LocalDateTime endTime);
+    List<Schedules> getSchedulesByVehicleAndTimeRange(Vehicles vehicleId, Date startTime, Date endTime);
 
     Schedules createSchedule(Schedules schedule);
 

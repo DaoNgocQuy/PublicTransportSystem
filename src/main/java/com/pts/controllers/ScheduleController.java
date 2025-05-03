@@ -1,12 +1,14 @@
 package com.pts.controllers;
 
 import com.pts.pojo.Schedules;
+import com.pts.pojo.Vehicles;
+import com.pts.pojo.Routes;
 import com.pts.services.ScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -29,19 +31,19 @@ public class ScheduleController {
     }
 
     @GetMapping("/vehicle/{vehicleId}")
-    public ResponseEntity<List<Schedules>> getSchedulesByVehicle(@PathVariable Long vehicleId) {
+    public ResponseEntity<List<Schedules>> getSchedulesByVehicle(@PathVariable Vehicles vehicleId) {
         return ResponseEntity.ok(scheduleService.getSchedulesByVehicle(vehicleId));
     }
 
     @GetMapping("/route/{routeId}")
-    public ResponseEntity<List<Schedules>> getSchedulesByRoute(@PathVariable Long routeId) {
+    public ResponseEntity<List<Schedules>> getSchedulesByRoute(@PathVariable Routes routeId) {
         return ResponseEntity.ok(scheduleService.getSchedulesByRoute(routeId));
     }
 
     @GetMapping("/time-range")
     public ResponseEntity<List<Schedules>> getSchedulesByTimeRange(
-            @RequestParam LocalDateTime startTime,
-            @RequestParam LocalDateTime endTime) {
+            @RequestParam Date startTime,
+            @RequestParam Date endTime) {
         return ResponseEntity.ok(scheduleService.getSchedulesByTimeRange(startTime, endTime));
     }
 

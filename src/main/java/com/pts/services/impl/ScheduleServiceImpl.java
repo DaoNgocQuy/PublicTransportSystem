@@ -1,6 +1,8 @@
 package com.pts.services.impl;
 
 import com.pts.pojo.Schedules;
+import com.pts.pojo.Vehicles;
+import com.pts.pojo.Routes;
 import com.pts.repositories.ScheduleRepository;
 import com.pts.services.ScheduleService;
 import com.pts.exceptions.ScheduleException;
@@ -8,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,17 +31,17 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<Schedules> getSchedulesByVehicle(Long vehicleId) {
+    public List<Schedules> getSchedulesByVehicle(Vehicles vehicleId) {
         return scheduleRepository.findByVehicleId(vehicleId);
     }
 
     @Override
-    public List<Schedules> getSchedulesByRoute(Long routeId) {
+    public List<Schedules> getSchedulesByRoute(Routes routeId) {
         return scheduleRepository.findByRouteId(routeId);
     }
 
     @Override
-    public List<Schedules> getSchedulesByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    public List<Schedules> getSchedulesByTimeRange(Date startTime, Date endTime) {
         return scheduleRepository.findByDepartureTimeBetween(startTime, endTime);
     }
 
@@ -49,24 +51,22 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<Schedules> getSchedulesByVehicleAndStatus(Long vehicleId, String status) {
+    public List<Schedules> getSchedulesByVehicleAndStatus(Vehicles vehicleId, String status) {
         return scheduleRepository.findByVehicleIdAndStatus(vehicleId, status);
     }
 
     @Override
-    public List<Schedules> getSchedulesByRouteAndStatus(Long routeId, String status) {
+    public List<Schedules> getSchedulesByRouteAndStatus(Routes routeId, String status) {
         return scheduleRepository.findByRouteIdAndStatus(routeId, status);
     }
 
     @Override
-    public List<Schedules> getSchedulesByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime,
-            String status) {
+    public List<Schedules> getSchedulesByTimeRangeAndStatus(Date startTime, Date endTime, String status) {
         return scheduleRepository.findByTimeRangeAndStatus(startTime, endTime, status);
     }
 
     @Override
-    public List<Schedules> getSchedulesByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime,
-            LocalDateTime endTime) {
+    public List<Schedules> getSchedulesByVehicleAndTimeRange(Vehicles vehicleId, Date startTime, Date endTime) {
         return scheduleRepository.findByVehicleAndTimeRange(vehicleId, startTime, endTime);
     }
 
@@ -104,7 +104,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     private void validateSchedule(Schedules schedule) {
-        if (schedule.getDepartureTime().isAfter(schedule.getArrivalTime())) {
+        if (schedule.getDepartureTime().after(schedule.getArrivalTime())) {
             throw new ScheduleException("Departure time must be before arrival time");
         }
 
@@ -113,8 +113,8 @@ public class ScheduleServiceImpl implements ScheduleService {
             if (existing.getId().equals(schedule.getId()))
                 continue;
 
-            if ((schedule.getDepartureTime().isBefore(existing.getArrivalTime()) &&
-                    schedule.getArrivalTime().isAfter(existing.getDepartureTime()))) {
+            if ((schedule.getDepartureTime().before(existing.getArrivalTime()) &&
+                    schedule.getArrivalTime().after(existing.getDepartureTime()))) {
                 throw new ScheduleException("Schedules overlaps with existing schedule for this vehicle");
             }
         }

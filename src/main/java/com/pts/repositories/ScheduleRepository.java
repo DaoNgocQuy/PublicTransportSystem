@@ -1,7 +1,9 @@
 package com.pts.repositories;
 
 import com.pts.pojo.Schedules;
-import java.time.LocalDateTime;
+import com.pts.pojo.Vehicles;
+import com.pts.pojo.Routes;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,12 +14,12 @@ public interface ScheduleRepository {
     void deleteById(Long id);
     boolean existsById(Long id);
     
-    List<Schedules> findByVehicleId(Long vehicleId);
-    List<Schedules> findByRouteId(Long routeId);
-    List<Schedules> findByDepartureTimeBetween(LocalDateTime startTime, LocalDateTime endTime);
+    List<Schedules> findByVehicleId(Vehicles vehicleId);
+    List<Schedules> findByRouteId(Routes routeId);
+    List<Schedules> findByDepartureTimeBetween(Date startTime, Date endTime);
     List<Schedules> findByStatus(String status);
-    List<Schedules> findByVehicleIdAndStatus(Long vehicleId, String status);
-    List<Schedules> findByRouteIdAndStatus(Long routeId, String status);
-    List<Schedules> findByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime, String status);
-    List<Schedules> findByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime, LocalDateTime endTime);
+    List<Schedules> findByVehicleIdAndStatus(Vehicles vehicleId, String status);
+    List<Schedules> findByRouteIdAndStatus(Routes routeId, String status);
+    List<Schedules> findByTimeRangeAndStatus(Date startTime, Date endTime, String status);
+    List<Schedules> findByVehicleAndTimeRange(Vehicles vehicleId, Date startTime, Date endTime);
 } 

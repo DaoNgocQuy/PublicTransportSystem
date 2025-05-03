@@ -52,16 +52,10 @@ public class SpringSecurityConfigs {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(c -> c.disable()) // Tắt CSRF nếu không cần
-                .authorizeHttpRequests(requests
-                        -> requests
-                        .requestMatchers("/").permitAll() // Cho phép truy cập vào trang chủ mà không cần đăng nhập
-                        .anyRequest().authenticated()) // Các yêu cầu khác yêu cầu phải đăng nhập
-                .formLogin(form -> form
-                .loginPage("/login") // Trang đăng nhập nếu cần, có thể bỏ nếu không sử dụng
-                .loginProcessingUrl("/login")
-                .defaultSuccessUrl("/", true) // Sau khi đăng nhập thành công, điều hướng đến trang chủ
-                .failureUrl("/login?error=true").permitAll()) // Nếu đăng nhập thất bại, quay lại trang login
-                .logout(logout -> logout.logoutSuccessUrl("/").permitAll()); // Sau khi logout, quay lại trang chủ
+                .authorizeHttpRequests(requests -> requests
+                .anyRequest().permitAll() // Cho phép tất cả các yêu cầu mà không cần xác thực
+                );
+               
 
         return http.build();
     }
@@ -112,9 +106,9 @@ public class SpringSecurityConfigs {
         public DataSource dataSource() {
             DriverManagerDataSource dataSource = new DriverManagerDataSource();
             dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
-            dataSource.setUrl("jdbc:mysql://localhost:3306/your_database_name"); // Thay bằng tên database của bạn
-            dataSource.setUsername("your_username"); // Thay bằng username của bạn
-            dataSource.setPassword("your_password"); // Thay bằng password của bạn
+            dataSource.setUrl("jdbc:mysql://localhost:3306/pts"); // 
+            dataSource.setUsername("root"); // 
+            dataSource.setPassword("123456"); 
             return dataSource;
         }
 

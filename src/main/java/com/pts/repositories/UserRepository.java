@@ -2,8 +2,13 @@ package com.pts.repositories;
 
 import com.pts.pojo.Users;
 import java.util.List;
+import java.util.Optional;
 
 public interface UserRepository {
+    Optional<Users> findByUsername(String username);
+    Optional<Users> findByEmail(String email);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
     Users getUserById(int id);
     Users getUserByUsername(String username);
     List<Users> getAllUsers();

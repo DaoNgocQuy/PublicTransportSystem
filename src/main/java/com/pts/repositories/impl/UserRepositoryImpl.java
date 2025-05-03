@@ -5,6 +5,7 @@ import com.pts.repositories.UserRepository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -29,6 +30,34 @@ public class UserRepositoryImpl implements UserRepository {
             return u;
         }
     };
+
+    @Override
+    public Optional<Users> findByUsername(String username) {
+        String sql = "SELECT * FROM users WHERE username = ?";
+        List<Users> results = jdbcTemplate.query(sql, userMapper, username);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    @Override
+    public Optional<Users> findByEmail(String email) {
+        String sql = "SELECT * FROM users WHERE email = ?";
+        List<Users> results = jdbcTemplate.query(sql, userMapper, email);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, username);
+        return count != null && count > 0;
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        String sql = "SELECT COUNT(*) FROM users WHERE email = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
+        return count != null && count > 0;
+    }
 
     @Override
     public Users getUserById(int id) {

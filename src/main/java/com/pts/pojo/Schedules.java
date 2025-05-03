@@ -17,6 +17,8 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -27,10 +29,11 @@ import java.util.Date;
 @Entity
 @Table(name = "schedules")
 @NamedQueries({
-        @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
-        @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
-        @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
-        @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime") })
+    @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
+    @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
+    @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
+    @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime"),
+    @NamedQuery(name = "Schedules.findByStatus", query = "SELECT s FROM Schedules s WHERE s.status = :status")})
 public class Schedules implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -40,17 +43,20 @@ public class Schedules implements Serializable {
     @Column(name = "id")
     private Long id;
     @Column(name = "departure_time")
-    @Temporal(TemporalType.TIME)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date departureTime;
     @Column(name = "arrival_time")
-    @Temporal(TemporalType.TIME)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date arrivalTime;
-    @JoinColumn(name = "route_id", referencedColumnName = "id")
-    @ManyToOne
-    private Routes routeId;
+    @Size(max = 20)
+    @Column(name = "status")
+    private String status;
     @JoinColumn(name = "vehicle_id", referencedColumnName = "id")
     @ManyToOne
     private Vehicles vehicleId;
+    @JoinColumn(name = "route_id", referencedColumnName = "id")
+    @ManyToOne
+    private Routes routeId;
 
     public Schedules() {
     }
@@ -83,12 +89,12 @@ public class Schedules implements Serializable {
         this.arrivalTime = arrivalTime;
     }
 
-    public Routes getRouteId() {
-        return routeId;
+    public String getStatus() {
+        return status;
     }
 
-    public void setRouteId(Routes routeId) {
-        this.routeId = routeId;
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Vehicles getVehicleId() {
@@ -97,6 +103,14 @@ public class Schedules implements Serializable {
 
     public void setVehicleId(Vehicles vehicleId) {
         this.vehicleId = vehicleId;
+    }
+
+    public Routes getRouteId() {
+        return routeId;
+    }
+
+    public void setRouteId(Routes routeId) {
+        this.routeId = routeId;
     }
 
     @Override
@@ -123,5 +137,4 @@ public class Schedules implements Serializable {
     public String toString() {
         return "com.pts.pojo.Schedules[ id=" + id + " ]";
     }
-
 }

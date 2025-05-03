@@ -1,106 +1,59 @@
 package com.pts.controllers;
 
 import com.pts.pojo.Routes;
-import com.pts.services.RouteService;
+import com.pts.services.RoutesService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/admin/routes")
+@Controller
+@RequestMapping("/routes")
 public class RouteController {
 
     @Autowired
-    private RouteService routeService;
+    private RoutesService routesService;
 
-    @PostMapping
-    public ResponseEntity<?> createRoute(@RequestBody Routes route) {
-        try {
-            boolean success = routeService.createRoute(route);
-            if (success) {
-                return ResponseEntity.ok("Route created successfully");
-            } else {
-                return ResponseEntity.badRequest().body("Failed to create route");
-            }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateRoute(@PathVariable Integer id, @RequestBody Routes route) {
-        try {
-            route.setId(id);
-            boolean success = routeService.updateRoute(route);
-            if (success) {
-                return ResponseEntity.ok("Route updated successfully");
-            } else {
-                return ResponseEntity.badRequest().body("Failed to update route");
-            }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteRoute(@PathVariable Integer id) {
-        try {
-            boolean success = routeService.deleteRoute(id);
-            if (success) {
-                return ResponseEntity.ok("Route deleted successfully");
-            } else {
-                return ResponseEntity.badRequest().body("Failed to delete route");
-            }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-    }
-
+    // Hiển thị danh sách tuyến
     @GetMapping
-    public ResponseEntity<?> getAllRoutes() {
-        try {
-            List<Routes> routes = routeService.getAllRoutes();
-            return ResponseEntity.ok(routes);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public String listRoutes(Model model) {
+        model.addAttribute("routes", routesService.getAllRoutes());
+        return "listRoute"; // Trả về view "list.html"
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getRouteById(@PathVariable Integer id) {
-        try {
-            Routes route = routeService.getRouteById(id);
-            if (route != null) {
-                return ResponseEntity.ok(route);
-            } else {
-                return ResponseEntity.notFound().build();
-            }
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    // Hiển thị form thêm tuyến mới
+    @GetMapping("/add")
+    public String addRouteForm(Model model) {
+        model.addAttribute("route", new Routes());
+        return "addRoute"; // Tên view (addRoute.html)
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<?> searchRoutes(
-            @RequestParam String startLocation,
-            @RequestParam String endLocation) {
-        try {
-            List<Routes> routes = routeService.searchRoutes(startLocation, endLocation);
-            return ResponseEntity.ok(routes);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    @PostMapping("/add")
+    public String addRoute(@ModelAttribute("route") Routes route) {
+        // Lưu thông tin tuyến
+        routesService.saveRoute(route);
+        return "redirect:/routes"; // Chuyển hướng về danh sách tuyến
     }
 
-    @GetMapping("/type")
-    public ResponseEntity<?> getRoutesByType(@RequestParam boolean isWalkingRoute) {
-        try {
-            List<Routes> routes = routeService.getRoutesByType(isWalkingRoute);
-            return ResponseEntity.ok(routes);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    // Hiển thị form chỉnh sửa tuyến
+    @GetMapping("/edit/{id}")
+    public String editRouteForm(@PathVariable Integer id, Model model) {
+        model.addAttribute("route", routesService.getRouteById(id).orElse(null));
+        return "editRoute"; // Trả về view "edit.html"
     }
-} 
+
+    // Xử lý cập nhật tuyến
+    @PostMapping("/edit/{id}")
+    public String updateRoute(@PathVariable Integer id, @ModelAttribute("route") Routes route) {
+        route.setId(id);
+        routesService.saveRoute(route);
+        return "redirect:/routes";
+    }
+
+    // Xóa tuyến
+    @GetMapping("/delete/{id}")
+    public String deleteRoute(@PathVariable Integer id) {
+        routesService.deleteRoute(id);
+        return "redirect:/routes";
+    }
+}

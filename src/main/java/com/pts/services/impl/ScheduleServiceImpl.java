@@ -1,6 +1,6 @@
 package com.pts.services.impl;
 
-import com.pts.pojo.Schedule;
+import com.pts.pojo.Schedules;
 import com.pts.repositories.ScheduleRepository;
 import com.pts.services.ScheduleService;
 import com.pts.exceptions.ScheduleException;
@@ -19,72 +19,72 @@ public class ScheduleServiceImpl implements ScheduleService {
     private ScheduleRepository scheduleRepository;
 
     @Override
-    public List<Schedule> getAllSchedules() {
+    public List<Schedules> getAllSchedules() {
         return scheduleRepository.findAll();
     }
 
     @Override
-    public Optional<Schedule> getScheduleById(Long id) {
+    public Optional<Schedules> getScheduleById(Long id) {
         return scheduleRepository.findById(id);
     }
 
     @Override
-    public List<Schedule> getSchedulesByVehicle(Long vehicleId) {
+    public List<Schedules> getSchedulesByVehicle(Long vehicleId) {
         return scheduleRepository.findByVehicleId(vehicleId);
     }
 
     @Override
-    public List<Schedule> getSchedulesByRoute(Long routeId) {
+    public List<Schedules> getSchedulesByRoute(Long routeId) {
         return scheduleRepository.findByRouteId(routeId);
     }
 
     @Override
-    public List<Schedule> getSchedulesByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
+    public List<Schedules> getSchedulesByTimeRange(LocalDateTime startTime, LocalDateTime endTime) {
         return scheduleRepository.findByDepartureTimeBetween(startTime, endTime);
     }
 
     @Override
-    public List<Schedule> getSchedulesByStatus(String status) {
+    public List<Schedules> getSchedulesByStatus(String status) {
         return scheduleRepository.findByStatus(status);
     }
 
     @Override
-    public List<Schedule> getSchedulesByVehicleAndStatus(Long vehicleId, String status) {
+    public List<Schedules> getSchedulesByVehicleAndStatus(Long vehicleId, String status) {
         return scheduleRepository.findByVehicleIdAndStatus(vehicleId, status);
     }
 
     @Override
-    public List<Schedule> getSchedulesByRouteAndStatus(Long routeId, String status) {
+    public List<Schedules> getSchedulesByRouteAndStatus(Long routeId, String status) {
         return scheduleRepository.findByRouteIdAndStatus(routeId, status);
     }
 
     @Override
-    public List<Schedule> getSchedulesByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime,
+    public List<Schedules> getSchedulesByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime,
             String status) {
         return scheduleRepository.findByTimeRangeAndStatus(startTime, endTime, status);
     }
 
     @Override
-    public List<Schedule> getSchedulesByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime,
+    public List<Schedules> getSchedulesByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime,
             LocalDateTime endTime) {
         return scheduleRepository.findByVehicleAndTimeRange(vehicleId, startTime, endTime);
     }
 
     @Override
     @Transactional
-    public Schedule createSchedule(Schedule schedule) {
+    public Schedules createSchedule(Schedules schedule) {
         validateSchedule(schedule);
         return scheduleRepository.save(schedule);
     }
 
     @Override
     @Transactional
-    public Schedule updateSchedule(Long id, Schedule scheduleDetails) {
-        Schedule schedule = scheduleRepository.findById(id)
-                .orElseThrow(() -> new ScheduleException("Schedule not found with id: " + id));
+    public Schedules updateSchedule(Long id, Schedules scheduleDetails) {
+        Schedules schedule = scheduleRepository.findById(id)
+                .orElseThrow(() -> new ScheduleException("Schedules not found with id: " + id));
 
-        schedule.setVehicle(scheduleDetails.getVehicle());
-        schedule.setRoute(scheduleDetails.getRoute());
+        schedule.setVehicleId(scheduleDetails.getVehicleId());
+        schedule.setRouteId(scheduleDetails.getRouteId());
         schedule.setDepartureTime(scheduleDetails.getDepartureTime());
         schedule.setArrivalTime(scheduleDetails.getArrivalTime());
         schedule.setStatus(scheduleDetails.getStatus());
@@ -98,24 +98,24 @@ public class ScheduleServiceImpl implements ScheduleService {
     @Transactional
     public void deleteSchedule(Long id) {
         if (!scheduleRepository.existsById(id)) {
-            throw new ScheduleException("Schedule not found with id: " + id);
+            throw new ScheduleException("Schedules not found with id: " + id);
         }
         scheduleRepository.deleteById(id);
     }
 
-    private void validateSchedule(Schedule schedule) {
+    private void validateSchedule(Schedules schedule) {
         if (schedule.getDepartureTime().isAfter(schedule.getArrivalTime())) {
             throw new ScheduleException("Departure time must be before arrival time");
         }
 
-        List<Schedule> existingSchedules = scheduleRepository.findByVehicleId(schedule.getVehicle().getId());
-        for (Schedule existing : existingSchedules) {
+        List<Schedules> existingSchedules = scheduleRepository.findByVehicleId(schedule.getVehicleId());
+        for (Schedules existing : existingSchedules) {
             if (existing.getId().equals(schedule.getId()))
                 continue;
 
             if ((schedule.getDepartureTime().isBefore(existing.getArrivalTime()) &&
                     schedule.getArrivalTime().isAfter(existing.getDepartureTime()))) {
-                throw new ScheduleException("Schedule overlaps with existing schedule for this vehicle");
+                throw new ScheduleException("Schedules overlaps with existing schedule for this vehicle");
             }
         }
     }

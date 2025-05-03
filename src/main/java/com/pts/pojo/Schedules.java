@@ -4,53 +4,19 @@
  */
 package com.pts.pojo;
 
-import jakarta.persistence.Basic;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.NamedQueries;
-import jakarta.persistence.NamedQuery;
-import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
-import java.io.Serializable;
-import java.util.Date;
+import java.time.LocalDateTime;
 
 /**
  *
  * @author LEGION
  */
-@Entity
-@Table(name = "schedules")
-@NamedQueries({
-        @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
-        @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
-        @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
-        @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime") })
-public class Schedules implements Serializable {
-
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "id")
+public class Schedules {
     private Long id;
-    @Column(name = "departure_time")
-    @Temporal(TemporalType.TIME)
-    private Date departureTime;
-    @Column(name = "arrival_time")
-    @Temporal(TemporalType.TIME)
-    private Date arrivalTime;
-    @JoinColumn(name = "route_id", referencedColumnName = "id")
-    @ManyToOne
-    private Routes routeId;
-    @JoinColumn(name = "vehicle_id", referencedColumnName = "id")
-    @ManyToOne
-    private Vehicles vehicleId;
+    private Long vehicleId;
+    private Long routeId;
+    private LocalDateTime departureTime;
+    private LocalDateTime arrivalTime;
+    private String status;
 
     public Schedules() {
     }
@@ -67,61 +33,55 @@ public class Schedules implements Serializable {
         this.id = id;
     }
 
-    public Date getDepartureTime() {
-        return departureTime;
-    }
-
-    public void setDepartureTime(Date departureTime) {
-        this.departureTime = departureTime;
-    }
-
-    public Date getArrivalTime() {
-        return arrivalTime;
-    }
-
-    public void setArrivalTime(Date arrivalTime) {
-        this.arrivalTime = arrivalTime;
-    }
-
-    public Routes getRouteId() {
-        return routeId;
-    }
-
-    public void setRouteId(Routes routeId) {
-        this.routeId = routeId;
-    }
-
-    public Vehicles getVehicleId() {
+    public Long getVehicleId() {
         return vehicleId;
     }
 
-    public void setVehicleId(Vehicles vehicleId) {
+    public void setVehicleId(Long vehicleId) {
         this.vehicleId = vehicleId;
     }
 
-    @Override
-    public int hashCode() {
-        int hash = 0;
-        hash += (id != null ? id.hashCode() : 0);
-        return hash;
+    public Long getRouteId() {
+        return routeId;
     }
 
-    @Override
-    public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
-        if (!(object instanceof Schedules)) {
-            return false;
-        }
-        Schedules other = (Schedules) object;
-        if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
-            return false;
-        }
-        return true;
+    public void setRouteId(Long routeId) {
+        this.routeId = routeId;
+    }
+
+    public LocalDateTime getDepartureTime() {
+        return departureTime;
+    }
+
+    public void setDepartureTime(LocalDateTime departureTime) {
+        this.departureTime = departureTime;
+    }
+
+    public LocalDateTime getArrivalTime() {
+        return arrivalTime;
+    }
+
+    public void setArrivalTime(LocalDateTime arrivalTime) {
+        this.arrivalTime = arrivalTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     @Override
     public String toString() {
-        return "com.pts.pojo.Schedules[ id=" + id + " ]";
+        return "Schedules{" +
+                "id=" + id +
+                ", vehicleId=" + vehicleId +
+                ", routeId=" + routeId +
+                ", departureTime=" + departureTime +
+                ", arrivalTime=" + arrivalTime +
+                ", status='" + status + '\'' +
+                '}';
     }
-
 }

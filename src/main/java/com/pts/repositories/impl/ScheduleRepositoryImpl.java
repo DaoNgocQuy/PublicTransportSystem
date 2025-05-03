@@ -1,6 +1,6 @@
 package com.pts.repositories.impl;
 
-import com.pts.pojo.Schedule;
+import com.pts.pojo.Schedules;
 import com.pts.repositories.ScheduleRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -21,12 +21,13 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private final RowMapper<Schedule> scheduleRowMapper = new RowMapper<Schedule>() {
+    private final RowMapper<Schedules> scheduleRowMapper = new RowMapper<Schedules>() {
         @Override
-        public Schedule mapRow(ResultSet rs, int rowNum) throws SQLException {
-            Schedule schedule = new Schedule();
+        public Schedules mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Schedules schedule = new Schedules();
             schedule.setId(rs.getLong("id"));
-            // Set other fields from ResultSet
+            schedule.setVehicleId(rs.getLong("vehicle_id"));
+            schedule.setRouteId(rs.getLong("route_id"));
             schedule.setDepartureTime(rs.getTimestamp("departure_time").toLocalDateTime());
             schedule.setArrivalTime(rs.getTimestamp("arrival_time").toLocalDateTime());
             schedule.setStatus(rs.getString("status"));
@@ -35,25 +36,25 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     };
 
     @Override
-    public List<Schedule> findAll() {
+    public List<Schedules> findAll() {
         String sql = "SELECT * FROM schedules";
         return jdbcTemplate.query(sql, scheduleRowMapper);
     }
 
     @Override
-    public Optional<Schedule> findById(Long id) {
+    public Optional<Schedules> findById(Long id) {
         String sql = "SELECT * FROM schedules WHERE id = ?";
-        List<Schedule> schedules = jdbcTemplate.query(sql, scheduleRowMapper, id);
+        List<Schedules> schedules = jdbcTemplate.query(sql, scheduleRowMapper, id);
         return schedules.isEmpty() ? Optional.empty() : Optional.of(schedules.get(0));
     }
 
     @Override
-    public Schedule save(Schedule schedule) {
+    public Schedules save(Schedules schedule) {
         if (schedule.getId() == null) {
             String sql = "INSERT INTO schedules (vehicle_id, route_id, departure_time, arrival_time, status) VALUES (?, ?, ?, ?, ?)";
             jdbcTemplate.update(sql,
-                    schedule.getVehicle().getId(),
-                    schedule.getRoute().getId(),
+                    schedule.getVehicleId(),
+                    schedule.getRouteId(),
                     schedule.getDepartureTime(),
                     schedule.getArrivalTime(),
                     schedule.getStatus());
@@ -61,8 +62,8 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         } else {
             String sql = "UPDATE schedules SET vehicle_id = ?, route_id = ?, departure_time = ?, arrival_time = ?, status = ? WHERE id = ?";
             jdbcTemplate.update(sql,
-                    schedule.getVehicle().getId(),
-                    schedule.getRoute().getId(),
+                    schedule.getVehicleId(),
+                    schedule.getRouteId(),
                     schedule.getDepartureTime(),
                     schedule.getArrivalTime(),
                     schedule.getStatus(),
@@ -85,50 +86,50 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     }
 
     @Override
-    public List<Schedule> findByVehicleId(Long vehicleId) {
+    public List<Schedules> findByVehicleId(Long vehicleId) {
         String sql = "SELECT * FROM schedules WHERE vehicle_id = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, vehicleId);
     }
 
     @Override
-    public List<Schedule> findByRouteId(Long routeId) {
+    public List<Schedules> findByRouteId(Long routeId) {
         String sql = "SELECT * FROM schedules WHERE route_id = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, routeId);
     }
 
     @Override
-    public List<Schedule> findByDepartureTimeBetween(LocalDateTime startTime, LocalDateTime endTime) {
+    public List<Schedules> findByDepartureTimeBetween(LocalDateTime startTime, LocalDateTime endTime) {
         String sql = "SELECT * FROM schedules WHERE departure_time BETWEEN ? AND ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, startTime, endTime);
     }
 
     @Override
-    public List<Schedule> findByStatus(String status) {
+    public List<Schedules> findByStatus(String status) {
         String sql = "SELECT * FROM schedules WHERE status = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, status);
     }
 
     @Override
-    public List<Schedule> findByVehicleIdAndStatus(Long vehicleId, String status) {
+    public List<Schedules> findByVehicleIdAndStatus(Long vehicleId, String status) {
         String sql = "SELECT * FROM schedules WHERE vehicle_id = ? AND status = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, vehicleId, status);
     }
 
     @Override
-    public List<Schedule> findByRouteIdAndStatus(Long routeId, String status) {
+    public List<Schedules> findByRouteIdAndStatus(Long routeId, String status) {
         String sql = "SELECT * FROM schedules WHERE route_id = ? AND status = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, routeId, status);
     }
 
     @Override
-    public List<Schedule> findByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime, String status) {
-        String sql = "SELECT * FROM schedules WHERE departure_time >= ? AND arrival_time <= ? AND status = ?";
+    public List<Schedules> findByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime, String status) {
+        String sql = "SELECT * FROM schedules WHERE departure_time BETWEEN ? AND ? AND status = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, startTime, endTime, status);
     }
 
     @Override
-    public List<Schedule> findByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime, LocalDateTime endTime) {
-        String sql = "SELECT * FROM schedules WHERE vehicle_id = ? AND departure_time >= ? AND arrival_time <= ?";
+    public List<Schedules> findByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime, LocalDateTime endTime) {
+        String sql = "SELECT * FROM schedules WHERE vehicle_id = ? AND departure_time BETWEEN ? AND ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, vehicleId, startTime, endTime);
     }
 }

@@ -27,10 +27,10 @@ import java.util.Date;
 @Entity
 @Table(name = "schedules")
 @NamedQueries({
-    @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
-    @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
-    @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
-    @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime")})
+        @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
+        @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
+        @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
+        @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime") })
 public class Schedules implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -38,7 +38,7 @@ public class Schedules implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
     @Column(name = "id")
-    private Integer id;
+    private Long id;
     @Column(name = "departure_time")
     @Temporal(TemporalType.TIME)
     private Date departureTime;
@@ -55,15 +55,15 @@ public class Schedules implements Serializable {
     public Schedules() {
     }
 
-    public Schedules(Integer id) {
+    public Schedules(Long id) {
         this.id = id;
     }
 
-    public Integer getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -123,5 +123,5 @@ public class Schedules implements Serializable {
     public String toString() {
         return "com.pts.pojo.Schedules[ id=" + id + " ]";
     }
-    
+
 }

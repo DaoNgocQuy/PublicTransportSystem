@@ -2,6 +2,7 @@ package com.pts.controllers;
 
 import com.pts.pojo.Schedule;
 import com.pts.services.ScheduleService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -29,11 +30,13 @@ class ScheduleControllerTest {
     private ScheduleController scheduleController;
 
     private MockMvc mockMvc;
+    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(scheduleController).build();
+        objectMapper = new ObjectMapper();
     }
 
     @Test
@@ -44,6 +47,7 @@ class ScheduleControllerTest {
 
         mockMvc.perform(get("/api/schedules"))
                 .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$[0].id").value(1));
     }
 
@@ -55,19 +59,33 @@ class ScheduleControllerTest {
 
         mockMvc.perform(get("/api/schedules/1"))
                 .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1));
+    }
+
+    @Test
+    void getScheduleById_NotFound() throws Exception {
+        when(scheduleService.getScheduleById(1L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/schedules/1"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     void createSchedule() throws Exception {
         Schedule schedule = new Schedule();
         schedule.setId(1L);
+        schedule.setDepartureTime(LocalDateTime.now());
+        schedule.setArrivalTime(LocalDateTime.now().plusHours(1));
+        schedule.setStatus("ACTIVE");
+
         when(scheduleService.createSchedule(any(Schedule.class))).thenReturn(schedule);
 
         mockMvc.perform(post("/api/schedules")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"id\":1,\"departureTime\":\"2024-01-01T10:00:00\",\"arrivalTime\":\"2024-01-01T11:00:00\",\"status\":\"ACTIVE\"}"))
+                .content(objectMapper.writeValueAsString(schedule)))
                 .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1));
     }
 
@@ -75,12 +93,17 @@ class ScheduleControllerTest {
     void updateSchedule() throws Exception {
         Schedule schedule = new Schedule();
         schedule.setId(1L);
+        schedule.setDepartureTime(LocalDateTime.now());
+        schedule.setArrivalTime(LocalDateTime.now().plusHours(1));
+        schedule.setStatus("ACTIVE");
+
         when(scheduleService.updateSchedule(anyLong(), any(Schedule.class))).thenReturn(schedule);
 
         mockMvc.perform(put("/api/schedules/1")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"id\":1,\"departureTime\":\"2024-01-01T10:00:00\",\"arrivalTime\":\"2024-01-01T11:00:00\",\"status\":\"ACTIVE\"}"))
+                .content(objectMapper.writeValueAsString(schedule)))
                 .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.id").value(1));
     }
 
@@ -90,5 +113,29 @@ class ScheduleControllerTest {
 
         mockMvc.perform(delete("/api/schedules/1"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void getSchedulesByVehicle() throws Exception {
+        Schedule schedule = new Schedule();
+        schedule.setId(1L);
+        when(scheduleService.getSchedulesByVehicle(1L)).thenReturn(Arrays.asList(schedule));
+
+        mockMvc.perform(get("/api/schedules/vehicle/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].id").value(1));
+    }
+
+    @Test
+    void getSchedulesByRoute() throws Exception {
+        Schedule schedule = new Schedule();
+        schedule.setId(1L);
+        when(scheduleService.getSchedulesByRoute(1L)).thenReturn(Arrays.asList(schedule));
+
+        mockMvc.perform(get("/api/schedules/route/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$[0].id").value(1));
     }
 } 

@@ -1,13 +1,13 @@
 package com.pts.services;
 
 import com.pts.pojo.Users;
-import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
+import java.util.Optional;
 
 public interface UserService {
-    Users getUserById(int id);
-    Users getUserByUsername(String username);
-    List<Users> getAllUsers();
-    boolean addUser(Users user);
-    boolean updateUser(Users user);
-    boolean deleteUser(int id);
+    Users registerUser(Users user, MultipartFile avatarFile);
+    Optional<Users> login(String username, String password);
+    Users updateUserProfile(Integer userId, Users userDetails, MultipartFile avatarFile);
+    Optional<Users> getUserById(Integer id);
+    boolean changePassword(Integer userId, String oldPassword, String newPassword);
 }

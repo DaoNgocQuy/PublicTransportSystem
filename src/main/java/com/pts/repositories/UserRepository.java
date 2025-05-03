@@ -1,13 +1,12 @@
 package com.pts.repositories;
 
-import com.pts.pojo.Users;
-import java.util.List;
+import com.pts.pojo.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
 
-public interface UserRepository {
-    Users getUserById(int id);
-    Users getUserByUsername(String username);
-    List<Users> getAllUsers();
-    boolean addUser(Users user);
-    boolean updateUser(Users user);
-    boolean deleteUser(int id);
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByUsername(String username);
+    Optional<User> findByEmail(String email);
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
 }

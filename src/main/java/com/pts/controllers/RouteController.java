@@ -18,8 +18,12 @@ public class RouteController {
     @PostMapping
     public ResponseEntity<?> createRoute(@RequestBody Routes route) {
         try {
-            // TODO: Implement create route logic
-            return ResponseEntity.ok("Route created successfully");
+            boolean success = routeService.createRoute(route);
+            if (success) {
+                return ResponseEntity.ok("Route created successfully");
+            } else {
+                return ResponseEntity.badRequest().body("Failed to create route");
+            }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -28,8 +32,13 @@ public class RouteController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateRoute(@PathVariable Integer id, @RequestBody Routes route) {
         try {
-            // TODO: Implement update route logic
-            return ResponseEntity.ok("Route updated successfully");
+            route.setId(id);
+            boolean success = routeService.updateRoute(route);
+            if (success) {
+                return ResponseEntity.ok("Route updated successfully");
+            } else {
+                return ResponseEntity.badRequest().body("Failed to update route");
+            }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -38,8 +47,12 @@ public class RouteController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteRoute(@PathVariable Integer id) {
         try {
-            // TODO: Implement delete route logic
-            return ResponseEntity.ok("Route deleted successfully");
+            boolean success = routeService.deleteRoute(id);
+            if (success) {
+                return ResponseEntity.ok("Route deleted successfully");
+            } else {
+                return ResponseEntity.badRequest().body("Failed to delete route");
+            }
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

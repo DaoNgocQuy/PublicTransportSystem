@@ -56,4 +56,33 @@ public class RouteRepositoryImpl implements RouteRepository {
         String sql = "SELECT * FROM routes WHERE is_walking_route = ?";
         return jdbcTemplate.query(sql, routeMapper, isWalkingRoute);
     }
+
+    @Override
+    public boolean addRoute(Routes route) {
+        String sql = "INSERT INTO routes(name, start_location, end_location, total_stops, is_walking_route) VALUES (?, ?, ?, ?, ?)";
+        return jdbcTemplate.update(sql, 
+            route.getName(),
+            route.getStartLocation(),
+            route.getEndLocation(),
+            route.getTotalStops(),
+            route.getIsWalkingRoute()) > 0;
+    }
+
+    @Override
+    public boolean updateRoute(Routes route) {
+        String sql = "UPDATE routes SET name = ?, start_location = ?, end_location = ?, total_stops = ?, is_walking_route = ? WHERE id = ?";
+        return jdbcTemplate.update(sql,
+            route.getName(),
+            route.getStartLocation(),
+            route.getEndLocation(),
+            route.getTotalStops(),
+            route.getIsWalkingRoute(),
+            route.getId()) > 0;
+    }
+
+    @Override
+    public boolean deleteRoute(Integer id) {
+        String sql = "DELETE FROM routes WHERE id = ?";
+        return jdbcTemplate.update(sql, id) > 0;
+    }
 } 

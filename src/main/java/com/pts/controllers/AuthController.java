@@ -3,6 +3,7 @@ package com.pts.controllers;
 import com.pts.pojo.Users;
 import com.pts.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,9 +30,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestParam String username, @RequestParam String password) {
         try {
+//            return userService.login(username, password)
+//                    .map(ResponseEntity::ok)
+//                    .orElse(ResponseEntity.badRequest().body("Invalid username or password"));
             return userService.login(username, password)
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.badRequest().body("Invalid username or password"));
+                    .<ResponseEntity<?>>map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid username or password"));
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -66,4 +71,4 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-} 
+}

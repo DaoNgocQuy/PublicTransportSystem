@@ -27,10 +27,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Users registerUser(Users user, MultipartFile avatarFile) {
-        if (userRepository.getUserByUsername(user.getUsername()) != null) {
+        if (userRepository.existsByUsername(user.getUsername())) {
             throw new RuntimeException("Username already exists");
         }
-        if (userRepository.getAllUsers().stream().anyMatch(u -> u.getEmail().equals(user.getEmail()))) {
+        if (userRepository.existsByEmail(user.getEmail())) {
             throw new RuntimeException("Email already exists");
         }
 
@@ -48,9 +48,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public Optional<Users> login(String username, String password) {
-        Users user = userRepository.getUserByUsername(username);
-        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
-            return Optional.of(user);
+        Optional<Users> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent() && passwordEncoder.matches(password, userOpt.get().getPassword())) {
+            return userOpt;
         }
         return Optional.empty();
     }
@@ -66,7 +66,7 @@ public class UserServiceImpl implements UserService {
             user.setUsername(userDetails.getUsername());
         }
         if (userDetails.getEmail() != null && !userDetails.getEmail().equals(user.getEmail())) {
-            if (userRepository.getAllUsers().stream().anyMatch(u -> u.getEmail().equals(userDetails.getEmail()))) {
+            if (userRepository.existsByEmail(userDetails.getEmail())) {
                 throw new RuntimeException("Email already exists");
             }
             user.setEmail(userDetails.getEmail());

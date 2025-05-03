@@ -32,4 +32,19 @@ public class RouteServiceImpl implements RouteService {
     public List<Routes> getRoutesByType(boolean isWalkingRoute) {
         return routeRepository.getRoutesByType(isWalkingRoute);
     }
+
+    @Override
+    public boolean createRoute(Routes route) {
+        return routeRepository.addRoute(route);
+    }
+
+    @Override
+    public boolean updateRoute(Routes route) {
+        return routeRepository.updateRoute(route);
+    }
+
+    @Override
+    public boolean deleteRoute(Integer id) {
+        return routeRepository.deleteRoute(id);
+    }
 } 

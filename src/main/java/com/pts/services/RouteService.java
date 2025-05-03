@@ -8,4 +8,7 @@ public interface RouteService {
     List<Routes> getAllRoutes();
     Routes getRouteById(Integer id);
     List<Routes> getRoutesByType(boolean isWalkingRoute);
+    boolean createRoute(Routes route);
+    boolean updateRoute(Routes route);
+    boolean deleteRoute(Integer id);
 } 

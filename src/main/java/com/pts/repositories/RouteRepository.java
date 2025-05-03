@@ -8,4 +8,7 @@ public interface RouteRepository {
     Routes getRouteById(Integer id);
     List<Routes> searchRoutes(String startLocation, String endLocation);
     List<Routes> getRoutesByType(boolean isWalkingRoute);
+    boolean addRoute(Routes route);
+    boolean updateRoute(Routes route);
+    boolean deleteRoute(Integer id);
 } 

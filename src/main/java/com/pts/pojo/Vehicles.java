@@ -28,11 +28,11 @@ import java.util.Collection;
 @Entity
 @Table(name = "vehicles")
 @NamedQueries({
-    @NamedQuery(name = "Vehicles.findAll", query = "SELECT v FROM Vehicles v"),
-    @NamedQuery(name = "Vehicles.findById", query = "SELECT v FROM Vehicles v WHERE v.id = :id"),
-    @NamedQuery(name = "Vehicles.findByType", query = "SELECT v FROM Vehicles v WHERE v.type = :type"),
-    @NamedQuery(name = "Vehicles.findByLicensePlate", query = "SELECT v FROM Vehicles v WHERE v.licensePlate = :licensePlate"),
-    @NamedQuery(name = "Vehicles.findByCapacity", query = "SELECT v FROM Vehicles v WHERE v.capacity = :capacity")})
+        @NamedQuery(name = "Vehicles.findAll", query = "SELECT v FROM Vehicles v"),
+        @NamedQuery(name = "Vehicles.findById", query = "SELECT v FROM Vehicles v WHERE v.id = :id"),
+        @NamedQuery(name = "Vehicles.findByType", query = "SELECT v FROM Vehicles v WHERE v.type = :type"),
+        @NamedQuery(name = "Vehicles.findByLicensePlate", query = "SELECT v FROM Vehicles v WHERE v.licensePlate = :licensePlate"),
+        @NamedQuery(name = "Vehicles.findByCapacity", query = "SELECT v FROM Vehicles v WHERE v.capacity = :capacity") })
 public class Vehicles implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -40,7 +40,7 @@ public class Vehicles implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
     @Column(name = "id")
-    private Integer id;
+    private Long id;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 9)
@@ -62,20 +62,20 @@ public class Vehicles implements Serializable {
     public Vehicles() {
     }
 
-    public Vehicles(Integer id) {
+    public Vehicles(Long id) {
         this.id = id;
     }
 
-    public Vehicles(Integer id, String type) {
+    public Vehicles(Long id, String type) {
         this.id = id;
         this.type = type;
     }
 
-    public Integer getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -151,5 +151,5 @@ public class Vehicles implements Serializable {
     public String toString() {
         return "com.pts.pojo.Vehicles[ id=" + id + " ]";
     }
-    
+
 }

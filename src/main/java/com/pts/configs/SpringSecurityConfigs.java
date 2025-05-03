@@ -7,12 +7,15 @@ package com.pts.configs;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import java.util.List;
+import javax.sql.DataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -36,6 +39,7 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
     "com.pts.controllers",
     "com.pts.repositories",
     "com.pts.services"
+
 })
 public class SpringSecurityConfigs {
 
@@ -99,5 +103,24 @@ public class SpringSecurityConfigs {
         source.registerCorsConfiguration("/**", config);
 
         return source;
+    }
+
+    @Configuration
+    public class DatabaseConfig { 
+
+        @Bean
+        public DataSource dataSource() {
+            DriverManagerDataSource dataSource = new DriverManagerDataSource();
+            dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            dataSource.setUrl("jdbc:mysql://localhost:3306/your_database_name"); // Thay bằng tên database của bạn
+            dataSource.setUsername("your_username"); // Thay bằng username của bạn
+            dataSource.setPassword("your_password"); // Thay bằng password của bạn
+            return dataSource;
+        }
+
+        @Bean
+        public JdbcTemplate jdbcTemplate(DataSource dataSource) {
+            return new JdbcTemplate(dataSource);
+        }
     }
 }

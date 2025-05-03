@@ -51,22 +51,22 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     public Schedule save(Schedule schedule) {
         if (schedule.getId() == null) {
             String sql = "INSERT INTO schedules (vehicle_id, route_id, departure_time, arrival_time, status) VALUES (?, ?, ?, ?, ?)";
-            jdbcTemplate.update(sql, 
-                schedule.getVehicle().getId(),
-                schedule.getRoute().getId(),
-                schedule.getDepartureTime(),
-                schedule.getArrivalTime(),
-                schedule.getStatus());
+            jdbcTemplate.update(sql,
+                    schedule.getVehicle().getId(),
+                    schedule.getRoute().getId(),
+                    schedule.getDepartureTime(),
+                    schedule.getArrivalTime(),
+                    schedule.getStatus());
             return schedule;
         } else {
             String sql = "UPDATE schedules SET vehicle_id = ?, route_id = ?, departure_time = ?, arrival_time = ?, status = ? WHERE id = ?";
             jdbcTemplate.update(sql,
-                schedule.getVehicle().getId(),
-                schedule.getRoute().getId(),
-                schedule.getDepartureTime(),
-                schedule.getArrivalTime(),
-                schedule.getStatus(),
-                schedule.getId());
+                    schedule.getVehicle().getId(),
+                    schedule.getRoute().getId(),
+                    schedule.getDepartureTime(),
+                    schedule.getArrivalTime(),
+                    schedule.getStatus(),
+                    schedule.getId());
             return schedule;
         }
     }
@@ -131,4 +131,4 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         String sql = "SELECT * FROM schedules WHERE vehicle_id = ? AND departure_time >= ? AND arrival_time <= ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, vehicleId, startTime, endTime);
     }
-} 
+}

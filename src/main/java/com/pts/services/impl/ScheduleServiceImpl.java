@@ -59,12 +59,14 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<Schedule> getSchedulesByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime, String status) {
+    public List<Schedule> getSchedulesByTimeRangeAndStatus(LocalDateTime startTime, LocalDateTime endTime,
+            String status) {
         return scheduleRepository.findByTimeRangeAndStatus(startTime, endTime, status);
     }
 
     @Override
-    public List<Schedule> getSchedulesByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime, LocalDateTime endTime) {
+    public List<Schedule> getSchedulesByVehicleAndTimeRange(Long vehicleId, LocalDateTime startTime,
+            LocalDateTime endTime) {
         return scheduleRepository.findByVehicleAndTimeRange(vehicleId, startTime, endTime);
     }
 
@@ -88,7 +90,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         schedule.setStatus(scheduleDetails.getStatus());
 
         validateSchedule(schedule);
-        
+
         return scheduleRepository.save(schedule);
     }
 
@@ -108,12 +110,13 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         List<Schedule> existingSchedules = scheduleRepository.findByVehicleId(schedule.getVehicle().getId());
         for (Schedule existing : existingSchedules) {
-            if (existing.getId().equals(schedule.getId())) continue;
-            
-            if ((schedule.getDepartureTime().isBefore(existing.getArrivalTime()) && 
-                 schedule.getArrivalTime().isAfter(existing.getDepartureTime()))) {
+            if (existing.getId().equals(schedule.getId()))
+                continue;
+
+            if ((schedule.getDepartureTime().isBefore(existing.getArrivalTime()) &&
+                    schedule.getArrivalTime().isAfter(existing.getDepartureTime()))) {
                 throw new ScheduleException("Schedule overlaps with existing schedule for this vehicle");
             }
         }
     }
-} 
+}

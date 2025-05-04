@@ -17,7 +17,7 @@ public class UserRepositoryImpl implements UserRepository {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    private RowMapper<Users> userMapper = new RowMapper<>() {
+    private RowMapper<Users> userMapper = new RowMapper<Users>() {
         @Override
         public Users mapRow(ResultSet rs, int rowNum) throws SQLException {
             Users u = new Users();
@@ -30,7 +30,6 @@ public class UserRepositoryImpl implements UserRepository {
             return u;
         }
     };
-
     @Override
     public Optional<Users> findByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";

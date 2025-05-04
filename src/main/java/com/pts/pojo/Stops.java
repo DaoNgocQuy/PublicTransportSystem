@@ -14,12 +14,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
-import java.util.Collection;
 
 /**
  *
@@ -35,7 +33,6 @@ import java.util.Collection;
     @NamedQuery(name = "Stops.findByLongitude", query = "SELECT s FROM Stops s WHERE s.longitude = :longitude"),
     @NamedQuery(name = "Stops.findByStopOrder", query = "SELECT s FROM Stops s WHERE s.stopOrder = :stopOrder"),
     @NamedQuery(name = "Stops.findByAddress", query = "SELECT s FROM Stops s WHERE s.address = :address"),
-    @NamedQuery(name = "Stops.findByHasShelter", query = "SELECT s FROM Stops s WHERE s.hasShelter = :hasShelter"),
     @NamedQuery(name = "Stops.findByIsAccessible", query = "SELECT s FROM Stops s WHERE s.isAccessible = :isAccessible")})
 public class Stops implements Serializable {
 
@@ -60,16 +57,8 @@ public class Stops implements Serializable {
     @Size(max = 255)
     @Column(name = "address")
     private String address;
-    @Column(name = "has_shelter")
-    private Boolean hasShelter;
     @Column(name = "is_accessible")
     private Boolean isAccessible;
-    @OneToMany(mappedBy = "fromStopId")
-    private Collection<RouteSegments> routeSegmentsCollection;
-    @OneToMany(mappedBy = "toStopId")
-    private Collection<RouteSegments> routeSegmentsCollection1;
-    @OneToMany(mappedBy = "transferStopId")
-    private Collection<Transfers> transfersCollection;
     @JoinColumn(name = "route_id", referencedColumnName = "id")
     @ManyToOne
     private Routes routeId;
@@ -134,44 +123,12 @@ public class Stops implements Serializable {
         this.address = address;
     }
 
-    public Boolean getHasShelter() {
-        return hasShelter;
-    }
-
-    public void setHasShelter(Boolean hasShelter) {
-        this.hasShelter = hasShelter;
-    }
-
     public Boolean getIsAccessible() {
         return isAccessible;
     }
 
     public void setIsAccessible(Boolean isAccessible) {
         this.isAccessible = isAccessible;
-    }
-
-    public Collection<RouteSegments> getRouteSegmentsCollection() {
-        return routeSegmentsCollection;
-    }
-
-    public void setRouteSegmentsCollection(Collection<RouteSegments> routeSegmentsCollection) {
-        this.routeSegmentsCollection = routeSegmentsCollection;
-    }
-
-    public Collection<RouteSegments> getRouteSegmentsCollection1() {
-        return routeSegmentsCollection1;
-    }
-
-    public void setRouteSegmentsCollection1(Collection<RouteSegments> routeSegmentsCollection1) {
-        this.routeSegmentsCollection1 = routeSegmentsCollection1;
-    }
-
-    public Collection<Transfers> getTransfersCollection() {
-        return transfersCollection;
-    }
-
-    public void setTransfersCollection(Collection<Transfers> transfersCollection) {
-        this.transfersCollection = transfersCollection;
     }
 
     public Routes getRouteId() {

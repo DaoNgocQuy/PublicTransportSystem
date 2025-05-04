@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.pts.pojo;
 
 import jakarta.persistence.Basic;
@@ -92,9 +88,7 @@ public class Users implements Serializable {
     private Collection<Favorites> favoritesCollection;
     @OneToMany(mappedBy = "userId")
     private Collection<Reports> reportsCollection;
-    @OneToMany(mappedBy = "userId")
-    private Collection<Vehicles> vehiclesCollection;
-    @OneToMany(mappedBy = "reportedBy")
+    @OneToMany(mappedBy = "reportedBy") 
     private Collection<TrafficConditions> trafficConditionsCollection;
     @OneToMany(mappedBy = "userId")
     private Collection<RouteRatings> routeRatingsCollection;
@@ -220,14 +214,6 @@ public class Users implements Serializable {
 
     public void setReportsCollection(Collection<Reports> reportsCollection) {
         this.reportsCollection = reportsCollection;
-    }
-
-    public Collection<Vehicles> getVehiclesCollection() {
-        return vehiclesCollection;
-    }
-
-    public void setVehiclesCollection(Collection<Vehicles> vehiclesCollection) {
-        this.vehiclesCollection = vehiclesCollection;
     }
 
     public Collection<TrafficConditions> getTrafficConditionsCollection() {

@@ -10,15 +10,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
-import java.util.Collection;
 
 /**
  *
@@ -31,12 +28,7 @@ import java.util.Collection;
     @NamedQuery(name = "Vehicles.findById", query = "SELECT v FROM Vehicles v WHERE v.id = :id"),
     @NamedQuery(name = "Vehicles.findByVehicleName", query = "SELECT v FROM Vehicles v WHERE v.vehicleName = :vehicleName"),
     @NamedQuery(name = "Vehicles.findByType", query = "SELECT v FROM Vehicles v WHERE v.type = :type"),
-    @NamedQuery(name = "Vehicles.findByLicensePlate", query = "SELECT v FROM Vehicles v WHERE v.licensePlate = :licensePlate"),
-    @NamedQuery(name = "Vehicles.findByCapacity", query = "SELECT v FROM Vehicles v WHERE v.capacity = :capacity"),
-    @NamedQuery(name = "Vehicles.findByIsAccessible", query = "SELECT v FROM Vehicles v WHERE v.isAccessible = :isAccessible"),
-    @NamedQuery(name = "Vehicles.findByIsAirConditioned", query = "SELECT v FROM Vehicles v WHERE v.isAirConditioned = :isAirConditioned"),
-    @NamedQuery(name = "Vehicles.findByProductionYear", query = "SELECT v FROM Vehicles v WHERE v.productionYear = :productionYear"),
-    @NamedQuery(name = "Vehicles.findByStatus", query = "SELECT v FROM Vehicles v WHERE v.status = :status")})
+    @NamedQuery(name = "Vehicles.findByLicensePlate", query = "SELECT v FROM Vehicles v WHERE v.licensePlate = :licensePlate")})
 public class Vehicles implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -45,39 +37,31 @@ public class Vehicles implements Serializable {
     @Basic(optional = false)
     @Column(name = "id")
     private Integer id;
-    @Size(max = 100)
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 100)
     @Column(name = "vehicle_name")
     private String vehicleName;
-    @Size(max = 20)
+    @Basic(optional = false)
+    @NotNull
+    @Size(min = 1, max = 5)
     @Column(name = "type")
     private String type;
     @Size(max = 20)
     @Column(name = "license_plate")
     private String licensePlate;
-    @Column(name = "capacity")
-    private Integer capacity;
-    @Column(name = "is_accessible")
-    private Boolean isAccessible;
-    @Column(name = "is_air_conditioned")
-    private Boolean isAirConditioned;
-    @Column(name = "production_year")
-    private Integer productionYear;
-    @Size(max = 20)
-    @Column(name = "status")
-    private String status;
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    @ManyToOne
-    private Users userId;
-    @OneToMany(mappedBy = "vehicleId")
-    private Collection<LiveLocation> liveLocationCollection;
-    @OneToMany(mappedBy = "vehicleId")
-    private Collection<Schedules> schedulesCollection;
 
     public Vehicles() {
     }
 
     public Vehicles(Integer id) {
         this.id = id;
+    }
+
+    public Vehicles(Integer id, String vehicleName, String type) {
+        this.id = id;
+        this.vehicleName = vehicleName;
+        this.type = type;
     }
 
     public Integer getId() {
@@ -110,70 +94,6 @@ public class Vehicles implements Serializable {
 
     public void setLicensePlate(String licensePlate) {
         this.licensePlate = licensePlate;
-    }
-
-    public Integer getCapacity() {
-        return capacity;
-    }
-
-    public void setCapacity(Integer capacity) {
-        this.capacity = capacity;
-    }
-
-    public Boolean getIsAccessible() {
-        return isAccessible;
-    }
-
-    public void setIsAccessible(Boolean isAccessible) {
-        this.isAccessible = isAccessible;
-    }
-
-    public Boolean getIsAirConditioned() {
-        return isAirConditioned;
-    }
-
-    public void setIsAirConditioned(Boolean isAirConditioned) {
-        this.isAirConditioned = isAirConditioned;
-    }
-
-    public Integer getProductionYear() {
-        return productionYear;
-    }
-
-    public void setProductionYear(Integer productionYear) {
-        this.productionYear = productionYear;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Users getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Users userId) {
-        this.userId = userId;
-    }
-
-    public Collection<LiveLocation> getLiveLocationCollection() {
-        return liveLocationCollection;
-    }
-
-    public void setLiveLocationCollection(Collection<LiveLocation> liveLocationCollection) {
-        this.liveLocationCollection = liveLocationCollection;
-    }
-
-    public Collection<Schedules> getSchedulesCollection() {
-        return schedulesCollection;
-    }
-
-    public void setSchedulesCollection(Collection<Schedules> schedulesCollection) {
-        this.schedulesCollection = schedulesCollection;
     }
 
     @Override

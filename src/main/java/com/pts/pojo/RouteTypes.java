@@ -34,12 +34,6 @@ import java.util.Collection;
     @NamedQuery(name = "RouteTypes.findByColorCode", query = "SELECT r FROM RouteTypes r WHERE r.colorCode = :colorCode")})
 public class RouteTypes implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "id")
-    private Integer id;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
@@ -54,6 +48,13 @@ public class RouteTypes implements Serializable {
     @Size(max = 10)
     @Column(name = "color_code")
     private String colorCode;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "id")
+    private Integer id;
     @OneToMany(mappedBy = "routeTypeId")
     private Collection<Routes> routesCollection;
 
@@ -85,13 +86,6 @@ public class RouteTypes implements Serializable {
         this.typeName = typeName;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
 
     public String getIconUrl() {
         return iconUrl;
@@ -141,5 +135,12 @@ public class RouteTypes implements Serializable {
     public String toString() {
         return "com.pts.pojo.RouteTypes[ id=" + id + " ]";
     }
-    
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 }

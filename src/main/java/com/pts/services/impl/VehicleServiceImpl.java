@@ -33,11 +33,6 @@ public class VehicleServiceImpl implements VehicleService {
     }
 
     @Override
-    public List<Vehicles> getVehiclesByUserId(Integer userId) {
-        return vehicleRepository.getVehiclesByUserId(userId);
-    }
-
-    @Override
     public boolean addVehicle(Vehicles vehicle) {
         return vehicleRepository.addVehicle(vehicle);
     }

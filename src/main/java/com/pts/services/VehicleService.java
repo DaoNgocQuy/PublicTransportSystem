@@ -11,7 +11,6 @@ public interface VehicleService {
     List<Vehicles> getAllVehicles();
     Vehicles getVehicleById(Integer id);
     Vehicles getVehicleByLicensePlate(String licensePlate);
-    List<Vehicles> getVehiclesByUserId(Integer userId);
     boolean addVehicle(Vehicles vehicle);
     boolean updateVehicle(Vehicles vehicle);
     boolean deleteVehicle(Integer id);

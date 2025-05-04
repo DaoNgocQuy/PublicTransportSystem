@@ -47,12 +47,6 @@ import java.util.Date;
     @NamedQuery(name = "Routes.findByLastUpdated", query = "SELECT r FROM Routes r WHERE r.lastUpdated = :lastUpdated")})
 public class Routes implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "id")
-    private Integer id;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 255)
@@ -64,6 +58,16 @@ public class Routes implements Serializable {
     @Size(max = 255)
     @Column(name = "end_location")
     private String endLocation;
+    @Size(max = 10)
+    @Column(name = "route_color")
+    private String routeColor;
+
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "id")
+    private Integer id;
     @Column(name = "total_stops")
     private Integer totalStops;
     @Column(name = "operation_start_time")
@@ -74,9 +78,6 @@ public class Routes implements Serializable {
     private Date operationEndTime;
     @Column(name = "frequency_minutes")
     private Integer frequencyMinutes;
-    @Size(max = 10)
-    @Column(name = "route_color")
-    private String routeColor;
     @Column(name = "is_walking_route")
     private Boolean isWalkingRoute;
     @Column(name = "is_active")
@@ -125,13 +126,6 @@ public class Routes implements Serializable {
         this.id = id;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
 
     public String getStartLocation() {
         return startLocation;
@@ -309,5 +303,12 @@ public class Routes implements Serializable {
     public String toString() {
         return "com.pts.pojo.Routes[ id=" + id + " ]";
     }
-    
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
 }

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Đăng nhập</title>
+    <th:block th:replace="base :: bootstrap"></th:block>
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .login-container {
+            max-width: 450px;
+            margin: 100px auto;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            border-radius: 10px 10px 0 0;
+            background-color: #0d6efd;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .system-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: #0d6efd;
+            text-align: center;
+        }
+        .btn-login {
+            background-color: #0d6efd;
+            color: white;
+            width: 100%;
+            padding: 10px;
+        }
+        .card-footer {
+            background-color: white;
+            border-top: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="login-container">
+        <div class="system-title">HỆ THỐNG QUẢN LÝ VẬN TẢI CÔNG CỘNG</div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">Đăng nhập</h3>
+            </div>
+            <div class="card-body">
+                <!-- Hiển thị thông báo thành công -->
+                <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+                    <span th:text="${success}"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                
+                <!-- Hiển thị thông báo lỗi -->
+                <div th:if="${param.error}" class="alert alert-danger">
+                    Sai tên đăng nhập hoặc mật khẩu.
+                </div>
+
+                <!-- Hiển thị thông báo đăng xuất thành công -->
+                <div th:if="${param.logout}" class="alert alert-success">
+                    Bạn đã đăng xuất thành công.
+                </div>
+
+                <form th:action="@{/login}" method="post">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Tên đăng nhập</label>
+                        <input type="text" class="form-control" id="username" name="username" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mật khẩu</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="remember-me" name="remember-me">
+                        <label class="form-check-label" for="remember-me">
+                            Ghi nhớ đăng nhập
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-login">Đăng nhập</button>
+                </form>
+            </div>
+            <div class="card-footer">
+                <p>Chưa có tài khoản? <a th:href="@{/register}">Đăng ký ngay</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

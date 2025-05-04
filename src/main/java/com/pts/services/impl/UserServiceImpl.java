@@ -102,6 +102,28 @@ public class UserServiceImpl implements UserService {
         return true;
     }
 
+    @Override
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
+    
+    @Override
+    public Users registerNewUser(String username, String password, String email) {
+        Users user = new Users();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setEmail(email);
+        user.setRole("USER"); // Mặc định role là USER
+        
+        userRepository.addUser(user);
+        return user;
+    }
+
     private String saveAvatar(MultipartFile file) {
         try {
             // Create upload directory if it doesn't exist

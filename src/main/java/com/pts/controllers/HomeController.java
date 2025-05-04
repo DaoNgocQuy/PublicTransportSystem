@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
     @GetMapping("/")
-    public String index() {
-        return "index";  // tương ứng với file index.html hoặc index.jsp hoặc index.thymeleaf
+    public String redirectToLogin() {
+        return "redirect:/login";
     }
 }

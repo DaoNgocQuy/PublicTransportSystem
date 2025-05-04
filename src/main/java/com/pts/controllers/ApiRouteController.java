@@ -1,6 +1,6 @@
 package com.pts.controllers;
 
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import com.pts.services.RoutesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,34 +20,34 @@ public class ApiRouteController {
 
     // API: Lấy danh sách tất cả các tuyến
     @GetMapping
-    public ResponseEntity<List<Routes>> getAllRoutes() {
-        List<Routes> routes = routesService.getAllRoutes();
+    public ResponseEntity<List<Route>> getAllRoutes() {
+        List<Route> routes = routesService.getAllRoutes();
         return new ResponseEntity<>(routes, HttpStatus.OK);
     }
 
     // API: Lấy thông tin tuyến theo ID
     @GetMapping("/{id}")
-    public ResponseEntity<Routes> getRouteById(@PathVariable Integer id) {
-        Optional<Routes> route = routesService.getRouteById(id);
+    public ResponseEntity<Route> getRouteById(@PathVariable Integer id) {
+        Optional<Route> route = routesService.getRouteById(id);
         return route.map(value -> new ResponseEntity<>(value, HttpStatus.OK))
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     // API: Thêm tuyến mới
     @PostMapping
-    public ResponseEntity<Routes> addRoute(@RequestBody Routes route) {
-        Routes savedRoute = routesService.saveRoute(route);
+    public ResponseEntity<Route> addRoute(@RequestBody Route route) {
+        Route savedRoute = routesService.saveRoute(route);
         return new ResponseEntity<>(savedRoute, HttpStatus.CREATED);
     }
 
     // API: Cập nhật thông tin tuyến
     @PutMapping("/{id}")
-    public ResponseEntity<Routes> updateRoute(@PathVariable Integer id, @RequestBody Routes route) {
+    public ResponseEntity<Route> updateRoute(@PathVariable Integer id, @RequestBody Route route) {
         if (!routesService.routeExists(id)) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         route.setId(id);
-        Routes updatedRoute = routesService.saveRoute(route);
+        Route updatedRoute = routesService.saveRoute(route);
         return new ResponseEntity<>(updatedRoute, HttpStatus.OK);
     }
 

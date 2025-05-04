@@ -2,7 +2,7 @@ package com.pts.controllers;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import com.pts.services.ScheduleService;
 import com.pts.services.VehicleService;
 import com.pts.services.RoutesService;
@@ -52,8 +52,8 @@ public class ScheduleController {
                             @RequestParam("arrivalTime") String arrivalTime,
                             Model model) {
         try {
-            // Tạo đối tượng Routes và Vehicles từ ID
-            Routes route = new Routes();
+            // Tạo đối tượng Route và Vehicles từ ID
+            Route route = new Route();
             route.setId(routeId);
             
             Vehicles vehicle = new Vehicles();
@@ -114,8 +114,8 @@ public class ScheduleController {
                             @RequestParam("arrivalTime") String arrivalTime,
                             Model model) {
         try {
-            // Tạo đối tượng Routes và Vehicles từ ID
-            Routes route = new Routes();
+            // Tạo đối tượng Route và Vehicles từ ID
+            Route route = new Route();
             route.setId(routeId);
             
             Vehicles vehicle = new Vehicles();
@@ -182,7 +182,7 @@ public class ScheduleController {
             
             // Tìm kiếm dựa trên các điều kiện
             if (routeId != null) {
-                Routes route = new Routes();
+                Route route = new Route();
                 route.setId(routeId);
                 schedules = scheduleService.getSchedulesByRoute(route);
             } else if (vehicleId != null) {

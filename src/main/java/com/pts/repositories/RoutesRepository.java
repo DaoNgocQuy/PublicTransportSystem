@@ -4,32 +4,32 @@
  */
 package com.pts.repositories;
 
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import java.util.List;
 import java.util.Optional;
 
 public interface RoutesRepository {
 
-    List<Route> findAll();
+    List<Routes> findAll();
 
-    Optional<Route> findById(Integer id);
+    Optional<Routes> findById(Integer id);
 
-    Route save(Route route);
+    Routes save(Routes route);
 
     void deleteById(Integer id);
 
     boolean existsById(Integer id);
 
-    List<Route> findByName(String name);
+    List<Routes> findByName(String name);
 
-    List<Route> findByStartLocation(String startLocation);
+    List<Routes> findByStartLocation(String startLocation);
 
-    List<Route> findByEndLocation(String endLocation);
+    List<Routes> findByEndLocation(String endLocation);
 
-    List<Route> findByTotalStops(Integer totalStops);
+    List<Routes> findByTotalStops(Integer totalStops);
 
-    List<Route> findByIsWalkingRoute(Boolean isWalkingRoute);
+    List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute);
 
-    List<Route> searchRoutesByName(String keyword);
+    List<Routes> searchRoutesByName(String keyword);
 
 }

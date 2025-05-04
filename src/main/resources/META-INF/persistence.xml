@@ -12,5 +12,15 @@
     <class>com.pts.pojo.Notifications</class>
     <class>com.pts.pojo.LiveLocation</class>
     <class>com.pts.pojo.Route</class>
+    <class>com.pts.pojo.RouteSegments</class>
+    <class>com.pts.pojo.TrafficConditions</class>
+    <class>com.pts.pojo.Users_1</class>
+    <class>com.pts.pojo.Routes</class>
+    <class>com.pts.pojo.Schedules_1</class>
+    <class>com.pts.pojo.LiveLocation_1</class>
+    <class>com.pts.pojo.RouteSearchHistory_1</class>
+    <class>com.pts.pojo.RouteRatings</class>
+    <class>com.pts.pojo.RouteTypes</class>
+    <class>com.pts.pojo.RouteSearchHistory</class>
   </persistence-unit>
 </persistence>

@@ -2,14 +2,18 @@ package com.pts.repositories.impl;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import com.pts.repositories.ScheduleRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Time;
 import java.util.List;
 import java.util.Optional;
@@ -19,26 +23,40 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
+    // Chuỗi SQL dùng chung cho tất cả các truy vấn
+    private static final String BASE_SELECT_SQL = 
+        "SELECT s.*, v.license_plate, v.type, r.name, r.start_location, r.end_location " +
+        "FROM schedules s " +
+        "LEFT JOIN vehicles v ON s.vehicle_id = v.id " + 
+        "LEFT JOIN routes r ON s.route_id = r.id";
+
     public ScheduleRepositoryImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private final RowMapper<Schedules> scheduleRowMapper = new RowMapper<Schedules>() {
+    // RowMapper dùng chung cho tất cả các truy vấn
+    private final RowMapper<Schedules> fullScheduleRowMapper = new RowMapper<Schedules>() {
         @Override
         public Schedules mapRow(ResultSet rs, int rowNum) throws SQLException {
             Schedules schedule = new Schedules();
             schedule.setId(rs.getInt("id"));
             
+            // Load vehicle info
             Vehicles vehicle = new Vehicles();
             vehicle.setId(rs.getInt("vehicle_id"));
+            vehicle.setLicensePlate(rs.getString("license_plate"));
+            vehicle.setType(rs.getString("type"));
             schedule.setVehicleId(vehicle);
-            
-            Route route = new Route();
+            Routes route = new Routes();
             route.setId(rs.getInt("route_id"));
+            route.setName(rs.getString("name"));
+            route.setStartLocation(rs.getString("start_location"));
+            route.setEndLocation(rs.getString("end_location"));
             schedule.setRouteId(route);
             
             schedule.setDepartureTime(rs.getTime("departure_time"));
             schedule.setArrivalTime(rs.getTime("arrival_time"));
+            
             return schedule;
         }
     };
@@ -62,7 +80,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             schedule.setVehicleId(vehicle);
             
             // Load route info
-            Route route = new Route();
+            Routes route = new Routes();
             route.setId(rs.getInt("route_id"));
             route.setName(rs.getString("name"));
             route.setStartLocation(rs.getString("start_location"));
@@ -96,7 +114,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             schedule.setVehicleId(vehicle);
             
             // Load route info
-            Route route = new Route();
+            Routes route = new Routes();
             route.setId(rs.getInt("route_id"));
             route.setName(rs.getString("name"));
             route.setStartLocation(rs.getString("start_location"));
@@ -108,22 +126,46 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             
             return schedule;
         }, id);
-        
         return schedules.isEmpty() ? Optional.empty() : Optional.of(schedules.get(0));
     }
 
+    public List<Schedules> findByRoute(Routes route) {
+        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, route.getId());
+    }
+
+    public List<Schedules> findByVehicle(Vehicles vehicle) {
+        String sql = BASE_SELECT_SQL + " WHERE s.vehicle_id = ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, vehicle.getId());
+    }
+
+    @Override
+    public List<Schedules> findByDepartureTimeBetween(Time startTime, Time endTime) {
+        String sql = BASE_SELECT_SQL + " WHERE s.departure_time BETWEEN ? AND ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, startTime, endTime);
+    }
 
     @Override
     public Schedules save(Schedules schedule) {
-        if (schedule.getId() == null) {
+        if (schedule.getId() == null || schedule.getId() == 0) {
+            // Thêm mới
+            KeyHolder keyHolder = new GeneratedKeyHolder();
             String sql = "INSERT INTO schedules (vehicle_id, route_id, departure_time, arrival_time) VALUES (?, ?, ?, ?)";
-            jdbcTemplate.update(sql,
-                    schedule.getVehicleId().getId(),
-                    schedule.getRouteId().getId(),
-                    schedule.getDepartureTime(),
-                    schedule.getArrivalTime());
-            return schedule;
+            
+            jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                ps.setInt(1, schedule.getVehicleId().getId());
+                ps.setInt(2, schedule.getRouteId().getId());
+                ps.setTime(3, (Time) schedule.getDepartureTime());
+                ps.setTime(4, (Time) schedule.getArrivalTime());
+                return ps;
+            }, keyHolder);
+            
+            if (keyHolder.getKey() != null) {
+                schedule.setId(keyHolder.getKey().intValue());
+            }
         } else {
+            // Cập nhật
             String sql = "UPDATE schedules SET vehicle_id = ?, route_id = ?, departure_time = ?, arrival_time = ? WHERE id = ?";
             jdbcTemplate.update(sql,
                     schedule.getVehicleId().getId(),
@@ -131,14 +173,13 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
                     schedule.getDepartureTime(),
                     schedule.getArrivalTime(),
                     schedule.getId());
-            return schedule;
         }
+        return schedule;
     }
 
     @Override
     public void deleteById(Integer id) {
-        String sql = "DELETE FROM schedules WHERE id = ?";
-        jdbcTemplate.update(sql, id);
+        jdbcTemplate.update("DELETE FROM schedules WHERE id = ?", id);
     }
 
     @Override
@@ -150,19 +191,11 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
 
     @Override
     public List<Schedules> findByVehicleId(Vehicles vehicleId) {
-        String sql = "SELECT * FROM schedules WHERE vehicle_id = ?";
-        return jdbcTemplate.query(sql, scheduleRowMapper, vehicleId.getId());
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
     @Override
-    public List<Schedules> findByRouteId(Route routeId) {
-        String sql = "SELECT * FROM schedules WHERE route_id = ?";
-        return jdbcTemplate.query(sql, scheduleRowMapper, routeId.getId());
-    }
-
-    @Override
-    public List<Schedules> findByDepartureTimeBetween(Time startTime, Time endTime) {
-        String sql = "SELECT * FROM schedules WHERE departure_time BETWEEN ? AND ?";
-        return jdbcTemplate.query(sql, scheduleRowMapper, startTime, endTime);
+    public List<Schedules> findByRouteId(Routes routeId) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 }

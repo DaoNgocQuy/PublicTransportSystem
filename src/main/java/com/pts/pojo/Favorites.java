@@ -17,7 +17,6 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
-import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Date;
 
@@ -26,14 +25,12 @@ import java.util.Date;
  * @author LEGION
  */
 @Entity
-@Table(name = "route_search_history")
+@Table(name = "favorites")
 @NamedQueries({
-    @NamedQuery(name = "RouteSearchHistory.findAll", query = "SELECT r FROM RouteSearchHistory r"),
-    @NamedQuery(name = "RouteSearchHistory.findById", query = "SELECT r FROM RouteSearchHistory r WHERE r.id = :id"),
-    @NamedQuery(name = "RouteSearchHistory.findByStartLocation", query = "SELECT r FROM RouteSearchHistory r WHERE r.startLocation = :startLocation"),
-    @NamedQuery(name = "RouteSearchHistory.findByEndLocation", query = "SELECT r FROM RouteSearchHistory r WHERE r.endLocation = :endLocation"),
-    @NamedQuery(name = "RouteSearchHistory.findBySearchDatetime", query = "SELECT r FROM RouteSearchHistory r WHERE r.searchDatetime = :searchDatetime")})
-public class RouteSearchHistory implements Serializable {
+    @NamedQuery(name = "Favorites.findAll", query = "SELECT f FROM Favorites f"),
+    @NamedQuery(name = "Favorites.findById", query = "SELECT f FROM Favorites f WHERE f.id = :id"),
+    @NamedQuery(name = "Favorites.findByCreatedAt", query = "SELECT f FROM Favorites f WHERE f.createdAt = :createdAt")})
+public class Favorites implements Serializable {
 
     private static final long serialVersionUID = 1L;
     @Id
@@ -41,23 +38,20 @@ public class RouteSearchHistory implements Serializable {
     @Basic(optional = false)
     @Column(name = "id")
     private Integer id;
-    @Size(max = 255)
-    @Column(name = "start_location")
-    private String startLocation;
-    @Size(max = 255)
-    @Column(name = "end_location")
-    private String endLocation;
-    @Column(name = "search_datetime")
+    @Column(name = "created_at")
     @Temporal(TemporalType.TIMESTAMP)
-    private Date searchDatetime;
+    private Date createdAt;
+    @JoinColumn(name = "route_id", referencedColumnName = "id")
+    @ManyToOne
+    private Routes routeId;
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     @ManyToOne
     private Users userId;
 
-    public RouteSearchHistory() {
+    public Favorites() {
     }
 
-    public RouteSearchHistory(Integer id) {
+    public Favorites(Integer id) {
         this.id = id;
     }
 
@@ -69,28 +63,20 @@ public class RouteSearchHistory implements Serializable {
         this.id = id;
     }
 
-    public String getStartLocation() {
-        return startLocation;
+    public Date getCreatedAt() {
+        return createdAt;
     }
 
-    public void setStartLocation(String startLocation) {
-        this.startLocation = startLocation;
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
     }
 
-    public String getEndLocation() {
-        return endLocation;
+    public Routes getRouteId() {
+        return routeId;
     }
 
-    public void setEndLocation(String endLocation) {
-        this.endLocation = endLocation;
-    }
-
-    public Date getSearchDatetime() {
-        return searchDatetime;
-    }
-
-    public void setSearchDatetime(Date searchDatetime) {
-        this.searchDatetime = searchDatetime;
+    public void setRouteId(Routes routeId) {
+        this.routeId = routeId;
     }
 
     public Users getUserId() {
@@ -111,10 +97,10 @@ public class RouteSearchHistory implements Serializable {
     @Override
     public boolean equals(Object object) {
         // TODO: Warning - this method won't work in the case the id fields are not set
-        if (!(object instanceof RouteSearchHistory)) {
+        if (!(object instanceof Favorites)) {
             return false;
         }
-        RouteSearchHistory other = (RouteSearchHistory) object;
+        Favorites other = (Favorites) object;
         if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
             return false;
         }
@@ -123,7 +109,7 @@ public class RouteSearchHistory implements Serializable {
 
     @Override
     public String toString() {
-        return "com.pts.pojo.RouteSearchHistory[ id=" + id + " ]";
+        return "com.pts.pojo.Favorites[ id=" + id + " ]";
     }
     
 }

@@ -2,7 +2,7 @@ package com.pts.controllers;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import com.pts.services.ScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +37,7 @@ public class ApiScheduleController {
 
     @GetMapping("/route/{routeId}")
     public ResponseEntity<List<Schedules>> getSchedulesByRoute(@PathVariable Integer routeId) {
-        return ResponseEntity.ok(scheduleService.getSchedulesByRoute(new Route(routeId)));
+        return ResponseEntity.ok(scheduleService.getSchedulesByRoute(new Routes(routeId)));
     }
 
     @GetMapping("/time-range")

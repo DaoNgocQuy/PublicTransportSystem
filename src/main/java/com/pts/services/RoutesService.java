@@ -8,23 +8,23 @@
  */
 package com.pts.services;
 
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import java.util.List;
 import java.util.Optional;
 
 public interface RoutesService {
 
-    List<Route> getAllRoutes();
+    List<Routes> getAllRoutes();
 
-    Optional<Route> getRouteById(Integer id);
+    Optional<Routes> getRouteById(Integer id);
 
-    Route saveRoute(Route route);
+    Routes saveRoute(Routes route);
 
     void deleteRoute(Integer id);
 
     boolean routeExists(Integer id);
 
-    List<Route> findRoutesByName(String name);
+    List<Routes> findRoutesByName(String name);
 
-    public List<Route> searchRoutesByName(String keyword);
+    public List<Routes> searchRoutesByName(String keyword);
 }

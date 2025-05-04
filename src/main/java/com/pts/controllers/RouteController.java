@@ -1,6 +1,6 @@
 package com.pts.controllers;
 
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import com.pts.services.RoutesService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +18,7 @@ public class RouteController {
     // Hiển thị danh sách tuyến
     @GetMapping
     public String listRoutes(Model model, @RequestParam(value = "keyword", required = false) String keyword) {
-        List<Route> routes;
+        List<Routes> routes;
 
         if (keyword != null && !keyword.isEmpty()) {
             // Tìm kiếm theo keyword
@@ -36,12 +36,12 @@ public class RouteController {
     // Hiển thị form thêm tuyến mới
     @GetMapping("/add")
     public String addRouteForm(Model model) {
-        model.addAttribute("route", new Route());
+        model.addAttribute("route", new Routes());
         return "addRoute"; // Tên view (addRoute.html)
     }
 
     @PostMapping("/add")
-    public String addRoute(@ModelAttribute("route") Route route) {
+    public String addRoute(@ModelAttribute("route") Routes route) {
         // Lưu thông tin tuyến
         routesService.saveRoute(route);
         return "redirect:/routes"; // Chuyển hướng về danh sách tuyến
@@ -56,7 +56,7 @@ public class RouteController {
 
     // Xử lý cập nhật tuyến
     @PostMapping("/edit/{id}")
-    public String updateRoute(@PathVariable("id") Integer id, @ModelAttribute("route") Route route) {
+    public String updateRoute(@PathVariable("id") Integer id, @ModelAttribute("route") Routes route) {
         route.setId(id);
         routesService.saveRoute(route);
         return "redirect:/routes";

@@ -4,7 +4,7 @@
  */
 package com.pts.services.impl;
 
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import com.pts.repositories.RoutesRepository;
 import com.pts.services.RoutesService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,21 +20,21 @@ public class RoutesServiceImpl implements RoutesService {
     private RoutesRepository routesRepository;
 
     @Override
-    public List<Route> getAllRoutes() {
+    public List<Routes> getAllRoutes() {
         return routesRepository.findAll();
     }
 
-    public List<Route> searchRoutesByName(String keyword) {
+    public List<Routes> searchRoutesByName(String keyword) {
         return routesRepository.searchRoutesByName(keyword);
     }
 
     @Override
-    public Optional<Route> getRouteById(Integer id) {
+    public Optional<Routes> getRouteById(Integer id) {
         return routesRepository.findById(id);
     }
 
     @Override
-    public Route saveRoute(Route route) {
+    public Routes saveRoute(Routes route) {
         return routesRepository.save(route);
     }
 
@@ -49,7 +49,7 @@ public class RoutesServiceImpl implements RoutesService {
     }
 
     @Override
-    public List<Route> findRoutesByName(String name) {
+    public List<Routes> findRoutesByName(String name) {
         return routesRepository.findByName(name);
     }
 }

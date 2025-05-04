@@ -2,7 +2,7 @@ package com.pts.repositories;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Route;
+import com.pts.pojo.Routes;
 import java.sql.Time;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +15,6 @@ public interface ScheduleRepository {
     boolean existsById(Integer id);
     
     List<Schedules> findByVehicleId(Vehicles vehicleId);
-    List<Schedules> findByRouteId(Route routeId);
+    List<Schedules> findByRouteId(Routes routeId);
     List<Schedules> findByDepartureTimeBetween(Time startTime, Time endTime);
 } 

@@ -2,10 +2,10 @@ package com.pts.services.impl;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Route;
 import com.pts.repositories.ScheduleRepository;
 import com.pts.services.ScheduleService;
 import com.pts.exceptions.ScheduleException;
+import com.pts.pojo.Routes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,7 +37,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<Schedules> getSchedulesByRoute(Route routeId) {
+    public List<Schedules> getSchedulesByRoute(Routes routeId) {
         return scheduleRepository.findByRouteId(routeId);
     }
 
@@ -107,7 +107,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
-    public List<Schedules> getSchedulesByRouteAndStatus(Route routeId, String status) {
+    public List<Schedules> getSchedulesByRouteAndStatus(Routes routeId, String status) {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 

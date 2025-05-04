@@ -10,4 +10,9 @@ public interface UserService {
     Users updateUserProfile(Integer userId, Users userDetails, MultipartFile avatarFile);
     Optional<Users> getUserById(Integer id);
     boolean changePassword(Integer userId, String oldPassword, String newPassword);
+    
+    // Thêm phương thức mới
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    Users registerNewUser(String username, String password, String email);
 }

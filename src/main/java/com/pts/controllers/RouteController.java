@@ -2,6 +2,7 @@ package com.pts.controllers;
 
 import com.pts.pojo.Routes;
 import com.pts.services.RoutesService;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,9 +17,20 @@ public class RouteController {
 
     // Hiển thị danh sách tuyến
     @GetMapping
-    public String listRoutes(Model model) {
-        model.addAttribute("routes", routesService.getAllRoutes());
-        return "listRoute"; // Trả về view "list.html"
+    public String listRoutes(Model model, @RequestParam(value = "keyword", required = false) String keyword) {
+        List<Routes> routes;
+
+        if (keyword != null && !keyword.isEmpty()) {
+            // Tìm kiếm theo keyword
+            routes = routesService.searchRoutesByName(keyword);
+            model.addAttribute("keyword", keyword);
+        } else {
+            // Lấy tất cả tuyến
+            routes = routesService.getAllRoutes();
+        }
+
+        model.addAttribute("routes", routes);
+        return "listRoute";
     }
 
     // Hiển thị form thêm tuyến mới

@@ -32,6 +32,8 @@ import java.util.Date;
     @NamedQuery(name = "LiveLocation.findById", query = "SELECT l FROM LiveLocation l WHERE l.id = :id"),
     @NamedQuery(name = "LiveLocation.findByLatitude", query = "SELECT l FROM LiveLocation l WHERE l.latitude = :latitude"),
     @NamedQuery(name = "LiveLocation.findByLongitude", query = "SELECT l FROM LiveLocation l WHERE l.longitude = :longitude"),
+    @NamedQuery(name = "LiveLocation.findByHeading", query = "SELECT l FROM LiveLocation l WHERE l.heading = :heading"),
+    @NamedQuery(name = "LiveLocation.findBySpeed", query = "SELECT l FROM LiveLocation l WHERE l.speed = :speed"),
     @NamedQuery(name = "LiveLocation.findByLastUpdated", query = "SELECT l FROM LiveLocation l WHERE l.lastUpdated = :lastUpdated")})
 public class LiveLocation implements Serializable {
 
@@ -44,11 +46,16 @@ public class LiveLocation implements Serializable {
     @Basic(optional = false)
     @NotNull
     @Column(name = "latitude")
-    private double latitude;
+    private float latitude;
     @Basic(optional = false)
     @NotNull
     @Column(name = "longitude")
-    private double longitude;
+    private float longitude;
+    @Column(name = "heading")
+    private Integer heading;
+    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
+    @Column(name = "speed")
+    private Float speed;
     @Column(name = "last_updated")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastUpdated;
@@ -63,7 +70,7 @@ public class LiveLocation implements Serializable {
         this.id = id;
     }
 
-    public LiveLocation(Integer id, double latitude, double longitude) {
+    public LiveLocation(Integer id, float latitude, float longitude) {
         this.id = id;
         this.latitude = latitude;
         this.longitude = longitude;
@@ -77,20 +84,36 @@ public class LiveLocation implements Serializable {
         this.id = id;
     }
 
-    public double getLatitude() {
+    public float getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(double latitude) {
+    public void setLatitude(float latitude) {
         this.latitude = latitude;
     }
 
-    public double getLongitude() {
+    public float getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(double longitude) {
+    public void setLongitude(float longitude) {
         this.longitude = longitude;
+    }
+
+    public Integer getHeading() {
+        return heading;
+    }
+
+    public void setHeading(Integer heading) {
+        this.heading = heading;
+    }
+
+    public Float getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(Float speed) {
+        this.speed = speed;
     }
 
     public Date getLastUpdated() {

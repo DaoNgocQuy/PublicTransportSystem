@@ -16,7 +16,6 @@ import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Collection;
@@ -28,11 +27,16 @@ import java.util.Collection;
 @Entity
 @Table(name = "vehicles")
 @NamedQueries({
-        @NamedQuery(name = "Vehicles.findAll", query = "SELECT v FROM Vehicles v"),
-        @NamedQuery(name = "Vehicles.findById", query = "SELECT v FROM Vehicles v WHERE v.id = :id"),
-        @NamedQuery(name = "Vehicles.findByType", query = "SELECT v FROM Vehicles v WHERE v.type = :type"),
-        @NamedQuery(name = "Vehicles.findByLicensePlate", query = "SELECT v FROM Vehicles v WHERE v.licensePlate = :licensePlate"),
-        @NamedQuery(name = "Vehicles.findByCapacity", query = "SELECT v FROM Vehicles v WHERE v.capacity = :capacity") })
+    @NamedQuery(name = "Vehicles.findAll", query = "SELECT v FROM Vehicles v"),
+    @NamedQuery(name = "Vehicles.findById", query = "SELECT v FROM Vehicles v WHERE v.id = :id"),
+    @NamedQuery(name = "Vehicles.findByVehicleName", query = "SELECT v FROM Vehicles v WHERE v.vehicleName = :vehicleName"),
+    @NamedQuery(name = "Vehicles.findByType", query = "SELECT v FROM Vehicles v WHERE v.type = :type"),
+    @NamedQuery(name = "Vehicles.findByLicensePlate", query = "SELECT v FROM Vehicles v WHERE v.licensePlate = :licensePlate"),
+    @NamedQuery(name = "Vehicles.findByCapacity", query = "SELECT v FROM Vehicles v WHERE v.capacity = :capacity"),
+    @NamedQuery(name = "Vehicles.findByIsAccessible", query = "SELECT v FROM Vehicles v WHERE v.isAccessible = :isAccessible"),
+    @NamedQuery(name = "Vehicles.findByIsAirConditioned", query = "SELECT v FROM Vehicles v WHERE v.isAirConditioned = :isAirConditioned"),
+    @NamedQuery(name = "Vehicles.findByProductionYear", query = "SELECT v FROM Vehicles v WHERE v.productionYear = :productionYear"),
+    @NamedQuery(name = "Vehicles.findByStatus", query = "SELECT v FROM Vehicles v WHERE v.status = :status")})
 public class Vehicles implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -41,9 +45,10 @@ public class Vehicles implements Serializable {
     @Basic(optional = false)
     @Column(name = "id")
     private Integer id;
-    @Basic(optional = false)
-    @NotNull
-    @Size(min = 1, max = 9)
+    @Size(max = 100)
+    @Column(name = "vehicle_name")
+    private String vehicleName;
+    @Size(max = 20)
     @Column(name = "type")
     private String type;
     @Size(max = 20)
@@ -51,27 +56,28 @@ public class Vehicles implements Serializable {
     private String licensePlate;
     @Column(name = "capacity")
     private Integer capacity;
+    @Column(name = "is_accessible")
+    private Boolean isAccessible;
+    @Column(name = "is_air_conditioned")
+    private Boolean isAirConditioned;
+    @Column(name = "production_year")
+    private Integer productionYear;
+    @Size(max = 20)
+    @Column(name = "status")
+    private String status;
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @ManyToOne
+    private Users userId;
     @OneToMany(mappedBy = "vehicleId")
     private Collection<LiveLocation> liveLocationCollection;
     @OneToMany(mappedBy = "vehicleId")
     private Collection<Schedules> schedulesCollection;
-    @JoinColumn(name = "user_id", referencedColumnName = "id")
-    @ManyToOne
-    private Users userId;
 
     public Vehicles() {
     }
 
     public Vehicles(Integer id) {
         this.id = id;
-    }
-
-    public Vehicles(Integer id, Users userId, String type, String licensePlate, Integer capacity) {
-        this.id = id;
-        this.userId = userId;
-        this.type = type;
-        this.licensePlate = licensePlate;
-        this.capacity = capacity;
     }
 
     public Integer getId() {
@@ -82,12 +88,12 @@ public class Vehicles implements Serializable {
         this.id = id;
     }
 
-    public Users getUserId() {
-        return userId;
+    public String getVehicleName() {
+        return vehicleName;
     }
 
-    public void setUserId(Users userId) {
-        this.userId = userId;
+    public void setVehicleName(String vehicleName) {
+        this.vehicleName = vehicleName;
     }
 
     public String getType() {
@@ -112,6 +118,46 @@ public class Vehicles implements Serializable {
 
     public void setCapacity(Integer capacity) {
         this.capacity = capacity;
+    }
+
+    public Boolean getIsAccessible() {
+        return isAccessible;
+    }
+
+    public void setIsAccessible(Boolean isAccessible) {
+        this.isAccessible = isAccessible;
+    }
+
+    public Boolean getIsAirConditioned() {
+        return isAirConditioned;
+    }
+
+    public void setIsAirConditioned(Boolean isAirConditioned) {
+        this.isAirConditioned = isAirConditioned;
+    }
+
+    public Integer getProductionYear() {
+        return productionYear;
+    }
+
+    public void setProductionYear(Integer productionYear) {
+        this.productionYear = productionYear;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Users getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Users userId) {
+        this.userId = userId;
     }
 
     public Collection<LiveLocation> getLiveLocationCollection() {
@@ -139,6 +185,7 @@ public class Vehicles implements Serializable {
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Vehicles)) {
             return false;
         }
@@ -153,5 +200,5 @@ public class Vehicles implements Serializable {
     public String toString() {
         return "com.pts.pojo.Vehicles[ id=" + id + " ]";
     }
-
+    
 }

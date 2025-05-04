@@ -52,7 +52,7 @@ public class ScheduleController {
                             @RequestParam("arrivalTime") String arrivalTime,
                             Model model) {
         try {
-            // Tạo đối tượng Routes và Vehicles từ ID
+            // Tạo đối tượng Route và Vehicles từ ID
             Routes route = new Routes();
             route.setId(routeId);
             
@@ -114,7 +114,7 @@ public class ScheduleController {
                             @RequestParam("arrivalTime") String arrivalTime,
                             Model model) {
         try {
-            // Tạo đối tượng Routes và Vehicles từ ID
+            // Tạo đối tượng Route và Vehicles từ ID
             Routes route = new Routes();
             route.setId(routeId);
             

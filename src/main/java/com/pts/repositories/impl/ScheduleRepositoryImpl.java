@@ -47,8 +47,6 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             vehicle.setLicensePlate(rs.getString("license_plate"));
             vehicle.setType(rs.getString("type"));
             schedule.setVehicleId(vehicle);
-            
-            // Load route info
             Routes route = new Routes();
             route.setId(rs.getInt("route_id"));
             route.setName(rs.getString("name"));
@@ -65,13 +63,69 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
 
     @Override
     public List<Schedules> findAll() {
-        return jdbcTemplate.query(BASE_SELECT_SQL, fullScheduleRowMapper);
+        String sql = "SELECT s.*, v.license_plate, v.type, r.name, r.start_location, r.end_location " +
+                    "FROM schedules s " +
+                    "LEFT JOIN vehicles v ON s.vehicle_id = v.id " + 
+                    "LEFT JOIN routes r ON s.route_id = r.id";
+        
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Schedules schedule = new Schedules();
+            schedule.setId(rs.getInt("id"));
+            
+            // Load vehicle info
+            Vehicles vehicle = new Vehicles();
+            vehicle.setId(rs.getInt("vehicle_id"));
+            vehicle.setLicensePlate(rs.getString("license_plate"));
+            vehicle.setType(rs.getString("type"));
+            schedule.setVehicleId(vehicle);
+            
+            // Load route info
+            Routes route = new Routes();
+            route.setId(rs.getInt("route_id"));
+            route.setName(rs.getString("name"));
+            route.setStartLocation(rs.getString("start_location"));
+            route.setEndLocation(rs.getString("end_location"));
+            schedule.setRouteId(route);
+            
+            schedule.setDepartureTime(rs.getTime("departure_time"));
+            schedule.setArrivalTime(rs.getTime("arrival_time"));
+            
+            return schedule;
+        });
     }
 
     @Override
     public Optional<Schedules> findById(Integer id) {
-        String sql = BASE_SELECT_SQL + " WHERE s.id = ?";
-        List<Schedules> schedules = jdbcTemplate.query(sql, fullScheduleRowMapper, id);
+        String sql = "SELECT s.*, v.license_plate, v.type, r.name, r.start_location, r.end_location " +
+                    "FROM schedules s " +
+                    "LEFT JOIN vehicles v ON s.vehicle_id = v.id " + 
+                    "LEFT JOIN routes r ON s.route_id = r.id " +
+                    "WHERE s.id = ?";
+        
+        List<Schedules> schedules = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Schedules schedule = new Schedules();
+            schedule.setId(rs.getInt("id"));
+            
+            // Load vehicle info
+            Vehicles vehicle = new Vehicles();
+            vehicle.setId(rs.getInt("vehicle_id"));
+            vehicle.setLicensePlate(rs.getString("license_plate"));
+            vehicle.setType(rs.getString("type"));
+            schedule.setVehicleId(vehicle);
+            
+            // Load route info
+            Routes route = new Routes();
+            route.setId(rs.getInt("route_id"));
+            route.setName(rs.getString("name"));
+            route.setStartLocation(rs.getString("start_location"));
+            route.setEndLocation(rs.getString("end_location"));
+            schedule.setRouteId(route);
+            
+            schedule.setDepartureTime(rs.getTime("departure_time"));
+            schedule.setArrivalTime(rs.getTime("arrival_time"));
+            
+            return schedule;
+        }, id);
         return schedules.isEmpty() ? Optional.empty() : Optional.of(schedules.get(0));
     }
 
@@ -102,8 +156,8 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
                 PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
                 ps.setInt(1, schedule.getVehicleId().getId());
                 ps.setInt(2, schedule.getRouteId().getId());
-                ps.setTime(3, schedule.getDepartureTime());
-                ps.setTime(4, schedule.getArrivalTime());
+                ps.setTime(3, (Time) schedule.getDepartureTime());
+                ps.setTime(4, (Time) schedule.getArrivalTime());
                 return ps;
             }, keyHolder);
             

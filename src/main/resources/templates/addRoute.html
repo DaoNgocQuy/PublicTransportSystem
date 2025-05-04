@@ -2,21 +2,61 @@
 <html xmlns:th="http://www.thymeleaf.org">
     <head>
         <title>Thêm tuyến mới</title>
-    </head>
-    <body>
-        <h1>Thêm tuyến mới</h1>
-        <form th:action="@{/routes/add}" method="post">
-            <label for="name">Tên:</label>
-            <input type="text" id="name" name="name"><br>
-            <label for="startLocation">Điểm bắt đầu:</label>
-            <input type="text" id="startLocation" name="startLocation"><br>
-            <label for="endLocation">Điểm kết thúc:</label>
-            <input type="text" id="endLocation" name="endLocation"><br>
-            <label for="totalStops">Số trạm:</label>
-            <input type="number" id="totalStops" name="totalStops"><br>
-            <label for="isWalkingRoute">Là tuyến đi bộ:</label>
-            <input type="checkbox" id="isWalkingRoute" name="isWalkingRoute"><br>
-            <button type="submit">Thêm</button>
-        </form>
-    </body>
+    <th:block th:replace="base :: bootstrap"></th:block>
+</head>
+<body>
+    <main class="container">
+        <div th:replace="base :: header"></div>
+
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card mt-4">
+                    
+                    <div class="card-header bg-dark text-white">
+                        <h3 class="card-title mb-0">Thêm tuyến mới</h3>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/routes/add}" method="post">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Tên tuyến</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="startLocation" class="form-label">Điểm bắt đầu</label>
+                                <input type="text" class="form-control" id="startLocation" name="startLocation" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="endLocation" class="form-label">Điểm kết thúc</label>
+                                <input type="text" class="form-control" id="endLocation" name="endLocation" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="totalStops" class="form-label">Số trạm</label>
+                                <input type="number" class="form-control" id="totalStops" name="totalStops" min="1" required>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="isWalkingRoute" name="isWalkingRoute">
+                                <label class="form-check-label" for="isWalkingRoute">Là tuyến đi bộ</label>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Lưu tuyến
+                                </button>
+                                <a th:href="@{/routes}" class="btn btn-secondary">
+                                    <i class="bi bi-arrow-left"></i> Quay lại
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="base :: footer"></div>
+    </main>
+</body>
 </html>

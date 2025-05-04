@@ -18,7 +18,7 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
 
     @Override
     public void addFormatters(FormatterRegistry registry) {
-        // Converter cho Routes
+        // Converter cho Route
         registry.addConverter(String.class, Routes.class, source -> {
             if (source == null || source.isEmpty()) {
                 return null;

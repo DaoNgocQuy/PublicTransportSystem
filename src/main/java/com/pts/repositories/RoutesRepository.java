@@ -29,4 +29,7 @@ public interface RoutesRepository {
     List<Routes> findByTotalStops(Integer totalStops);
 
     List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute);
+
+    List<Routes> searchRoutesByName(String keyword);
+
 }

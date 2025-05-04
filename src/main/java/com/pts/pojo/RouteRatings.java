@@ -18,7 +18,6 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Date;
@@ -28,15 +27,13 @@ import java.util.Date;
  * @author LEGION
  */
 @Entity
-@Table(name = "notifications")
+@Table(name = "route_ratings")
 @NamedQueries({
-    @NamedQuery(name = "Notifications.findAll", query = "SELECT n FROM Notifications n"),
-    @NamedQuery(name = "Notifications.findById", query = "SELECT n FROM Notifications n WHERE n.id = :id"),
-    @NamedQuery(name = "Notifications.findByNotificationType", query = "SELECT n FROM Notifications n WHERE n.notificationType = :notificationType"),
-    @NamedQuery(name = "Notifications.findByRelatedEntityId", query = "SELECT n FROM Notifications n WHERE n.relatedEntityId = :relatedEntityId"),
-    @NamedQuery(name = "Notifications.findByIsRead", query = "SELECT n FROM Notifications n WHERE n.isRead = :isRead"),
-    @NamedQuery(name = "Notifications.findByCreatedAt", query = "SELECT n FROM Notifications n WHERE n.createdAt = :createdAt")})
-public class Notifications implements Serializable {
+    @NamedQuery(name = "RouteRatings.findAll", query = "SELECT r FROM RouteRatings r"),
+    @NamedQuery(name = "RouteRatings.findById", query = "SELECT r FROM RouteRatings r WHERE r.id = :id"),
+    @NamedQuery(name = "RouteRatings.findByRating", query = "SELECT r FROM RouteRatings r WHERE r.rating = :rating"),
+    @NamedQuery(name = "RouteRatings.findByCreatedAt", query = "SELECT r FROM RouteRatings r WHERE r.createdAt = :createdAt")})
+public class RouteRatings implements Serializable {
 
     private static final long serialVersionUID = 1L;
     @Id
@@ -44,36 +41,27 @@ public class Notifications implements Serializable {
     @Basic(optional = false)
     @Column(name = "id")
     private Integer id;
-    @Basic(optional = false)
-    @NotNull
+    @Column(name = "rating")
+    private Integer rating;
     @Lob
-    @Size(min = 1, max = 65535)
-    @Column(name = "message")
-    private String message;
-    @Size(max = 50)
-    @Column(name = "notification_type")
-    private String notificationType;
-    @Column(name = "related_entity_id")
-    private Integer relatedEntityId;
-    @Column(name = "is_read")
-    private Boolean isRead;
+    @Size(max = 65535)
+    @Column(name = "comment")
+    private String comment;
     @Column(name = "created_at")
     @Temporal(TemporalType.TIMESTAMP)
     private Date createdAt;
+    @JoinColumn(name = "route_id", referencedColumnName = "id")
+    @ManyToOne
+    private Routes routeId;
     @JoinColumn(name = "user_id", referencedColumnName = "id")
     @ManyToOne
     private Users userId;
 
-    public Notifications() {
+    public RouteRatings() {
     }
 
-    public Notifications(Integer id) {
+    public RouteRatings(Integer id) {
         this.id = id;
-    }
-
-    public Notifications(Integer id, String message) {
-        this.id = id;
-        this.message = message;
     }
 
     public Integer getId() {
@@ -84,36 +72,20 @@ public class Notifications implements Serializable {
         this.id = id;
     }
 
-    public String getMessage() {
-        return message;
+    public Integer getRating() {
+        return rating;
     }
 
-    public void setMessage(String message) {
-        this.message = message;
+    public void setRating(Integer rating) {
+        this.rating = rating;
     }
 
-    public String getNotificationType() {
-        return notificationType;
+    public String getComment() {
+        return comment;
     }
 
-    public void setNotificationType(String notificationType) {
-        this.notificationType = notificationType;
-    }
-
-    public Integer getRelatedEntityId() {
-        return relatedEntityId;
-    }
-
-    public void setRelatedEntityId(Integer relatedEntityId) {
-        this.relatedEntityId = relatedEntityId;
-    }
-
-    public Boolean getIsRead() {
-        return isRead;
-    }
-
-    public void setIsRead(Boolean isRead) {
-        this.isRead = isRead;
+    public void setComment(String comment) {
+        this.comment = comment;
     }
 
     public Date getCreatedAt() {
@@ -122,6 +94,14 @@ public class Notifications implements Serializable {
 
     public void setCreatedAt(Date createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Routes getRouteId() {
+        return routeId;
+    }
+
+    public void setRouteId(Routes routeId) {
+        this.routeId = routeId;
     }
 
     public Users getUserId() {
@@ -142,10 +122,10 @@ public class Notifications implements Serializable {
     @Override
     public boolean equals(Object object) {
         // TODO: Warning - this method won't work in the case the id fields are not set
-        if (!(object instanceof Notifications)) {
+        if (!(object instanceof RouteRatings)) {
             return false;
         }
-        Notifications other = (Notifications) object;
+        RouteRatings other = (RouteRatings) object;
         if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
             return false;
         }
@@ -154,7 +134,7 @@ public class Notifications implements Serializable {
 
     @Override
     public String toString() {
-        return "com.pts.pojo.Notifications[ id=" + id + " ]";
+        return "com.pts.pojo.RouteRatings[ id=" + id + " ]";
     }
     
 }

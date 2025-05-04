@@ -10,15 +10,17 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Collection;
+import java.util.Date;
 
 /**
  *
@@ -32,7 +34,13 @@ import java.util.Collection;
     @NamedQuery(name = "Users.findByUsername", query = "SELECT u FROM Users u WHERE u.username = :username"),
     @NamedQuery(name = "Users.findByPassword", query = "SELECT u FROM Users u WHERE u.password = :password"),
     @NamedQuery(name = "Users.findByEmail", query = "SELECT u FROM Users u WHERE u.email = :email"),
-    @NamedQuery(name = "Users.findByRole", query = "SELECT u FROM Users u WHERE u.role = :role")})
+    @NamedQuery(name = "Users.findByRole", query = "SELECT u FROM Users u WHERE u.role = :role"),
+    @NamedQuery(name = "Users.findByAvatarUrl", query = "SELECT u FROM Users u WHERE u.avatarUrl = :avatarUrl"),
+    @NamedQuery(name = "Users.findByFullName", query = "SELECT u FROM Users u WHERE u.fullName = :fullName"),
+    @NamedQuery(name = "Users.findByPhone", query = "SELECT u FROM Users u WHERE u.phone = :phone"),
+    @NamedQuery(name = "Users.findByCreatedAt", query = "SELECT u FROM Users u WHERE u.createdAt = :createdAt"),
+    @NamedQuery(name = "Users.findByLastLogin", query = "SELECT u FROM Users u WHERE u.lastLogin = :lastLogin"),
+    @NamedQuery(name = "Users.findByIsActive", query = "SELECT u FROM Users u WHERE u.isActive = :isActive")})
 public class Users implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -59,21 +67,41 @@ public class Users implements Serializable {
     private String email;
     @Basic(optional = false)
     @NotNull
-    @Size(min = 1, max = 5)
+    @Size(min = 1, max = 10)
     @Column(name = "role")
     private String role;
-    @Lob
-    @Size(max = 65535)
+    @Size(max = 255)
     @Column(name = "avatar_url")
     private String avatarUrl;
+    @Size(max = 100)
+    @Column(name = "full_name")
+    private String fullName;
+    // @Pattern(regexp="^\\(?(\\d{3})\\)?[- ]?(\\d{3})[- ]?(\\d{4})$", message="Invalid phone/fax format, should be as xxx-xxx-xxxx")//if the field contains phone or fax number consider using this annotation to enforce field validation
+    @Size(max = 15)
+    @Column(name = "phone")
+    private String phone;
+    @Column(name = "created_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
+    @Column(name = "last_login")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date lastLogin;
+    @Column(name = "is_active")
+    private Boolean isActive;
     @OneToMany(mappedBy = "userId")
     private Collection<Favorites> favoritesCollection;
     @OneToMany(mappedBy = "userId")
     private Collection<Reports> reportsCollection;
     @OneToMany(mappedBy = "userId")
     private Collection<Vehicles> vehiclesCollection;
+    @OneToMany(mappedBy = "reportedBy")
+    private Collection<TrafficConditions> trafficConditionsCollection;
+    @OneToMany(mappedBy = "userId")
+    private Collection<RouteRatings> routeRatingsCollection;
     @OneToMany(mappedBy = "userId")
     private Collection<Notifications> notificationsCollection;
+    @OneToMany(mappedBy = "userId")
+    private Collection<RouteSearchHistory> routeSearchHistoryCollection;
 
     public Users() {
     }
@@ -138,6 +166,46 @@ public class Users implements Serializable {
         this.avatarUrl = avatarUrl;
     }
 
+    public String getFullName() {
+        return fullName;
+    }
+
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Date getLastLogin() {
+        return lastLogin;
+    }
+
+    public void setLastLogin(Date lastLogin) {
+        this.lastLogin = lastLogin;
+    }
+
+    public Boolean getIsActive() {
+        return isActive;
+    }
+
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
+
     public Collection<Favorites> getFavoritesCollection() {
         return favoritesCollection;
     }
@@ -162,12 +230,36 @@ public class Users implements Serializable {
         this.vehiclesCollection = vehiclesCollection;
     }
 
+    public Collection<TrafficConditions> getTrafficConditionsCollection() {
+        return trafficConditionsCollection;
+    }
+
+    public void setTrafficConditionsCollection(Collection<TrafficConditions> trafficConditionsCollection) {
+        this.trafficConditionsCollection = trafficConditionsCollection;
+    }
+
+    public Collection<RouteRatings> getRouteRatingsCollection() {
+        return routeRatingsCollection;
+    }
+
+    public void setRouteRatingsCollection(Collection<RouteRatings> routeRatingsCollection) {
+        this.routeRatingsCollection = routeRatingsCollection;
+    }
+
     public Collection<Notifications> getNotificationsCollection() {
         return notificationsCollection;
     }
 
     public void setNotificationsCollection(Collection<Notifications> notificationsCollection) {
         this.notificationsCollection = notificationsCollection;
+    }
+
+    public Collection<RouteSearchHistory> getRouteSearchHistoryCollection() {
+        return routeSearchHistoryCollection;
+    }
+
+    public void setRouteSearchHistoryCollection(Collection<RouteSearchHistory> routeSearchHistoryCollection) {
+        this.routeSearchHistoryCollection = routeSearchHistoryCollection;
     }
 
     @Override
@@ -179,6 +271,7 @@ public class Users implements Serializable {
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Users)) {
             return false;
         }

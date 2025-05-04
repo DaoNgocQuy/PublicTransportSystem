@@ -25,4 +25,6 @@ public interface RoutesService {
     boolean routeExists(Integer id);
 
     List<Routes> findRoutesByName(String name);
+
+    public List<Routes> searchRoutesByName(String keyword);
 }

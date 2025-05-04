@@ -24,6 +24,10 @@ public class RoutesServiceImpl implements RoutesService {
         return routesRepository.findAll();
     }
 
+    public List<Routes> searchRoutesByName(String keyword) {
+        return routesRepository.searchRoutesByName(keyword);
+    }
+
     @Override
     public Optional<Routes> getRouteById(Integer id) {
         return routesRepository.findById(id);

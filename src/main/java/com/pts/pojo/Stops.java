@@ -33,7 +33,10 @@ import java.util.Collection;
     @NamedQuery(name = "Stops.findByStopName", query = "SELECT s FROM Stops s WHERE s.stopName = :stopName"),
     @NamedQuery(name = "Stops.findByLatitude", query = "SELECT s FROM Stops s WHERE s.latitude = :latitude"),
     @NamedQuery(name = "Stops.findByLongitude", query = "SELECT s FROM Stops s WHERE s.longitude = :longitude"),
-    @NamedQuery(name = "Stops.findByStopOrder", query = "SELECT s FROM Stops s WHERE s.stopOrder = :stopOrder")})
+    @NamedQuery(name = "Stops.findByStopOrder", query = "SELECT s FROM Stops s WHERE s.stopOrder = :stopOrder"),
+    @NamedQuery(name = "Stops.findByAddress", query = "SELECT s FROM Stops s WHERE s.address = :address"),
+    @NamedQuery(name = "Stops.findByHasShelter", query = "SELECT s FROM Stops s WHERE s.hasShelter = :hasShelter"),
+    @NamedQuery(name = "Stops.findByIsAccessible", query = "SELECT s FROM Stops s WHERE s.isAccessible = :isAccessible")})
 public class Stops implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -49,11 +52,22 @@ public class Stops implements Serializable {
     private String stopName;
     // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Column(name = "latitude")
-    private Double latitude;
+    private Float latitude;
     @Column(name = "longitude")
-    private Double longitude;
+    private Float longitude;
     @Column(name = "stop_order")
     private Integer stopOrder;
+    @Size(max = 255)
+    @Column(name = "address")
+    private String address;
+    @Column(name = "has_shelter")
+    private Boolean hasShelter;
+    @Column(name = "is_accessible")
+    private Boolean isAccessible;
+    @OneToMany(mappedBy = "fromStopId")
+    private Collection<RouteSegments> routeSegmentsCollection;
+    @OneToMany(mappedBy = "toStopId")
+    private Collection<RouteSegments> routeSegmentsCollection1;
     @OneToMany(mappedBy = "transferStopId")
     private Collection<Transfers> transfersCollection;
     @JoinColumn(name = "route_id", referencedColumnName = "id")
@@ -88,19 +102,19 @@ public class Stops implements Serializable {
         this.stopName = stopName;
     }
 
-    public Double getLatitude() {
+    public Float getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(Double latitude) {
+    public void setLatitude(Float latitude) {
         this.latitude = latitude;
     }
 
-    public Double getLongitude() {
+    public Float getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(Double longitude) {
+    public void setLongitude(Float longitude) {
         this.longitude = longitude;
     }
 
@@ -110,6 +124,46 @@ public class Stops implements Serializable {
 
     public void setStopOrder(Integer stopOrder) {
         this.stopOrder = stopOrder;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public Boolean getHasShelter() {
+        return hasShelter;
+    }
+
+    public void setHasShelter(Boolean hasShelter) {
+        this.hasShelter = hasShelter;
+    }
+
+    public Boolean getIsAccessible() {
+        return isAccessible;
+    }
+
+    public void setIsAccessible(Boolean isAccessible) {
+        this.isAccessible = isAccessible;
+    }
+
+    public Collection<RouteSegments> getRouteSegmentsCollection() {
+        return routeSegmentsCollection;
+    }
+
+    public void setRouteSegmentsCollection(Collection<RouteSegments> routeSegmentsCollection) {
+        this.routeSegmentsCollection = routeSegmentsCollection;
+    }
+
+    public Collection<RouteSegments> getRouteSegmentsCollection1() {
+        return routeSegmentsCollection1;
+    }
+
+    public void setRouteSegmentsCollection1(Collection<RouteSegments> routeSegmentsCollection1) {
+        this.routeSegmentsCollection1 = routeSegmentsCollection1;
     }
 
     public Collection<Transfers> getTransfersCollection() {

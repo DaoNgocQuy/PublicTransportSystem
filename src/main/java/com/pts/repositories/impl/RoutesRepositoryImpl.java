@@ -116,4 +116,10 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         String sql = "SELECT * FROM routes WHERE is_walking_route = ?";
         return jdbcTemplate.query(sql, routesRowMapper, isWalkingRoute);
     }
+
+    @Override
+    public List<Routes> searchRoutesByName(String keyword) {
+        String sql = "SELECT * FROM routes WHERE name LIKE ?";
+        return jdbcTemplate.query(sql, routesRowMapper, "%" + keyword + "%");
+    }
 }

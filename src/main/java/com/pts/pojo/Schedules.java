@@ -17,8 +17,9 @@ import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
+import jakarta.validation.constraints.Size;
 import java.io.Serializable;
-import java.sql.Time;
+import java.util.Date;
 
 /**
  *
@@ -30,8 +31,12 @@ import java.sql.Time;
     @NamedQuery(name = "Schedules.findAll", query = "SELECT s FROM Schedules s"),
     @NamedQuery(name = "Schedules.findById", query = "SELECT s FROM Schedules s WHERE s.id = :id"),
     @NamedQuery(name = "Schedules.findByDepartureTime", query = "SELECT s FROM Schedules s WHERE s.departureTime = :departureTime"),
-    @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime")
-})
+    @NamedQuery(name = "Schedules.findByArrivalTime", query = "SELECT s FROM Schedules s WHERE s.arrivalTime = :arrivalTime"),
+    @NamedQuery(name = "Schedules.findByDayOfWeek", query = "SELECT s FROM Schedules s WHERE s.dayOfWeek = :dayOfWeek"),
+    @NamedQuery(name = "Schedules.findByIsWeekend", query = "SELECT s FROM Schedules s WHERE s.isWeekend = :isWeekend"),
+    @NamedQuery(name = "Schedules.findByIsHoliday", query = "SELECT s FROM Schedules s WHERE s.isHoliday = :isHoliday"),
+    @NamedQuery(name = "Schedules.findByEffectiveDate", query = "SELECT s FROM Schedules s WHERE s.effectiveDate = :effectiveDate"),
+    @NamedQuery(name = "Schedules.findByExpirationDate", query = "SELECT s FROM Schedules s WHERE s.expirationDate = :expirationDate")})
 public class Schedules implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -42,10 +47,23 @@ public class Schedules implements Serializable {
     private Integer id;
     @Column(name = "departure_time")
     @Temporal(TemporalType.TIME)
-    private Time departureTime;
+    private Date departureTime;
     @Column(name = "arrival_time")
     @Temporal(TemporalType.TIME)
-    private Time arrivalTime;
+    private Date arrivalTime;
+    @Size(max = 10)
+    @Column(name = "day_of_week")
+    private String dayOfWeek;
+    @Column(name = "is_weekend")
+    private Boolean isWeekend;
+    @Column(name = "is_holiday")
+    private Boolean isHoliday;
+    @Column(name = "effective_date")
+    @Temporal(TemporalType.DATE)
+    private Date effectiveDate;
+    @Column(name = "expiration_date")
+    @Temporal(TemporalType.DATE)
+    private Date expirationDate;
     @JoinColumn(name = "route_id", referencedColumnName = "id")
     @ManyToOne
     private Routes routeId;
@@ -68,20 +86,60 @@ public class Schedules implements Serializable {
         this.id = id;
     }
 
-    public Time getDepartureTime() {
+    public Date getDepartureTime() {
         return departureTime;
     }
 
-    public void setDepartureTime(Time departureTime) {
+    public void setDepartureTime(Date departureTime) {
         this.departureTime = departureTime;
     }
 
-    public Time getArrivalTime() {
+    public Date getArrivalTime() {
         return arrivalTime;
     }
 
-    public void setArrivalTime(Time arrivalTime) {
+    public void setArrivalTime(Date arrivalTime) {
         this.arrivalTime = arrivalTime;
+    }
+
+    public String getDayOfWeek() {
+        return dayOfWeek;
+    }
+
+    public void setDayOfWeek(String dayOfWeek) {
+        this.dayOfWeek = dayOfWeek;
+    }
+
+    public Boolean getIsWeekend() {
+        return isWeekend;
+    }
+
+    public void setIsWeekend(Boolean isWeekend) {
+        this.isWeekend = isWeekend;
+    }
+
+    public Boolean getIsHoliday() {
+        return isHoliday;
+    }
+
+    public void setIsHoliday(Boolean isHoliday) {
+        this.isHoliday = isHoliday;
+    }
+
+    public Date getEffectiveDate() {
+        return effectiveDate;
+    }
+
+    public void setEffectiveDate(Date effectiveDate) {
+        this.effectiveDate = effectiveDate;
+    }
+
+    public Date getExpirationDate() {
+        return expirationDate;
+    }
+
+    public void setExpirationDate(Date expirationDate) {
+        this.expirationDate = expirationDate;
     }
 
     public Routes getRouteId() {
@@ -109,6 +167,7 @@ public class Schedules implements Serializable {
 
     @Override
     public boolean equals(Object object) {
+        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Schedules)) {
             return false;
         }
@@ -123,4 +182,5 @@ public class Schedules implements Serializable {
     public String toString() {
         return "com.pts.pojo.Schedules[ id=" + id + " ]";
     }
+    
 }

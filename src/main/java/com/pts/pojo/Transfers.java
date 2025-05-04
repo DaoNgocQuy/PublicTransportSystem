@@ -25,7 +25,10 @@ import java.io.Serializable;
 @Table(name = "transfers")
 @NamedQueries({
     @NamedQuery(name = "Transfers.findAll", query = "SELECT t FROM Transfers t"),
-    @NamedQuery(name = "Transfers.findById", query = "SELECT t FROM Transfers t WHERE t.id = :id")})
+    @NamedQuery(name = "Transfers.findById", query = "SELECT t FROM Transfers t WHERE t.id = :id"),
+    @NamedQuery(name = "Transfers.findByTransferTimeMinutes", query = "SELECT t FROM Transfers t WHERE t.transferTimeMinutes = :transferTimeMinutes"),
+    @NamedQuery(name = "Transfers.findByDistanceMeters", query = "SELECT t FROM Transfers t WHERE t.distanceMeters = :distanceMeters"),
+    @NamedQuery(name = "Transfers.findByIsAccessible", query = "SELECT t FROM Transfers t WHERE t.isAccessible = :isAccessible")})
 public class Transfers implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -34,6 +37,12 @@ public class Transfers implements Serializable {
     @Basic(optional = false)
     @Column(name = "id")
     private Integer id;
+    @Column(name = "transfer_time_minutes")
+    private Integer transferTimeMinutes;
+    @Column(name = "distance_meters")
+    private Integer distanceMeters;
+    @Column(name = "is_accessible")
+    private Boolean isAccessible;
     @JoinColumn(name = "from_route_id", referencedColumnName = "id")
     @ManyToOne
     private Routes fromRouteId;
@@ -57,6 +66,30 @@ public class Transfers implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getTransferTimeMinutes() {
+        return transferTimeMinutes;
+    }
+
+    public void setTransferTimeMinutes(Integer transferTimeMinutes) {
+        this.transferTimeMinutes = transferTimeMinutes;
+    }
+
+    public Integer getDistanceMeters() {
+        return distanceMeters;
+    }
+
+    public void setDistanceMeters(Integer distanceMeters) {
+        this.distanceMeters = distanceMeters;
+    }
+
+    public Boolean getIsAccessible() {
+        return isAccessible;
+    }
+
+    public void setIsAccessible(Boolean isAccessible) {
+        this.isAccessible = isAccessible;
     }
 
     public Routes getFromRouteId() {

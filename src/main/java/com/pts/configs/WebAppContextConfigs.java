@@ -1,18 +1,14 @@
- ///*
-// * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
-// * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
-// */
 package com.pts.configs;
 
+import com.pts.pojo.Routes;
+import com.pts.pojo.Vehicles;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/**
- *
- * @author 84353
- */
+
 @Configuration
 @EnableWebMvc
 @ComponentScan(basePackages = {
@@ -20,4 +16,26 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 })
 public class WebAppContextConfigs implements WebMvcConfigurer {
 
+    @Override
+    public void addFormatters(FormatterRegistry registry) {
+        // Converter cho Routes
+        registry.addConverter(String.class, Routes.class, source -> {
+            if (source == null || source.isEmpty()) {
+                return null;
+            }
+            Routes route = new Routes();
+            route.setId(Integer.parseInt(source));
+            return route;
+        });
+        
+        // Converter cho Vehicles
+        registry.addConverter(String.class, Vehicles.class, source -> {
+            if (source == null || source.isEmpty()) {
+                return null;
+            }
+            Vehicles vehicle = new Vehicles();
+            vehicle.setId(Integer.parseInt(source));
+            return vehicle;
+        });
+    }
 }

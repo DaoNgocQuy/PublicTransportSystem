@@ -19,6 +19,8 @@
                     </button>
                     <div class="collapse navbar-collapse" id="navbarNav">
                         <ul class="navbar-nav">
+                            <li class="nav-item"><a class="nav-link" th:href="@{/schedules}">Danh sách lịch trình</a></li>
+                            <li class="nav-item"><a class="nav-link" th:href="@{/schedules/add}">Thêm lịch trình</a></li>
                             <li class="nav-item"><a class="nav-link" th:href="@{/routes}">Danh sách tuyến</a></li>
                             <li class="nav-item"><a class="nav-link" th:href="@{/routes/add}">Thêm tuyến</a></li>
                         </ul>
@@ -34,7 +36,7 @@
         <footer th:fragment="footer">
         <div class="mt-4 p-5 bg-primary text-white rounded">
             <h1>Public Transport System</h1>
-            <p>Huy Skibidi &copy; 2025</p>
+            <p>Huy Skibidi, Quý ỉa &copy; 2025</p>
         </div>
     </footer>
     </body>

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Time;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +27,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public Optional<Schedules> getScheduleById(Long id) {
+    public Optional<Schedules> getScheduleById(Integer id) {
         return scheduleRepository.findById(id);
     }
 
@@ -41,33 +42,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public List<Schedules> getSchedulesByTimeRange(Date startTime, Date endTime) {
+    public List<Schedules> getSchedulesByTimeRange(Time startTime, Time endTime) {
         return scheduleRepository.findByDepartureTimeBetween(startTime, endTime);
-    }
-
-    @Override
-    public List<Schedules> getSchedulesByStatus(String status) {
-        return scheduleRepository.findByStatus(status);
-    }
-
-    @Override
-    public List<Schedules> getSchedulesByVehicleAndStatus(Vehicles vehicleId, String status) {
-        return scheduleRepository.findByVehicleIdAndStatus(vehicleId, status);
-    }
-
-    @Override
-    public List<Schedules> getSchedulesByRouteAndStatus(Routes routeId, String status) {
-        return scheduleRepository.findByRouteIdAndStatus(routeId, status);
-    }
-
-    @Override
-    public List<Schedules> getSchedulesByTimeRangeAndStatus(Date startTime, Date endTime, String status) {
-        return scheduleRepository.findByTimeRangeAndStatus(startTime, endTime, status);
-    }
-
-    @Override
-    public List<Schedules> getSchedulesByVehicleAndTimeRange(Vehicles vehicleId, Date startTime, Date endTime) {
-        return scheduleRepository.findByVehicleAndTimeRange(vehicleId, startTime, endTime);
     }
 
     @Override
@@ -79,15 +55,14 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Override
     @Transactional
-    public Schedules updateSchedule(Long id, Schedules scheduleDetails) {
+    public Schedules updateSchedule(Integer id, Schedules scheduleDetails) {
         Schedules schedule = scheduleRepository.findById(id)
-                .orElseThrow(() -> new ScheduleException("Schedules not found with id: " + id));
+                .orElseThrow(() -> new ScheduleException("Schedule not found with id: " + id));
 
         schedule.setVehicleId(scheduleDetails.getVehicleId());
         schedule.setRouteId(scheduleDetails.getRouteId());
         schedule.setDepartureTime(scheduleDetails.getDepartureTime());
         schedule.setArrivalTime(scheduleDetails.getArrivalTime());
-        schedule.setStatus(scheduleDetails.getStatus());
 
         validateSchedule(schedule);
 
@@ -96,9 +71,9 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Override
     @Transactional
-    public void deleteSchedule(Long id) {
+    public void deleteSchedule(Integer id) {
         if (!scheduleRepository.existsById(id)) {
-            throw new ScheduleException("Schedules not found with id: " + id);
+            throw new ScheduleException("Schedule not found with id: " + id);
         }
         scheduleRepository.deleteById(id);
     }
@@ -115,8 +90,40 @@ public class ScheduleServiceImpl implements ScheduleService {
 
             if ((schedule.getDepartureTime().before(existing.getArrivalTime()) &&
                     schedule.getArrivalTime().after(existing.getDepartureTime()))) {
-                throw new ScheduleException("Schedules overlaps with existing schedule for this vehicle");
+                throw new ScheduleException("Schedule overlaps with existing schedule for this vehicle");
             }
         }
+    }
+
+    public List<Schedules> getSchedulesByTimeRange(Date startTime, Date endTime) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public List<Schedules> getSchedulesByStatus(String status) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public List<Schedules> getSchedulesByVehicleAndStatus(Vehicles vehicleId, String status) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public List<Schedules> getSchedulesByRouteAndStatus(Routes routeId, String status) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public List<Schedules> getSchedulesByTimeRangeAndStatus(Date startTime, Date endTime, String status) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public List<Schedules> getSchedulesByVehicleAndTimeRange(Vehicles vehicleId, Date startTime, Date endTime) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public Schedules updateSchedule(Long id, Schedules scheduleDetails) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    public void deleteSchedule(Long id) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 }

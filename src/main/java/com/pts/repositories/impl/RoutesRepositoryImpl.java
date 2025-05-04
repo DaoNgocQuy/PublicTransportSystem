@@ -4,7 +4,7 @@
  */
 package com.pts.repositories.impl;
 
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import com.pts.repositories.RoutesRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -24,10 +24,10 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private final RowMapper<Routes> routesRowMapper = new RowMapper<Routes>() {
+    private final RowMapper<Route> routesRowMapper = new RowMapper<Route>() {
         @Override
-        public Routes mapRow(ResultSet rs, int rowNum) throws SQLException {
-            Routes route = new Routes();
+        public Route mapRow(ResultSet rs, int rowNum) throws SQLException {
+            Route route = new Route();
             route.setId(rs.getInt("id"));
             route.setName(rs.getString("name"));
             route.setStartLocation(rs.getString("start_location"));
@@ -39,20 +39,20 @@ public class RoutesRepositoryImpl implements RoutesRepository {
     };
 
     @Override
-    public List<Routes> findAll() {
+    public List<Route> findAll() {
         String sql = "SELECT * FROM routes";
         return jdbcTemplate.query(sql, routesRowMapper);
     }
 
     @Override
-    public Optional<Routes> findById(Integer id) {
+    public Optional<Route> findById(Integer id) {
         String sql = "SELECT * FROM routes WHERE id = ?";
-        List<Routes> routes = jdbcTemplate.query(sql, routesRowMapper, id);
+        List<Route> routes = jdbcTemplate.query(sql, routesRowMapper, id);
         return routes.isEmpty() ? Optional.empty() : Optional.of(routes.get(0));
     }
 
     @Override
-    public Routes save(Routes route) {
+    public Route save(Route route) {
         if (route.getId() == null) {
             String sql = "INSERT INTO routes (name, start_location, end_location, total_stops, is_walking_route) VALUES (?, ?, ?, ?, ?)";
             jdbcTemplate.update(sql,
@@ -88,32 +88,38 @@ public class RoutesRepositoryImpl implements RoutesRepository {
     }
 
     @Override
-    public List<Routes> findByName(String name) {
+    public List<Route> findByName(String name) {
         String sql = "SELECT * FROM routes WHERE name = ?";
         return jdbcTemplate.query(sql, routesRowMapper, name);
     }
 
     @Override
-    public List<Routes> findByStartLocation(String startLocation) {
+    public List<Route> findByStartLocation(String startLocation) {
         String sql = "SELECT * FROM routes WHERE start_location = ?";
         return jdbcTemplate.query(sql, routesRowMapper, startLocation);
     }
 
     @Override
-    public List<Routes> findByEndLocation(String endLocation) {
+    public List<Route> findByEndLocation(String endLocation) {
         String sql = "SELECT * FROM routes WHERE end_location = ?";
         return jdbcTemplate.query(sql, routesRowMapper, endLocation);
     }
 
     @Override
-    public List<Routes> findByTotalStops(Integer totalStops) {
+    public List<Route> findByTotalStops(Integer totalStops) {
         String sql = "SELECT * FROM routes WHERE total_stops = ?";
         return jdbcTemplate.query(sql, routesRowMapper, totalStops);
     }
 
     @Override
-    public List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute) {
+    public List<Route> findByIsWalkingRoute(Boolean isWalkingRoute) {
         String sql = "SELECT * FROM routes WHERE is_walking_route = ?";
         return jdbcTemplate.query(sql, routesRowMapper, isWalkingRoute);
+    }
+
+    @Override
+    public List<Route> searchRoutesByName(String keyword) {
+        String sql = "SELECT * FROM routes WHERE name LIKE ?";
+        return jdbcTemplate.query(sql, routesRowMapper, "%" + keyword + "%");
     }
 }

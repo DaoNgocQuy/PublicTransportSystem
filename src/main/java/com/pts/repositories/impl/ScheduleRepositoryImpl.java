@@ -2,7 +2,7 @@ package com.pts.repositories.impl;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import com.pts.repositories.ScheduleRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -33,7 +33,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             vehicle.setId(rs.getInt("vehicle_id"));
             schedule.setVehicleId(vehicle);
             
-            Routes route = new Routes();
+            Route route = new Route();
             route.setId(rs.getInt("route_id"));
             schedule.setRouteId(route);
             
@@ -62,7 +62,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             schedule.setVehicleId(vehicle);
             
             // Load route info
-            Routes route = new Routes();
+            Route route = new Route();
             route.setId(rs.getInt("route_id"));
             route.setName(rs.getString("name"));
             route.setStartLocation(rs.getString("start_location"));
@@ -96,7 +96,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             schedule.setVehicleId(vehicle);
             
             // Load route info
-            Routes route = new Routes();
+            Route route = new Route();
             route.setId(rs.getInt("route_id"));
             route.setName(rs.getString("name"));
             route.setStartLocation(rs.getString("start_location"));
@@ -155,7 +155,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     }
 
     @Override
-    public List<Schedules> findByRouteId(Routes routeId) {
+    public List<Schedules> findByRouteId(Route routeId) {
         String sql = "SELECT * FROM schedules WHERE route_id = ?";
         return jdbcTemplate.query(sql, scheduleRowMapper, routeId.getId());
     }

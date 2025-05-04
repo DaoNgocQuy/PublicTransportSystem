@@ -2,7 +2,7 @@ package com.pts.services;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import java.sql.Time;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +14,7 @@ public interface ScheduleService {
 
     List<Schedules> getSchedulesByVehicle(Vehicles vehicleId);
 
-    List<Schedules> getSchedulesByRoute(Routes routeId);
+    List<Schedules> getSchedulesByRoute(Route routeId);
 
     List<Schedules> getSchedulesByTimeRange(Time startTime, Time endTime);
 

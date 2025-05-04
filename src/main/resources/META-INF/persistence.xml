@@ -9,8 +9,8 @@
     <class>com.pts.pojo.Users</class>
     <class>com.pts.pojo.Stops</class>
     <class>com.pts.pojo.Favorites</class>
-    <class>com.pts.pojo.Routes</class>
     <class>com.pts.pojo.Notifications</class>
     <class>com.pts.pojo.LiveLocation</class>
+    <class>com.pts.pojo.Route</class>
   </persistence-unit>
 </persistence>

@@ -1,6 +1,6 @@
 package com.pts.configs;
 
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import com.pts.pojo.Vehicles;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -18,12 +18,12 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
 
     @Override
     public void addFormatters(FormatterRegistry registry) {
-        // Converter cho Routes
-        registry.addConverter(String.class, Routes.class, source -> {
+        // Converter cho Route
+        registry.addConverter(String.class, Route.class, source -> {
             if (source == null || source.isEmpty()) {
                 return null;
             }
-            Routes route = new Routes();
+            Route route = new Route();
             route.setId(Integer.parseInt(source));
             return route;
         });

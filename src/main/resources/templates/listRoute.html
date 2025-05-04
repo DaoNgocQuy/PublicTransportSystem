@@ -9,21 +9,43 @@
         <div th:replace="base :: header"></div>
         <h1 class="text-center text-info mt-1">DANH SÁCH TUYẾN</h1>
 
+        <!-- Form tìm kiếm -->
+        <div class="row mb-3">
+            <div class="col-md-8 mx-auto">
+                <form th:action="@{/routes}" method="get" class="d-flex">
+                    <input type="text" name="keyword" th:value="${keyword}" class="form-control me-2" placeholder="Nhập tên tuyến cần tìm...">
+                    <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+                    <a th:href="@{/routes}" class="btn btn-secondary ms-2">Reset</a>
+                </form>
+            </div>
+        </div>
+
+        <!-- Nút thêm mới -->
+        <div class="mb-3">
+            <a th:href="@{/routes/add}" class="btn btn-primary">Thêm tuyến mới</a>
+        </div>
+
         <!-- Hiển thị danh sách tuyến -->
         <table class="table table-striped">
-            <thead>
+            <thead class="table-dark">
                 <tr>
                     <th>ID</th>
                     <th>Tên tuyến</th>
-                    <th>Thời gian hoạt động</th>
+                    <th>Điểm bắt đầu</th>
+                    <th>Điểm kết thúc</th>
+                    <th>Số trạm</th>
                     <th>Hành động</th>
                 </tr>
             </thead>
             <tbody>
+                <tr th:if="${routes.empty}">
+                    <td colspan="6" class="text-center">Không tìm thấy tuyến nào</td>
+                </tr>
                 <tr th:each="route : ${routes}">
                     <td th:text="${route.id}"></td>
                     <td th:text="${route.name}"></td>
-
+                    <td th:text="${route.startLocation}"></td>
+                    <td th:text="${route.endLocation}"></td>
                     <td th:text="${route.totalStops}"></td>
                     <td>
                         <a class="btn btn-primary btn-sm" th:href="@{/routes/edit/{id}(id=${route.id})}">Sửa</a>
@@ -32,7 +54,6 @@
                 </tr>
             </tbody>
         </table>
-
 
         <div th:replace="base :: footer"></div>
     </main>

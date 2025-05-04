@@ -1,7 +1,8 @@
 package com.pts.controllers;
 
-import com.pts.pojo.Routes;
+import com.pts.pojo.Route;
 import com.pts.services.RoutesService;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,20 +17,31 @@ public class RouteController {
 
     // Hiển thị danh sách tuyến
     @GetMapping
-    public String listRoutes(Model model) {
-        model.addAttribute("routes", routesService.getAllRoutes());
-        return "listRoute"; // Trả về view "list.html"
+    public String listRoutes(Model model, @RequestParam(value = "keyword", required = false) String keyword) {
+        List<Route> routes;
+
+        if (keyword != null && !keyword.isEmpty()) {
+            // Tìm kiếm theo keyword
+            routes = routesService.searchRoutesByName(keyword);
+            model.addAttribute("keyword", keyword);
+        } else {
+            // Lấy tất cả tuyến
+            routes = routesService.getAllRoutes();
+        }
+
+        model.addAttribute("routes", routes);
+        return "listRoute";
     }
 
     // Hiển thị form thêm tuyến mới
     @GetMapping("/add")
     public String addRouteForm(Model model) {
-        model.addAttribute("route", new Routes());
+        model.addAttribute("route", new Route());
         return "addRoute"; // Tên view (addRoute.html)
     }
 
     @PostMapping("/add")
-    public String addRoute(@ModelAttribute("route") Routes route) {
+    public String addRoute(@ModelAttribute("route") Route route) {
         // Lưu thông tin tuyến
         routesService.saveRoute(route);
         return "redirect:/routes"; // Chuyển hướng về danh sách tuyến
@@ -44,7 +56,7 @@ public class RouteController {
 
     // Xử lý cập nhật tuyến
     @PostMapping("/edit/{id}")
-    public String updateRoute(@PathVariable("id") Integer id, @ModelAttribute("route") Routes route) {
+    public String updateRoute(@PathVariable("id") Integer id, @ModelAttribute("route") Route route) {
         route.setId(id);
         routesService.saveRoute(route);
         return "redirect:/routes";

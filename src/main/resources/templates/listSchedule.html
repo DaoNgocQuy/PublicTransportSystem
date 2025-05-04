@@ -1,0 +1,103 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Danh sách lịch trình</title>
+    <th:block th:replace="base :: bootstrap"></th:block>
+</head>
+<body>
+<main class="container">
+    <div th:replace="base :: header"></div>
+    <h1 class="text-center text-success mt-3">DANH SÁCH LỊCH TRÌNH</h1>
+
+    <!-- Form tìm kiếm -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Tìm kiếm lịch trình</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/schedules/search}" method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="routeId" class="form-label">Tuyến:</label>
+                    <select class="form-select" id="routeId" name="routeId">
+                        <option value="">Tất cả tuyến</option>
+                        <option th:each="route : ${routes}" 
+                                th:value="${route.id}"
+                                th:text="${route.name}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="vehicleId" class="form-label">Phương tiện:</label>
+                    <select class="form-select" id="vehicleId" name="vehicleId">
+                        <option value="">Tất cả phương tiện</option>
+                        <option th:each="vehicle : ${vehicles}" 
+                                th:value="${vehicle.id}"
+                                th:text="${vehicle.licensePlate}">
+                        </option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="startTime" class="form-label">Từ giờ:</label>
+                    <input type="time" class="form-control" id="startTime" name="startTime">
+                </div>
+                <div class="col-md-2">
+                    <label for="endTime" class="form-label">Đến giờ:</label>
+                    <input type="time" class="form-control" id="endTime" name="endTime">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Tìm kiếm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hiển thị số lượng kết quả -->
+    <div class="d-flex justify-content-between mb-3">
+        <div>
+            <span class="badge bg-info" th:text="'Tổng số: ' + ${#lists.size(schedules)} + ' lịch trình'"></span>
+        </div>
+    </div>
+
+    <!-- Bảng dữ liệu -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped table-hover">
+            <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Tuyến</th>
+                <th>Phương tiện</th>
+                <th>Thời gian đi</th>
+                <th>Thời gian đến</th>
+                <th>Hành động</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${#lists.isEmpty(schedules)}">
+                <td colspan="6" class="text-center">Không có dữ liệu</td>
+            </tr>
+            <tr th:each="s : ${schedules}">
+                <td th:text="${s.id}"></td>
+                <td th:text="${s.routeId != null ? (s.routeId.name != null ? s.routeId.name : 'Chưa đặt tên') : 'Không có tuyến'}"></td>
+                <td th:text="${s.vehicleId != null ? (s.vehicleId.licensePlate != null ? s.vehicleId.licensePlate + ' (' + (s.vehicleId.type != null ? s.vehicleId.type : 'Không xác định') + ')' : 'Không có biển số') : 'Không có phương tiện'}"></td>
+                <td th:text="${s.departureTime != null ? #dates.format(s.departureTime, 'HH:mm') : 'Chưa xác định'}"></td>
+                <td th:text="${s.arrivalTime != null ? #dates.format(s.arrivalTime, 'HH:mm') : 'Chưa xác định'}"></td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <a class="btn btn-primary btn-sm" th:href="@{/schedules/edit/{id}(id=${s.id})}">
+                            <i class="bi bi-pencil-square"></i> Sửa
+                        </a>
+                        <a class="btn btn-danger btn-sm" th:href="@{/schedules/delete/{id}(id=${s.id})}"
+                           onclick="return confirm('Bạn có chắc chắn muốn xóa lịch trình này?')">
+                            <i class="bi bi-trash"></i> Xóa
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:replace="base :: footer"></div>
+</main>
+</body>
+</html>

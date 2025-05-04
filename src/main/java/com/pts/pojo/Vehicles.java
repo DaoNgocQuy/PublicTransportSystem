@@ -40,7 +40,7 @@ public class Vehicles implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Basic(optional = false)
     @Column(name = "id")
-    private Long id;
+    private Integer id;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 9)
@@ -62,21 +62,32 @@ public class Vehicles implements Serializable {
     public Vehicles() {
     }
 
-    public Vehicles(Long id) {
+    public Vehicles(Integer id) {
         this.id = id;
     }
 
-    public Vehicles(Long id, String type) {
+    public Vehicles(Integer id, Users userId, String type, String licensePlate, Integer capacity) {
         this.id = id;
+        this.userId = userId;
         this.type = type;
+        this.licensePlate = licensePlate;
+        this.capacity = capacity;
     }
 
-    public Long getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Users getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Users userId) {
+        this.userId = userId;
     }
 
     public String getType() {
@@ -119,14 +130,6 @@ public class Vehicles implements Serializable {
         this.schedulesCollection = schedulesCollection;
     }
 
-    public Users getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Users userId) {
-        this.userId = userId;
-    }
-
     @Override
     public int hashCode() {
         int hash = 0;
@@ -136,7 +139,6 @@ public class Vehicles implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Vehicles)) {
             return false;
         }

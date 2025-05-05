@@ -123,6 +123,7 @@ public class Stops implements Serializable {
         this.address = address;
     }
 
+
     public Boolean getIsAccessible() {
         return isAccessible;
     }

@@ -1,7 +1,6 @@
 package com.pts.controllers;
 
 import com.pts.pojo.Routes;
-import com.pts.services.RoutesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import com.pts.services.RouteService;
 
 @RestController
 @RequestMapping("/api/routes")
@@ -16,7 +16,7 @@ import java.util.Optional;
 public class ApiRouteController {
 
     @Autowired
-    private RoutesService routesService;
+    private RouteService routesService;
 
     // API: Lấy danh sách tất cả các tuyến
     @GetMapping

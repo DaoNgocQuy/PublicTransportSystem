@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lỗi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="alert alert-danger">
+            <h2>Đã xảy ra lỗi!</h2>
+            <p th:if="${errorMessage}" th:text="${errorMessage}">Chi tiết lỗi</p>
+            <p th:unless="${errorMessage}">Đã xảy ra lỗi khi xử lý yêu cầu của bạn.</p>
+        </div>
+        <a href="/PTS/routes" class="btn btn-primary">Quay lại danh sách tuyến</a>
+    </div>
+</body>
+</html>

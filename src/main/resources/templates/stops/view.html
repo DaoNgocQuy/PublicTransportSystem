@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Chi tiết trạm dừng</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    </head>
+    <body>
+        <div class="container mt-4">
+            <div class="mb-3">
+                <a th:href="@{/stops}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Quay lại danh sách
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h3 class="mb-0" th:text="${stop.stopName}">Tên trạm dừng</h3>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <th style="width: 30%">ID:</th>
+                                    <td th:text="${stop.id}">1</td>
+                                </tr>
+                                <tr>
+                                    <th>Tuyến đường:</th>
+                                    <td>
+                                        <a th:if="${stop.routeId != null}" 
+                                           th:href="@{/routes/view/{id}(id=${stop.routeId.id})}" 
+                                           th:text="${stop.routeId.name}">
+                                            Tuyến 1
+                                        </a>
+                                        <span th:unless="${stop.routeId != null}">Chưa gán tuyến</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Địa chỉ:</th>
+                                    <td th:text="${stop.address ?: 'Không có'}">Địa chỉ</td>
+                                </tr>
+                                <tr>
+                                    <th>Tọa độ:</th>
+                                    <td>
+                                        <span th:if="${stop.latitude != null && stop.longitude != null}" 
+                                              th:text="${stop.latitude + ', ' + stop.longitude}">
+                                            10.1234, 106.5678
+                                        </span>
+                                        <span th:unless="${stop.latitude != null && stop.longitude != null}">
+                                            Chưa có tọa độ
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Thứ tự trên tuyến:</th>
+                                    <td th:text="${stop.stopOrder ?: 'Không xác định'}">1</td>
+                                </tr>
+                                <tr>
+                                    <th>Tiếp cận được:</th>
+                                    <td>
+                                        <span th:if="${stop.isAccessible == true}" class="badge bg-success">
+                                            <i class="bi bi-wheelchair"></i> Có
+                                        </span>
+                                        <span th:unless="${stop.isAccessible == true}" class="badge bg-secondary">
+                                            <i class="bi bi-wheelchair"></i> Không
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div class="d-flex gap-2 mt-4">
+                                <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-warning">
+                                    <i class="bi bi-pencil"></i> Chỉnh sửa
+                                </a>
+                                <a th:href="@{/stops/delete/{id}(id=${stop.id})}" 
+                                   onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này?');"
+                                   class="btn btn-danger">
+                                    <i class="bi bi-trash"></i> Xóa
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h3 class="mb-0">Vị trí trên bản đồ</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="map" style="height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script th:inline="javascript">
+                                       // Lấy dữ liệu từ Thymeleaf
+                                       var lat = /*[[${stop.latitude}]]*/ null;
+                                       var lng = /*[[${stop.longitude}]]*/ null;
+                                       var stopName = /*[[${stop.stopName}]]*/ 'Trạm dừng';
+
+                                       // Khởi tạo bản đồ
+                                       var map = L.map('map');
+
+                                       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                           maxZoom: 19,
+                                           attribution: '© OpenStreetMap contributors'
+                                       }).addTo(map);
+
+                                       // Hiển thị marker nếu có tọa độ
+                                       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                                           lat = parseFloat(lat);
+                                           lng = parseFloat(lng);
+
+                                           L.marker([lat, lng])
+                                                   .addTo(map)
+                                                   .bindPopup(stopName)
+                                                   .openPopup();
+
+                                           map.setView([lat, lng], 16);
+                                       } else {
+                                           // Nếu không có tọa độ, hiển thị thông báo trên bản đồ
+                                           map.setView([10.8231, 106.6297], 13);
+                                           document.getElementById('map').innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 bg-light"><p class="text-muted">Không có tọa độ để hiển thị</p></div>';
+                                       }
+        </script>
+    </body>
+</html>

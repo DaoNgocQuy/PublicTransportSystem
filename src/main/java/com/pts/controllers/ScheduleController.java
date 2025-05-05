@@ -5,7 +5,6 @@ import com.pts.pojo.Vehicles;
 import com.pts.pojo.Routes;
 import com.pts.services.ScheduleService;
 import com.pts.services.VehicleService;
-import com.pts.services.RoutesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -15,6 +14,7 @@ import java.sql.Time;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import com.pts.services.RouteService;
 
 @Controller
 @RequestMapping("/schedules")
@@ -27,7 +27,7 @@ public class ScheduleController {
     private VehicleService vehicleService;
     
     @Autowired
-    private RoutesService routeService;
+    private RouteService routeService;
 
     @GetMapping
     public String listSchedules(Model model) {

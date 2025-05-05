@@ -1,20 +1,16 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.pts.services.impl;
 
 import com.pts.pojo.Routes;
 import com.pts.repositories.RoutesRepository;
-import com.pts.services.RoutesService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import com.pts.services.RouteService;
 
 @Service
-public class RoutesServiceImpl implements RoutesService {
+public class RoutesServiceImpl implements RouteService {
 
     @Autowired
     private RoutesRepository routesRepository;
@@ -24,10 +20,6 @@ public class RoutesServiceImpl implements RoutesService {
         return routesRepository.findAll();
     }
 
-    public List<Routes> searchRoutesByName(String keyword) {
-        return routesRepository.searchRoutesByName(keyword);
-    }
-
     @Override
     public Optional<Routes> getRouteById(Integer id) {
         return routesRepository.findById(id);
@@ -35,6 +27,15 @@ public class RoutesServiceImpl implements RoutesService {
 
     @Override
     public Routes saveRoute(Routes route) {
+        // Đảm bảo các giá trị mặc định được thiết lập
+        if (route.getActive() == null) {
+            route.setActive(true);
+        }
+
+        if (route.getIsWalkingRoute() == null) {
+            route.setIsWalkingRoute(false);
+        }
+
         return routesRepository.save(route);
     }
 
@@ -51,5 +52,38 @@ public class RoutesServiceImpl implements RoutesService {
     @Override
     public List<Routes> findRoutesByName(String name) {
         return routesRepository.findByName(name);
+    }
+
+    @Override
+    public List<Routes> findRoutesByStartLocation(String startLocation) {
+        return routesRepository.findByStartLocation(startLocation);
+    }
+
+    @Override
+    public List<Routes> findRoutesByEndLocation(String endLocation) {
+        return routesRepository.findByEndLocation(endLocation);
+    }
+
+    @Override
+    public List<Routes> findActiveRoutes() {
+        return routesRepository.findByIsActive(true);
+    }
+
+    @Override
+    public List<Routes> findWalkingRoutes() {
+        return routesRepository.findByIsWalkingRoute(true);
+    }
+
+    @Override
+    public List<Routes> findRoutesByRouteType(Integer routeTypeId) {
+        return routesRepository.findByRouteTypeId(routeTypeId);
+    }
+
+    @Override
+    public List<Routes> searchRoutesByName(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllRoutes();
+        }
+        return routesRepository.searchRoutesByName(keyword);
     }
 }

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.pts.repositories;
 
 import com.pts.pojo.Routes;
@@ -30,6 +26,9 @@ public interface RoutesRepository {
 
     List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute);
 
-    List<Routes> searchRoutesByName(String keyword);
+    List<Routes> findByIsActive(Boolean isActive);
 
+    List<Routes> findByRouteTypeId(Integer routeTypeId);
+
+    List<Routes> searchRoutesByName(String keyword);
 }

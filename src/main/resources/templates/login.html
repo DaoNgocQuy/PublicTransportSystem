@@ -8,16 +8,17 @@
             background-color: #f8f9fa;
         }
         .login-container {
-            max-width: 450px;
-            margin: 100px auto;
+            max-width: 400px;
+            margin: 50px auto;
         }
         .card {
             border-radius: 10px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border: none;
         }
         .card-header {
             border-radius: 10px 10px 0 0;
-            background-color: #0d6efd;
+            background-color: #198754;
             color: white;
             text-align: center;
             padding: 20px;
@@ -26,11 +27,11 @@
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 30px;
-            color: #0d6efd;
+            color: #198754;
             text-align: center;
         }
         .btn-login {
-            background-color: #0d6efd;
+            background-color: #198754;
             color: white;
             width: 100%;
             padding: 10px;
@@ -40,57 +41,60 @@
             border-top: none;
             text-align: center;
         }
+        .alert {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="login-container">
-        <div class="system-title">HỆ THỐNG QUẢN LÝ VẬN TẢI CÔNG CỘNG</div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h3 class="mb-0">Đăng nhập</h3>
-            </div>
-            <div class="card-body">
-                <!-- Hiển thị thông báo thành công -->
-                <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
-                    <span th:text="${success}"></span>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <div class="container">
+        <div class="login-container">
+            <div class="system-title">HỆ THỐNG QUẢN LÝ VẬN TẢI CÔNG CỘNG</div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">Đăng nhập</h3>
                 </div>
-                
-                <!-- Hiển thị thông báo lỗi -->
-                <div th:if="${param.error}" class="alert alert-danger">
-                    Sai tên đăng nhập hoặc mật khẩu.
+                <div class="card-body p-4">
+                    <!-- Hiển thị thông báo đăng ký thành công -->
+                    <div th:if="${param.registered}" class="alert alert-success">
+                        Đăng ký tài khoản thành công! Vui lòng đăng nhập.
+                    </div>
+                    
+                    <!-- Hiển thị thông báo lỗi đăng nhập -->
+                    <div th:if="${param.error}" class="alert alert-danger">
+                        Tên đăng nhập hoặc mật khẩu không đúng.
+                    </div>
+                    
+                    <!-- Hiển thị thông báo đăng xuất -->
+                    <div th:if="${param.logout}" class="alert alert-success">
+                        Bạn đã đăng xuất thành công.
+                    </div>
+                    
+                    <form th:action="@{/login}" method="post">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Tên đăng nhập</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Mật khẩu</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember-me" name="remember-me">
+                            <label class="form-check-label" for="remember-me">Ghi nhớ đăng nhập</label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-login">Đăng nhập</button>
+                    </form>
                 </div>
-
-                <!-- Hiển thị thông báo đăng xuất thành công -->
-                <div th:if="${param.logout}" class="alert alert-success">
-                    Bạn đã đăng xuất thành công.
+                <div class="card-footer py-3">
+                    <p class="mb-0">Chưa có tài khoản? <a th:href="@{/register}">Đăng ký</a></p>
                 </div>
-
-                <form th:action="@{/login}" method="post">
-                    <div class="mb-3">
-                        <label for="username" class="form-label">Tên đăng nhập</label>
-                        <input type="text" class="form-control" id="username" name="username" required autofocus>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label">Mật khẩu</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="remember-me" name="remember-me">
-                        <label class="form-check-label" for="remember-me">
-                            Ghi nhớ đăng nhập
-                        </label>
-                    </div>
-                    <button type="submit" class="btn btn-login">Đăng nhập</button>
-                </form>
-            </div>
-            <div class="card-footer">
-                <p>Chưa có tài khoản? <a th:href="@{/register}">Đăng ký ngay</a></p>
             </div>
         </div>
     </div>
-</div>
 </body>
 </html>

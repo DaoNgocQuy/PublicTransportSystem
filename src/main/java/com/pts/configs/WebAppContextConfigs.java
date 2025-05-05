@@ -2,19 +2,60 @@ package com.pts.configs;
 
 import com.pts.pojo.Routes;
 import com.pts.pojo.Vehicles;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.format.FormatterRegistry;
+import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
+import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.thymeleaf.spring6.templateresolver.SpringResourceTemplateResolver;
+import org.thymeleaf.spring6.view.ThymeleafViewResolver;
+import org.thymeleaf.extras.springsecurity6.dialect.SpringSecurityDialect;
 
 @Configuration
 @EnableWebMvc
+// Chỉ scan controllers
 @ComponentScan(basePackages = {
     "com.pts.controllers"
 })
 public class WebAppContextConfigs implements WebMvcConfigurer {
+
+    // Thêm multipartResolver
+    @Bean
+    public StandardServletMultipartResolver multipartResolver() {
+        return new StandardServletMultipartResolver();
+    }
+
+    // Cấu hình Thymeleaf
+    @Bean
+    public SpringResourceTemplateResolver templateResolver() {
+        SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
+        templateResolver.setPrefix("classpath:/templates/");  
+        templateResolver.setSuffix(".html");
+        templateResolver.setTemplateMode("HTML");
+        templateResolver.setCharacterEncoding("UTF-8");
+        templateResolver.setCacheable(false);
+        return templateResolver;
+    }
+
+    @Bean
+    public SpringTemplateEngine templateEngine() {
+        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+        templateEngine.setTemplateResolver(templateResolver());
+        templateEngine.addDialect(new SpringSecurityDialect()); // Thêm hỗ trợ Security
+        return templateEngine;
+    }
+    
+    @Bean
+    public ThymeleafViewResolver viewResolver() {
+        ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
+        viewResolver.setTemplateEngine(templateEngine());
+        viewResolver.setCharacterEncoding("UTF-8");
+        return viewResolver;
+    }
 
     @Override
     public void addFormatters(FormatterRegistry registry) {
@@ -37,5 +78,14 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
             vehicle.setId(Integer.parseInt(source));
             return vehicle;
         });
+    }
+    
+    // Thêm ResourceHandlers để xử lý static resources
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // Cho phép truy cập vào thư mục static
+        registry.addResourceHandler("/css/**").addResourceLocations("/resources/static/css/");
+        registry.addResourceHandler("/js/**").addResourceLocations("/resources/static/js/");
+        registry.addResourceHandler("/images/**").addResourceLocations("/resources/static/images/");
     }
 }

@@ -23,8 +23,7 @@ public class UsersFormatter implements Formatter<Users> {
 
     @Override
     public Users parse(String userId, Locale locale) throws ParseException {
-//        return userService.getUserById(Integer.parseInt(userId));
         return userService.getUserById(Integer.parseInt(userId))
-                  .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }

@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,23 +25,21 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    private final String uploadDir = "uploads/avatars/";
-
     @Override
-    public Users registerUser(Users user, MultipartFile avatarFile) {
+    public Users registerUser(Users user) {
         if (userRepository.existsByUsername(user.getUsername())) {
-            throw new RuntimeException("Username already exists");
+            throw new RuntimeException("Tên đăng nhập đã tồn tại");
         }
         if (userRepository.existsByEmail(user.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new RuntimeException("Email đã tồn tại");
+        }
+        if (user.getPhone() != null && !user.getPhone().isEmpty() && userRepository.existsByPhone(user.getPhone())) {
+            throw new RuntimeException("Số điện thoại đã tồn tại");
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setRole("CITIZEN"); // Default role for new users
-
-        if (avatarFile != null && !avatarFile.isEmpty()) {
-            String avatarUrl = saveAvatar(avatarFile);
-            user.setAvatarUrl(avatarUrl);
+        // Đảm bảo password đã được mã hóa
+        if (user.getPassword() != null && !user.getPassword().startsWith("$2a$")) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
         userRepository.addUser(user);
@@ -56,26 +56,22 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Users updateUserProfile(Integer userId, Users userDetails, MultipartFile avatarFile) {
-        Users user = userRepository.getUserById(userId);
-        if (user == null) {
-            throw new RuntimeException("User not found");
+    public Users updateProfile(Users user) {
+        // Không cho phép thay đổi username hoặc password qua phương thức này
+        Users existingUser = userRepository.getUserById(user.getId());
+        if (existingUser == null) {
+            throw new RuntimeException("Không tìm thấy người dùng");
         }
 
-        if (userDetails.getUsername() != null) {
-            user.setUsername(userDetails.getUsername());
-        }
-        if (userDetails.getEmail() != null && !userDetails.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(userDetails.getEmail())) {
-                throw new RuntimeException("Email already exists");
-            }
-            user.setEmail(userDetails.getEmail());
-        }
-
-        if (avatarFile != null && !avatarFile.isEmpty()) {
-            String avatarUrl = saveAvatar(avatarFile);
-            user.setAvatarUrl(avatarUrl);
-        }
+        // Giữ lại mật khẩu hiện tại
+        user.setPassword(existingUser.getPassword());
+        
+        // Giữ nguyên các trường khác nếu không được cập nhật
+        if (user.getUsername() == null) user.setUsername(existingUser.getUsername());
+        if (user.getRole() == null) user.setRole(existingUser.getRole());
+        if (user.getIsActive() == null) user.setIsActive(existingUser.getIsActive());
+        if (user.getCreatedAt() == null) user.setCreatedAt(existingUser.getCreatedAt());
+        if (user.getLastLogin() == null) user.setLastLogin(existingUser.getLastLogin());
 
         userRepository.updateUser(user);
         return user;
@@ -90,7 +86,7 @@ public class UserServiceImpl implements UserService {
     public boolean changePassword(Integer userId, String oldPassword, String newPassword) {
         Users user = userRepository.getUserById(userId);
         if (user == null) {
-            throw new RuntimeException("User not found");
+            throw new RuntimeException("Không tìm thấy người dùng");
         }
 
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
@@ -100,6 +96,11 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.updateUser(user);
         return true;
+    }
+    
+    @Override
+    public boolean updateLastLogin(Integer userId) {
+        return userRepository.updateLastLogin(userId);
     }
 
     @Override
@@ -113,33 +114,45 @@ public class UserServiceImpl implements UserService {
     }
     
     @Override
+    public boolean existsByPhone(String phone) {
+        return userRepository.existsByPhone(phone);
+    }
+    
+    @Override
     public Users registerNewUser(String username, String password, String email) {
         Users user = new Users();
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
         user.setEmail(email);
-        user.setRole("USER"); // Mặc định role là USER
+        user.setRole("ROLE_ADMIN"); // Đảm bảo người dùng có role ADMIN
+        user.setIsActive(true); // Set trạng thái active
+        user.setCreatedAt(new Date()); // Set thời gian tạo
         
         userRepository.addUser(user);
         return user;
     }
 
-    private String saveAvatar(MultipartFile file) {
-        try {
-            // Create upload directory if it doesn't exist
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            // Generate unique filename
-            String filename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-            Path filePath = uploadPath.resolve(filename);
-            Files.copy(file.getInputStream(), filePath);
-
-            return "/" + uploadDir + filename;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to save avatar", e);
+    @Override
+    public Users registerNewUserWithAvatar(String username, String password, String email, String avatarUrl) {
+        Users user = new Users();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setEmail(email);
+        user.setRole("ROLE_ADMIN"); // Đảm bảo người dùng có role ADMIN
+        user.setIsActive(true); // Set trạng thái active
+        user.setCreatedAt(new Date()); // Set thời gian tạo
+        
+        // Set avatar URL nếu có
+        if (avatarUrl != null && !avatarUrl.isEmpty()) {
+            user.setAvatarUrl(avatarUrl);
         }
+        
+        userRepository.addUser(user);
+        return user;
+    }
+    
+    @Override
+    public List<Users> getAllUsers() {
+        return userRepository.getAllUsers();
     }
 }

@@ -18,10 +18,37 @@
                         <span class="navbar-toggler-icon"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarNav">
-                        <ul class="navbar-nav">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                             <li class="nav-item"><a class="nav-link" th:href="@{/schedules}">Danh sách lịch trình</a></li>
                             <li class="nav-item"><a class="nav-link" th:href="@{/routes}">Danh sách tuyến</a></li>
                         </ul>
+                        
+                        <!-- User Avatar and Dropdown Menu -->
+                        <div class="d-flex" sec:authorize="isAuthenticated()">
+                            <div class="dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="me-2 text-white" sec:authentication="name">Username</span>
+                                    <img th:src="${#authentication.principal.avatarUrl != null ? 
+                                                #authentication.principal.avatarUrl : 
+                                                'https://res.cloudinary.com/dxxwcby8l/image/upload/v1620123456/default-avatar.png'}" 
+                                        class="rounded-circle" 
+                                        alt="Avatar" 
+                                        style="width: 35px; height: 35px; object-fit: cover; border: 2px solid #fff;">
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    <li><a class="dropdown-item" th:href="@{/profile}">Hồ sơ</a></li>
+                                    <li><a class="dropdown-item" th:href="@{/settings}">Cài đặt</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" th:href="@{/logout}">Đăng xuất</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <!-- Login/Register buttons for non-authenticated users -->
+                        <div class="d-flex" sec:authorize="!isAuthenticated()">
+                            <a th:href="@{/login}" class="btn btn-outline-light me-2">Đăng nhập</a>
+                            <a th:href="@{/register}" class="btn btn-success">Đăng ký</a>
+                        </div>
                     </div>
                 </div>
             </nav>

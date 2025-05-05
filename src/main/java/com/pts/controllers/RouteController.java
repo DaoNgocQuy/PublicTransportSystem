@@ -13,6 +13,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import com.pts.services.RouteService;
+import java.util.ArrayList;
 import java.util.Comparator;
 
 @Controller
@@ -65,10 +66,17 @@ public class RouteController {
                 }
                 model.addAttribute("stops", stops != null ? stops : Collections.emptyList());
 
+                List<double[]> coordinates = new ArrayList<>();
+                if (stops != null) {
+                    for (Stops stop : stops) {
+                        if (stop.getLatitude() != null && stop.getLongitude() != null) {
+                            coordinates.add(new double[]{stop.getLatitude(), stop.getLongitude()});
+                        }
+                    }
+                }
+                model.addAttribute("coordinates", coordinates);
                 // Lấy danh sách lịch trình
                 List<Schedules> schedules = scheduleService.findSchedulesByRouteId(id);
-                
-                System.out.println(schedules);
                 model.addAttribute("schedules", schedules != null ? schedules : Collections.emptyList());
 
                 return "routes/viewRoute";

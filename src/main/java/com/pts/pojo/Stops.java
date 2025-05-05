@@ -35,7 +35,6 @@ import java.util.Collection;
     @NamedQuery(name = "Stops.findByLongitude", query = "SELECT s FROM Stops s WHERE s.longitude = :longitude"),
     @NamedQuery(name = "Stops.findByStopOrder", query = "SELECT s FROM Stops s WHERE s.stopOrder = :stopOrder"),
     @NamedQuery(name = "Stops.findByAddress", query = "SELECT s FROM Stops s WHERE s.address = :address"),
-    @NamedQuery(name = "Stops.findByHasShelter", query = "SELECT s FROM Stops s WHERE s.hasShelter = :hasShelter"),
     @NamedQuery(name = "Stops.findByIsAccessible", query = "SELECT s FROM Stops s WHERE s.isAccessible = :isAccessible")})
 public class Stops implements Serializable {
 
@@ -60,8 +59,7 @@ public class Stops implements Serializable {
     @Size(max = 255)
     @Column(name = "address")
     private String address;
-    @Column(name = "has_shelter")
-    private Boolean hasShelter;
+
     @Column(name = "is_accessible")
     private Boolean isAccessible;
     @OneToMany(mappedBy = "fromStopId")
@@ -134,13 +132,7 @@ public class Stops implements Serializable {
         this.address = address;
     }
 
-    public Boolean getHasShelter() {
-        return hasShelter;
-    }
 
-    public void setHasShelter(Boolean hasShelter) {
-        this.hasShelter = hasShelter;
-    }
 
     public Boolean getIsAccessible() {
         return isAccessible;

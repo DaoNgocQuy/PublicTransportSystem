@@ -1,0 +1,96 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <title>Danh sách trạm dừng</title>
+    <th:block th:replace="base :: bootstrap"></th:block>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <main class="container">
+        <div th:replace="base :: header"></div>
+        <h1 class="text-center text-info mt-1">DANH SÁCH TRẠM DỪNG</h1>
+
+        <!-- Hiển thị thông báo thành công nếu có -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Tiêu đề và nút thêm mới -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <a th:href="@{/stops/create}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Thêm trạm dừng mới
+                </a>
+            </div>
+            <span class="badge bg-info float-end py-2 px-3">Tổng số: <span th:text="${stops != null ? stops.size() : 0}">0</span> trạm</span>
+        </div>
+
+        <!-- Bảng danh sách trạm dừng -->
+        <div class="card">
+            <div class="card-body">
+                <div th:if="${stops.isEmpty()}" class="alert alert-info">
+                    Chưa có trạm dừng nào trong hệ thống.
+                </div>
+
+                <div th:unless="${stops.isEmpty()}" class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Tên trạm</th>
+                                <th>Địa chỉ</th>
+                                <th>Tuyến đường</th>
+                                <th>Thứ tự</th>
+                                <th>Tiếp cận</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="stop : ${stops}">
+                                <td th:text="${stop.id}"></td>
+                                <td th:text="${stop.stopName}">Trạm Central Park</td>
+                                <td th:text="${stop.address}">123 đường ABC</td>
+                                <td>
+                                    <a th:if="${stop.routeId != null}" 
+                                       th:href="@{/routes/view/{id}(id=${stop.routeId.id})}" 
+                                       th:text="${stop.routeId.name}">
+                                        Tuyến 1
+                                    </a>
+                                    <span th:unless="${stop.routeId != null}">-</span>
+                                </td>
+                                <td th:text="${stop.stopOrder}">1</td>
+                                <td>
+                                    <span th:if="${stop.isAccessible == true}" class="badge bg-success" title="Tiếp cận được">
+                                        <i class="bi bi-wheelchair"></i>
+                                    </span>
+                                    <span th:unless="${stop.isAccessible == true}" class="badge bg-secondary">
+                                        <i class="bi bi-wheelchair"></i>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <a th:href="@{/stops/view/{id}(id=${stop.id})}" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-sm btn-warning">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <a th:href="@{/stops/delete/{id}(id=${stop.id})}" 
+                                           onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này?');"
+                                           class="btn btn-sm btn-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div th:replace="base :: footer"></div>
+    </main>
+</body>
+</html>

@@ -23,6 +23,7 @@ import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Date;
+import java.sql.Time;
 
 /**
  *
@@ -161,8 +162,20 @@ public class Routes implements Serializable {
         return operationStartTime;
     }
 
-    public void setOperationStartTime(Date operationStartTime) {
-        this.operationStartTime = operationStartTime;
+    public void setOperationStartTime(Time time) {
+        if (time != null) {
+            this.operationStartTime = new Date(time.getTime());
+        } else {
+            this.operationStartTime = null;
+        }
+    }
+
+    public void setOperationEndTime(Time time) {
+        if (time != null) {
+            this.operationEndTime = new Date(time.getTime());
+        } else {
+            this.operationEndTime = null;
+        }
     }
 
     public Date getOperationEndTime() {
@@ -197,12 +210,12 @@ public class Routes implements Serializable {
         this.isWalkingRoute = isWalkingRoute;
     }
 
-    public Boolean getIsActive() {
-        return isActive;
+    public Boolean getActive() {
+        return this.isActive;
     }
 
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
+    public void setActive(Boolean active) {
+        this.isActive = active;
     }
 
     public Date getCreatedAt() {
@@ -237,12 +250,36 @@ public class Routes implements Serializable {
         this.routeSegmentsCollection = routeSegmentsCollection;
     }
 
-    public RouteTypes getRouteTypeId() {
-        return routeTypeId;
+    public RouteTypes getRouteType() {
+        return this.routeTypeId;
     }
 
-    public void setRouteTypeId(RouteTypes routeTypeId) {
-        this.routeTypeId = routeTypeId;
+    public void setRouteType(RouteTypes routeType) {
+        this.routeTypeId = routeType;
+    }
+
+    public Integer getRouteTypeIdValue() {
+        return (this.routeTypeId != null) ? this.routeTypeId.getId() : null;
+    }
+
+    public void setRouteTypeIdValue(Integer id) {
+        if (id != null) {
+            if (this.routeTypeId == null) {
+                this.routeTypeId = new RouteTypes(id);
+            } else {
+                this.routeTypeId.setId(id);
+            }
+        } else {
+            this.routeTypeId = null;
+        }
+    }
+
+    public String getRouteTypeName() {
+        return (this.routeTypeId != null) ? this.routeTypeId.getTypeName() : null;
+    }
+
+    public String getRouteTypeColor() {
+        return (this.routeTypeId != null) ? this.routeTypeId.getColorCode() : null;
     }
 
     public Collection<Transfers> getTransfersCollection() {
@@ -309,5 +346,5 @@ public class Routes implements Serializable {
     public String toString() {
         return "com.pts.pojo.Routes[ id=" + id + " ]";
     }
-    
+
 }

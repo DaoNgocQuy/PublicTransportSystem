@@ -16,5 +16,6 @@ public interface ScheduleRepository {
     
     List<Schedules> findByVehicleId(Vehicles vehicleId);
     List<Schedules> findByRouteId(Routes routeId);
+    List<Schedules> findByRouteId(Integer routeId);
     List<Schedules> findByDepartureTimeBetween(Time startTime, Time endTime);
 } 

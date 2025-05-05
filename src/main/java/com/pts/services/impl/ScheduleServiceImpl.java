@@ -47,6 +47,11 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
+    public List<Schedules> findSchedulesByRouteId(Integer routeId) {
+        return scheduleRepository.findByRouteId(routeId);
+    }
+
+    @Override
     @Transactional
     public Schedules createSchedule(Schedules schedule) {
         validateSchedule(schedule);
@@ -85,11 +90,12 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         List<Schedules> existingSchedules = scheduleRepository.findByVehicleId(schedule.getVehicleId());
         for (Schedules existing : existingSchedules) {
-            if (existing.getId().equals(schedule.getId()))
+            if (existing.getId().equals(schedule.getId())) {
                 continue;
+            }
 
-            if ((schedule.getDepartureTime().before(existing.getArrivalTime()) &&
-                    schedule.getArrivalTime().after(existing.getDepartureTime()))) {
+            if ((schedule.getDepartureTime().before(existing.getArrivalTime())
+                    && schedule.getArrivalTime().after(existing.getDepartureTime()))) {
                 throw new ScheduleException("Schedule overlaps with existing schedule for this vehicle");
             }
         }

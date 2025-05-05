@@ -107,6 +107,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         
         String sql = BASE_SELECT_SQL + " WHERE s.route_id = ?";
         return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId);
+
     }
 
     @Override
@@ -120,8 +121,10 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         if (schedule.getId() == null || schedule.getId() == 0) {
             // Thêm mới
             KeyHolder keyHolder = new GeneratedKeyHolder();
+
             String sql = "INSERT INTO schedules (vehicle_id, route_id, departure_time, arrival_time) "
                     + "VALUES (?, ?, ?, ?)";
+
 
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
@@ -149,8 +152,10 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
             }
         } else {
             // Cập nhật
+
             String sql = "UPDATE schedules SET vehicle_id = ?, route_id = ?, departure_time = ?, arrival_time = ? "
                     + "WHERE id = ?";
+
 
             jdbcTemplate.update(sql,
                     schedule.getVehicleId().getId(),
@@ -173,4 +178,6 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;
     }
-}
+
+=======
+

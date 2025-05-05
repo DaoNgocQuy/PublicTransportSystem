@@ -64,14 +64,14 @@ public class ScheduleController {
             schedule.setRouteId(route);
             schedule.setVehicleId(vehicle);
             
-            // Chuyển đổi string time thành SQL Time
+            // Chuyển đổi string time thành Date
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
                 java.util.Date depDate = sdf.parse(departureTime);
                 java.util.Date arrDate = sdf.parse(arrivalTime);
                 
-                schedule.setDepartureTime(new java.sql.Time(depDate.getTime()));
-                schedule.setArrivalTime(new java.sql.Time(arrDate.getTime()));
+                schedule.setDepartureTime(depDate);
+                schedule.setArrivalTime(arrDate);
             } catch (ParseException e) {
                 throw new RuntimeException("Invalid time format", e);
             }
@@ -126,14 +126,14 @@ public class ScheduleController {
             scheduleDetails.setRouteId(route);
             scheduleDetails.setVehicleId(vehicle);
             
-            // Chuyển đổi string time thành SQL Time
+            // Chuyển đổi string time thành Date
             try {
                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
                 java.util.Date depDate = sdf.parse(departureTime);
                 java.util.Date arrDate = sdf.parse(arrivalTime);
                 
-                scheduleDetails.setDepartureTime(new java.sql.Time(depDate.getTime()));
-                scheduleDetails.setArrivalTime(new java.sql.Time(arrDate.getTime()));
+                scheduleDetails.setDepartureTime(depDate);
+                scheduleDetails.setArrivalTime(arrDate);
             } catch (ParseException e) {
                 throw new RuntimeException("Invalid time format", e);
             }

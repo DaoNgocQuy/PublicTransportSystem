@@ -152,19 +152,19 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Ngày trong tuần</th>
+                                        
                                         <th>Giờ bắt đầu</th>
                                         <th>Giờ kết thúc</th>
-                                        <th>Tần suất (phút)</th>
+                                       
                                         <th>Hành động</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr th:each="schedule : ${schedules}">
-                                        <td th:text="${schedule.dayOfWeek}">Thứ Hai</td>
-                                        <td th:text="${schedule.startTime}">06:00</td>
-                                        <td th:text="${schedule.endTime}">22:00</td>
-                                        <td th:text="${schedule.frequency}">15</td>
+                                        
+                                        <td th:text="${schedule.departureTime}">06:00</td>
+                                        <td th:text="${schedule.arrivalTime}">22:00</td>
+                                       
                                         <td>
                                             <a th:href="@{/schedules/edit/{id}(id=${schedule.id})}" class="btn btn-sm btn-warning action-btn">
                                                 <i class="bi bi-pencil"></i>

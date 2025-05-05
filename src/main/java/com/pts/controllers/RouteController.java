@@ -67,6 +67,8 @@ public class RouteController {
 
                 // Lấy danh sách lịch trình
                 List<Schedules> schedules = scheduleService.findSchedulesByRouteId(id);
+                
+                System.out.println(schedules);
                 model.addAttribute("schedules", schedules != null ? schedules : Collections.emptyList());
 
                 return "routes/viewRoute";

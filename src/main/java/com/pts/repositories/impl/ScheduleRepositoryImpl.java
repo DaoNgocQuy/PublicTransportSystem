@@ -178,6 +178,6 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;
     }
+}
 
-=======
 

@@ -23,7 +23,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Optional<Users> userOpt = userRepository.findByUsername(username);
-        
+    
         if(!userOpt.isPresent()) {
             throw new UsernameNotFoundException("Không tìm thấy người dùng: " + username);
         }
@@ -32,7 +32,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         
         List<GrantedAuthority> authorities = new ArrayList<>();
         
-        // Kiểm tra và đảm bảo role có định dạng ROLE_XXX
+        // Thêm tiền tố ROLE_ cho role từ database
         if(user.getRole() != null) {
             String role = user.getRole();
             if(!role.startsWith("ROLE_")) {
@@ -40,7 +40,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             }
             authorities.add(new SimpleGrantedAuthority(role));
         } else {
-            // Nếu không có role, gán ROLE_USER mặc định
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
         }
         

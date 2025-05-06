@@ -6,7 +6,6 @@ import com.pts.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,9 +30,10 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Số điện thoại đã tồn tại");
         }
 
-        // Đảm bảo role được đặt là "ROLE_USER" nếu đăng ký từ form
-        if (user.getRole() == null || !user.getRole().startsWith("ROLE_")) {
-            user.setRole("ROLE_USER");
+        // Đảm bảo role phù hợp với ràng buộc database
+        if (user.getRole() == null || user.getRole().startsWith("ROLE_")) {
+            String role = user.getRole() != null ? user.getRole().replace("ROLE_", "") : "USER";
+            user.setRole(role);
         }
 
         // Đảm bảo password đã được mã hóa
@@ -129,40 +129,17 @@ public class UserServiceImpl implements UserService {
     }
     
     @Override
+    public List<Users> getAllUsers() {
+        return userRepository.getAllUsers();
+    }
+
+    @Override
     public Users registerNewUser(String username, String password, String email) {
-        Users user = new Users();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setEmail(email);
-        user.setRole("ROLE_ADMIN"); // Đảm bảo người dùng có role ADMIN
-        user.setIsActive(true); // Set trạng thái active
-        user.setCreatedAt(new Date()); // Set thời gian tạo
-        
-        userRepository.addUser(user);
-        return user;
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 
     @Override
     public Users registerNewUserWithAvatar(String username, String password, String email, String avatarUrl) {
-        Users user = new Users();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(password));
-        user.setEmail(email);
-        user.setRole("ROLE_ADMIN"); // Đảm bảo người dùng có role ADMIN
-        user.setIsActive(true); // Set trạng thái active
-        user.setCreatedAt(new Date()); // Set thời gian tạo
-        
-        // Set avatar URL nếu có
-        if (avatarUrl != null && !avatarUrl.isEmpty()) {
-            user.setAvatarUrl(avatarUrl);
-        }
-        
-        userRepository.addUser(user);
-        return user;
-    }
-    
-    @Override
-    public List<Users> getAllUsers() {
-        return userRepository.getAllUsers();
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
     }
 }

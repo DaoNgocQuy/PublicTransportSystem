@@ -3,6 +3,8 @@ package com.pts.repositories.impl;
 import com.pts.pojo.Users;
 import com.pts.repositories.UserRepository;
 
+import jakarta.transaction.Transactional;
+
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -18,6 +20,7 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@Transactional
 public class UserRepositoryImpl implements UserRepository {
 
     @Autowired
@@ -127,12 +130,21 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    @Transactional
     public boolean addUser(Users user) {
         String sql = "INSERT INTO users(username, password, email, role, avatar_url, full_name, phone, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try {
             System.out.println("SQL: " + sql);
             System.out.println("User data: " + user.getUsername() + ", " + user.getEmail() + ", " + user.getFullName());
+            
+            // Kiểm tra kết nối trực tiếp
+            try {
+                Integer test = jdbcTemplate.queryForObject("SELECT 1", Integer.class);
+                System.out.println("DB connection test: " + (test != null && test == 1 ? "OK" : "FAILED"));
+            } catch (Exception e) {
+                System.err.println("DB connection test failed: " + e.getMessage());
+            }
             
             KeyHolder keyHolder = new GeneratedKeyHolder();
             
@@ -149,6 +161,10 @@ public class UserRepositoryImpl implements UserRepository {
                 ps.setTimestamp(9, user.getCreatedAt() != null ? 
                     new java.sql.Timestamp(user.getCreatedAt().getTime()) : 
                     new java.sql.Timestamp(System.currentTimeMillis()));
+                
+                // Log SQL để debug
+                System.out.println("Executing SQL with params: " + ps);
+                
                 return ps;
             }, keyHolder);
             
@@ -168,6 +184,7 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    @Transactional
     public boolean updateUser(Users user) {
         String sql = "UPDATE users SET username = ?, password = ?, email = ?, role = ?, avatar_url = ?, full_name = ?, phone = ?, is_active = ? WHERE id = ?";
         return jdbcTemplate.update(sql, 
@@ -183,12 +200,14 @@ public class UserRepositoryImpl implements UserRepository {
     }
     
     @Override
+    @Transactional
     public boolean updateLastLogin(int id) {
         String sql = "UPDATE users SET last_login = ? WHERE id = ?";
         return jdbcTemplate.update(sql, new Date(), id) > 0;
     }
 
     @Override
+    @Transactional
     public boolean deleteUser(int id) {
         String sql = "DELETE FROM users WHERE id = ?";
         return jdbcTemplate.update(sql, id) > 0;

@@ -56,11 +56,6 @@
                     <h3 class="mb-0">Đăng nhập</h3>
                 </div>
                 <div class="card-body p-4">
-                    <!-- Hiển thị thông báo đăng ký thành công -->
-                    <div th:if="${param.registered}" class="alert alert-success">
-                        Đăng ký tài khoản thành công! Vui lòng đăng nhập.
-                    </div>
-                    
                     <!-- Hiển thị thông báo lỗi đăng nhập -->
                     <div th:if="${param.error}" class="alert alert-danger">
                         Tên đăng nhập hoặc mật khẩu không đúng.
@@ -89,9 +84,6 @@
                         
                         <button type="submit" class="btn btn-login">Đăng nhập</button>
                     </form>
-                </div>
-                <div class="card-footer py-3">
-                    <p class="mb-0">Chưa có tài khoản? <a th:href="@{/register}">Đăng ký</a></p>
                 </div>
             </div>
         </div>

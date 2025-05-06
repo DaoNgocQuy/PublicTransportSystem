@@ -34,7 +34,7 @@ public class ScheduleController {
         model.addAttribute("schedules", scheduleService.getAllSchedules());
         model.addAttribute("vehicles", vehicleService.getAllVehicles());
         model.addAttribute("routes", routeService.getAllRoutes());
-        return "listSchedule";
+        return "schedules/listSchedule";
     }
 
     @GetMapping("/add")
@@ -42,7 +42,7 @@ public class ScheduleController {
         model.addAttribute("schedule", new Schedules());
         model.addAttribute("vehicles", vehicleService.getAllVehicles());
         model.addAttribute("routes", routeService.getAllRoutes());
-        return "/addSchedule";
+        return "schedules/addSchedule";
     }
 
     @PostMapping("/add")
@@ -86,13 +86,13 @@ public class ScheduleController {
             // Tạo đối tượng Schedule mới để form được reset
             model.addAttribute("schedule", new Schedules());
             
-            return "addSchedule";
+            return "schedules/addSchedule";
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("error", e.getMessage());
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            return "addSchedule";
+            return "schedules/addSchedule";
         }
     }
 
@@ -103,7 +103,7 @@ public class ScheduleController {
         model.addAttribute("schedule", schedule);
         model.addAttribute("vehicles", vehicleService.getAllVehicles());
         model.addAttribute("routes", routeService.getAllRoutes());
-        return "editSchedule";
+        return "schedules/editSchedule";
     }
 
     @PostMapping("/edit/{id}")
@@ -147,7 +147,7 @@ public class ScheduleController {
             model.addAttribute("schedule", scheduleService.getScheduleById(id).orElse(new Schedules()));
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            return "editSchedule";
+            return "schedules/editSchedule";
         }
     }
 
@@ -198,14 +198,14 @@ public class ScheduleController {
             model.addAttribute("schedules", schedules);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            return "listSchedule";
+            return "schedules/listSchedule";
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("error", e.getMessage());
             model.addAttribute("schedules", scheduleService.getAllSchedules());
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            return "listSchedule";
+            return "schedules/listSchedule";
         }
     }
 }

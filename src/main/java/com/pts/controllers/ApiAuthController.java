@@ -117,7 +117,7 @@ public class ApiAuthController {
             user.setEmail(email);
             user.setFullName(fullName);
             user.setPhone(phone);
-            user.setRole("ROLE_USER"); // User thường
+            user.setRole("USER");
             user.setIsActive(true);
             user.setCreatedAt(new Date());
             user.setAvatarUrl(avatarUrl);

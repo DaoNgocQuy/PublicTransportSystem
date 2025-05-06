@@ -6,15 +6,9 @@ import com.pts.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -37,12 +31,28 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Số điện thoại đã tồn tại");
         }
 
+        // Đảm bảo role được đặt là "ROLE_USER" nếu đăng ký từ form
+        if (user.getRole() == null || !user.getRole().startsWith("ROLE_")) {
+            user.setRole("ROLE_USER");
+        }
+
         // Đảm bảo password đã được mã hóa
         if (user.getPassword() != null && !user.getPassword().startsWith("$2a$")) {
             user.setPassword(passwordEncoder.encode(user.getPassword()));
         }
 
-        userRepository.addUser(user);
+        // Thêm log để debug
+        System.out.println("Attempting to add user to database: " + user.getUsername());
+        
+        boolean success = userRepository.addUser(user);
+        
+        if (!success) {
+            System.err.println("Failed to add user to database: " + user.getUsername());
+            throw new RuntimeException("Không thể lưu thông tin người dùng. Vui lòng thử lại sau.");
+        }
+        
+        System.out.println("User successfully added to database with ID: " + user.getId());
+        
         return user;
     }
 

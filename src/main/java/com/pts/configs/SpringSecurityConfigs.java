@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -16,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.cors.CorsConfiguration;
@@ -26,7 +28,6 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 @Configuration
 @EnableWebSecurity
 @EnableTransactionManagement
-// Giảm bớt component scan, chỉ scan services và repositories
 @ComponentScan(basePackages = {
     "com.pts.repositories",
     "com.pts.services"
@@ -49,13 +50,19 @@ public class SpringSecurityConfigs {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // Tạo MVC matcher
+        MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(mvcHandlerMappingIntrospector());
+        
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(c -> c.disable())
             .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/register", "/login", "/css/**", "/js/**", "/images/**").permitAll()
-                .requestMatchers("/api/auth/**").permitAll() // Cho phép API authentication
-                .requestMatchers("/api/**").permitAll() // Cho phép các API khác
-                .anyRequest().hasRole("ADMIN")) // Chỉ cho ADMIN truy cập giao diện web
+                // Sử dụng AntPathRequestMatcher rõ ràng
+                .requestMatchers(new AntPathRequestMatcher("/login")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/css/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/js/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
+                .anyRequest().hasRole("ADMIN"))
             .formLogin(form -> form
                 .loginPage("/login")
                 .defaultSuccessUrl("/schedules", true)
@@ -65,7 +72,7 @@ public class SpringSecurityConfigs {
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .logoutSuccessUrl("/login?logout=true")
                 .permitAll());
-
+                
         return http.build();
     }
 
@@ -87,11 +94,12 @@ public class SpringSecurityConfigs {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000/")); 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
-        config.setExposedHeaders(List.of("Authorization"));
+        config.setAllowedOrigins(List.of("http://localhost:3000")); 
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
+        config.setAllowedHeaders(List.of("*"));  // Cho phép tất cả các headers
+        config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L); // Cache CORS preflight trong 1 giờ
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -100,6 +108,7 @@ public class SpringSecurityConfigs {
 
     @Configuration
     public class DatabaseConfig { 
+        @Primary
         @Bean
         public DataSource dataSource() {
             DriverManagerDataSource dataSource = new DriverManagerDataSource();

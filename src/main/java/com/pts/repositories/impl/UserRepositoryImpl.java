@@ -2,14 +2,19 @@ package com.pts.repositories.impl;
 
 import com.pts.pojo.Users;
 import com.pts.repositories.UserRepository;
+
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -60,23 +65,45 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public boolean existsByUsername(String username) {
-        String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, username);
-        return count != null && count > 0;
+        try {
+            System.out.println("Checking if username exists: " + username);
+            String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, username);
+            System.out.println("Result for username " + username + ": " + count);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            System.err.println("Error checking username existence: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
     public boolean existsByEmail(String email) {
-        String sql = "SELECT COUNT(*) FROM users WHERE email = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
-        return count != null && count > 0;
+        try {
+            String sql = "SELECT COUNT(*) FROM users WHERE email = ?";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
+            System.out.println("Result for email " + email + ": " + count);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            System.err.println("Error checking email existence: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
     
     @Override
     public boolean existsByPhone(String phone) {
+        try {
         String sql = "SELECT COUNT(*) FROM users WHERE phone = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, phone);
+        System.out.println("Result for phone " + phone + ": " + count);
         return count != null && count > 0;
+        } catch (Exception e) {
+            System.err.println("Error checking phone existence: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
@@ -102,16 +129,42 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public boolean addUser(Users user) {
         String sql = "INSERT INTO users(username, password, email, role, avatar_url, full_name, phone, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        return jdbcTemplate.update(sql, 
-                user.getUsername(), 
-                user.getPassword(),
-                user.getEmail(), 
-                user.getRole(), 
-                user.getAvatarUrl(),
-                user.getFullName(),
-                user.getPhone(),
-                user.getIsActive() != null ? user.getIsActive() : true,
-                user.getCreatedAt() != null ? user.getCreatedAt() : new Date()) > 0;
+        
+        try {
+            System.out.println("SQL: " + sql);
+            System.out.println("User data: " + user.getUsername() + ", " + user.getEmail() + ", " + user.getFullName());
+            
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            
+            int result = jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, user.getUsername());
+                ps.setString(2, user.getPassword());
+                ps.setString(3, user.getEmail());
+                ps.setString(4, user.getRole());
+                ps.setString(5, user.getAvatarUrl());
+                ps.setString(6, user.getFullName());
+                ps.setString(7, user.getPhone());
+                ps.setBoolean(8, user.getIsActive() != null ? user.getIsActive() : true);
+                ps.setTimestamp(9, user.getCreatedAt() != null ? 
+                    new java.sql.Timestamp(user.getCreatedAt().getTime()) : 
+                    new java.sql.Timestamp(System.currentTimeMillis()));
+                return ps;
+            }, keyHolder);
+            
+            System.out.println("Insert result: " + result + ", key: " + (keyHolder.getKey() != null ? keyHolder.getKey() : "null"));
+            
+            if (result > 0 && keyHolder.getKey() != null) {
+                user.setId(keyHolder.getKey().intValue());
+                return true;
+            }
+            
+            return false;
+        } catch (Exception e) {
+            System.err.println("Error adding user: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override

@@ -58,7 +58,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
     
     // Tạo lớp CustomUserDetails để lưu thêm thông tin avatarUrl
-    public static class CustomUserDetails extends org.springframework.security.core.userdetails.User {
+    public static class CustomUserDetails extends org.springframework.security.core.userdetails.User implements java.io.Serializable {
+        private static final long serialVersionUID = 1L;
         private final String avatarUrl;
         
         public CustomUserDetails(String username, String password, boolean enabled, 

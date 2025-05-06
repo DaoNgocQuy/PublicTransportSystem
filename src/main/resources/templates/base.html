@@ -30,24 +30,19 @@
                                     <span class="me-2 text-white" sec:authentication="name">Username</span>
                                     <img th:src="${#authentication.principal.avatarUrl != null ? 
                                                 #authentication.principal.avatarUrl : 
-                                                'https://res.cloudinary.com/dxxwcby8l/image/upload/v1620123456/default-avatar.png'}" 
+                                                'https://res.cloudinary.com/dxxwcby8l/image/upload/v1747244986/default-avatar-facebook_evhtfg.png'}" 
                                         class="rounded-circle" 
                                         alt="Avatar" 
                                         style="width: 35px; height: 35px; object-fit: cover; border: 2px solid #fff;">
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                    <li><a class="dropdown-item" th:href="@{/profile}">Hồ sơ</a></li>
-                                    <li><a class="dropdown-item" th:href="@{/settings}">Cài đặt</a></li>
-                                    <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" th:href="@{/logout}">Đăng xuất</a></li>
                                 </ul>
                             </div>
                         </div>
                         
-                        <!-- Login/Register buttons for non-authenticated users -->
                         <div class="d-flex" sec:authorize="!isAuthenticated()">
-                            <a th:href="@{/login}" class="btn btn-outline-light me-2">Đăng nhập</a>
-                            <a th:href="@{/register}" class="btn btn-success">Đăng ký</a>
+                            <a th:href="@{/login}" class="btn btn-outline-light">Đăng nhập</a>
                         </div>
                     </div>
                 </div>

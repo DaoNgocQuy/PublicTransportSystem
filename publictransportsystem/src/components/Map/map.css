@@ -1,0 +1,84 @@
+.leaflet-control-locate {
+    margin: 0;
+}
+
+.leaflet-control-locate-button {
+    width: 40px;
+    height: 40px;
+    background-color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s;
+}
+
+.leaflet-control-locate-button:hover {
+    background-color: #f0f0f0;
+}
+
+.leaflet-control-locate-button.active {
+    background-color: #e3f2fd;
+    transform: scale(0.95);
+}
+
+.leaflet-control-locate-button svg {
+    color: #1e88e5;
+}
+
+/* Đảm bảo nút Locate hiển thị rõ ràng */
+.leaflet-bottom .leaflet-right .leaflet-control-locate {
+    margin-right: 10px;
+    margin-bottom: 25px;
+    clear: both;
+}
+
+/* CSS cho map info */
+.map-info {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    font-size: 14px;
+}
+
+/* CSS cho popup và khoảng cách */
+.bus-stop-popup h4 {
+    margin: 0 0 8px 0;
+}
+
+.distance-tag {
+    margin: 5px 0;
+    font-size: 13px;
+    color: #555;
+}
+
+.nearby-tag {
+    margin: 5px 0;
+    font-size: 13px;
+    color: #2e7d32;
+}
+
+.directions-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.directions-btn:hover {
+    background-color: #45a049;
+}

@@ -28,12 +28,11 @@ public class StopServiceImpl implements StopService {
     @Override
     public Stops saveStop(Stops stop) {
         // Thiết lập giá trị mặc định nếu chưa có
-       
-        
+
         if (stop.getIsAccessible() == null) {
             stop.setIsAccessible(true);
         }
-        
+
         return stopRepository.save(stop);
     }
 
@@ -51,22 +50,28 @@ public class StopServiceImpl implements StopService {
     public List<Stops> findStopsByName(String stopName) {
         return stopRepository.findByStopName(stopName);
     }
-    
+
     @Override
     public List<Stops> findStopsByAddress(String address) {
         return stopRepository.findByAddress(address);
     }
-    
+
     @Override
     public List<Stops> findStopsByRouteId(Integer routeId) {
         return stopRepository.findByRouteId(routeId);
     }
-    
+
     @Override
     public List<Stops> searchStops(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return getAllStops();
         }
         return stopRepository.searchStops(keyword);
+    }
+    // Thêm vào StopServiceImpl.java
+
+    @Override
+    public List<Stops> findNearbyStops(double latitude, double longitude, double radius) {
+        return stopRepository.findNearbyStops(latitude, longitude, radius);
     }
 }

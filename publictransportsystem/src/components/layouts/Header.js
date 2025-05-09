@@ -4,7 +4,7 @@ import { Navbar, Container, Nav, NavDropdown } from 'react-bootstrap';
 
 const Header = () => {
   const navigate = useNavigate();
-  
+
   // Lấy dữ liệu người dùng từ localStorage
   const currentUser = JSON.parse(localStorage.getItem('user'));
 
@@ -25,24 +25,24 @@ const Header = () => {
             <Nav.Link as={Link} to="/">Trang chủ</Nav.Link>
             <Nav.Link as={Link} to="/map">Bản đồ</Nav.Link>
           </Nav>
-          
+
           {currentUser && (
             <Nav>
-              <NavDropdown 
+              <NavDropdown
                 title={
                   <span>
                     {currentUser.avatarUrl ? (
-                      <img 
-                        src={currentUser.avatarUrl} 
-                        alt="Profile" 
-                        style={{ width: '30px', height: '30px', borderRadius: '50%', marginRight: '8px' }} 
+                      <img
+                        src={currentUser.avatarUrl}
+                        alt="Profile"
+                        style={{ width: '30px', height: '30px', borderRadius: '50%', marginRight: '8px' }}
                       />
                     ) : (
                       <span className="me-2">👤</span>
                     )}
                     {currentUser.fullName || currentUser.username}
                   </span>
-                } 
+                }
                 id="basic-nav-dropdown"
               >
                 <NavDropdown.Item as={Link} to={`/profile/${currentUser.id}`}>

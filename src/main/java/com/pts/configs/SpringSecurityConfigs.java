@@ -30,7 +30,8 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 @EnableTransactionManagement
 @ComponentScan(basePackages = {
     "com.pts.repositories",
-    "com.pts.services"
+    "com.pts.services",
+    "com.pts.controllers"
 })
 public class SpringSecurityConfigs {
 
@@ -41,38 +42,39 @@ public class SpringSecurityConfigs {
     public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Autowired
     void configureGlobal(AuthenticationManagerBuilder auth) throws Exception {
         auth.userDetailsService(userDetailsService)
-            .passwordEncoder(passwordEncoder());
+                .passwordEncoder(passwordEncoder());
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // Tạo MVC matcher
         MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(mvcHandlerMappingIntrospector());
-        
+
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(c -> c.disable())
-            .authorizeHttpRequests(authorize -> authorize
+                .csrf(c -> c.disable())
+                .authorizeHttpRequests(authorize -> authorize
                 // Sử dụng AntPathRequestMatcher rõ ràng
                 .requestMatchers(new AntPathRequestMatcher("/login")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/css/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/js/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/PTS/api/**")).permitAll()
                 .anyRequest().hasRole("ADMIN"))
-            .formLogin(form -> form
+                .formLogin(form -> form
                 .loginPage("/login")
                 .defaultSuccessUrl("/schedules", true)
                 .failureUrl("/login?error=true")
                 .permitAll())
-            .logout(logout -> logout
+                .logout(logout -> logout
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .logoutSuccessUrl("/login?logout=true")
                 .permitAll());
-                
+
         return http.build();
     }
 
@@ -94,28 +96,29 @@ public class SpringSecurityConfigs {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000")); 
+        config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         config.setAllowedHeaders(List.of("*"));  // Cho phép tất cả các headers
         config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L); // Cache CORS preflight trong 1 giờ
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }
 
     @Configuration
-    public class DatabaseConfig { 
+    public class DatabaseConfig {
+
         @Primary
         @Bean
         public DataSource dataSource() {
             DriverManagerDataSource dataSource = new DriverManagerDataSource();
             dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
-            dataSource.setUrl("jdbc:mysql://localhost:3306/pts"); 
-            dataSource.setUsername("root"); 
-            dataSource.setPassword("huyduong2004"); 
+            dataSource.setUrl("jdbc:mysql://localhost:3306/pts");
+            dataSource.setUsername("root");
+            dataSource.setPassword("123456");
             return dataSource;
         }
 

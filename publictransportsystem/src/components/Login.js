@@ -19,30 +19,30 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!username || !password) {
       toast.error("Vui lòng nhập tên đăng nhập và mật khẩu!");
       return;
     }
-    
+
     setLoading(true);
-    
+
     const formData = new FormData();
     formData.append("username", username);
     formData.append("password", password);
-    
+
     try {
       const response = await axios.post(
         "http://localhost:8080/PTS/auth/login",
         formData
       );
-      
+
       // Lưu thông tin đăng nhập
       localStorage.setItem("user", JSON.stringify(response.data));
       localStorage.setItem("isLoggedIn", "true");
-      
+
       toast.success("Đăng nhập thành công!");
-      
+
       // Chờ toast hiển thị xong rồi chuyển trang
       setTimeout(() => {
         navigate('/');
@@ -57,40 +57,40 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container d-flex align-items-center justify-content-center" 
-         style={{ 
-           minHeight: "100vh", 
-           background: "linear-gradient(135deg, #6e8efb, #a777e3)" 
-         }}>
+    <div className="login-container d-flex align-items-center justify-content-center"
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #6e8efb, #a777e3)"
+      }}>
       <div className="card shadow-lg p-4" style={{ width: "400px", maxWidth: "90%" }}>
         <h2 className="text-center mb-4">Đăng nhập</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label htmlFor="username" className="form-label">Tên đăng nhập</label>
-            <input 
-              type="text" 
-              className="form-control" 
+            <input
+              type="text"
+              className="form-control"
               id="username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)} 
+              onChange={(e) => setUsername(e.target.value)}
               disabled={loading}
             />
           </div>
           <div className="mb-3">
             <label htmlFor="password" className="form-label">Mật khẩu</label>
-            <input 
-              type="password" 
-              className="form-control" 
+            <input
+              type="password"
+              className="form-control"
               id="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)} 
+              onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
             />
           </div>
           <div className="d-grid gap-2">
-            <button 
-              type="submit" 
-              className="btn btn-primary" 
+            <button
+              type="submit"
+              className="btn btn-primary"
               disabled={loading}
             >
               {loading ? (

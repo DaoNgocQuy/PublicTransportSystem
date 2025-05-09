@@ -17,10 +17,12 @@ public interface StopService {
     boolean stopExists(Integer id);
 
     List<Stops> findStopsByName(String stopName);
-    
+
     List<Stops> findStopsByAddress(String address);
-    
+
     List<Stops> findStopsByRouteId(Integer routeId);
-    
+
     List<Stops> searchStops(String keyword);
+
+    List<Stops> findNearbyStops(double latitude, double longitude, double radius);
 }

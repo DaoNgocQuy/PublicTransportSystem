@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Upload ảnh</title>
+    </head>
+    <body>
+        <h2>Upload ảnh lên Cloudinary</h2>
+        <form action="http://localhost:8080/api/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit">Upload</button>
+        </form>
+    </body>
+</html>

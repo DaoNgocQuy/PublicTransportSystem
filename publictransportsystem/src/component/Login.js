@@ -11,6 +11,9 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    setUsername("");
+    setPassword("");
+
     // Kiểm tra đã đăng nhập chưa
     if (localStorage.getItem('isLoggedIn') === 'true') {
       navigate('/');
@@ -64,7 +67,7 @@ const Login = () => {
          }}>
       <div className="card shadow-lg p-4" style={{ width: "400px", maxWidth: "90%" }}>
         <h2 className="text-center mb-4">Đăng nhập</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
           <div className="mb-3">
             <label htmlFor="username" className="form-label">Tên đăng nhập</label>
             <input 
@@ -74,6 +77,8 @@ const Login = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value)} 
               disabled={loading}
+              autoComplete="username"
+              key="username-field"
             />
           </div>
           <div className="mb-3">
@@ -85,6 +90,8 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)} 
               disabled={loading}
+              autoComplete="new-password"
+              key="password-field"
             />
           </div>
           <div className="d-grid gap-2">

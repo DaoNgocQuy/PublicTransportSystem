@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import axios from "axios";
+import cookie from "react-cookies";
+import { UserDispatchContext } from "../configs/MyContexts";
+import { authApi, endpoints } from "../configs/Apis";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -10,6 +12,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Thay đổi từ userContext sang useContext
+  const dispatch = useContext(UserDispatchContext);
+
+  // Phần code còn lại giữ nguyên
   useEffect(() => {
     // Kiểm tra đã đăng nhập chưa
     if (localStorage.getItem('isLoggedIn') === 'true') {
@@ -32,14 +38,38 @@ const Login = () => {
     formData.append("password", password);
 
     try {
-      const response = await axios.post(
-        "http://localhost:8080/PTS/auth/login",
-        formData
-      );
+      const response = await authApi.post(endpoints.login, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Accept': 'application/json'
+        }
+      });
 
-      // Lưu thông tin đăng nhập
-      localStorage.setItem("user", JSON.stringify(response.data));
+      console.log('Login response:', response.data);
+
+      // Đảm bảo response.data có định dạng đúng và có token
+      const userData = response.data;
+
+      // Lưu token vào cookie (bảo mật hơn localStorage)
+      if (userData.token) {
+        cookie.save("token", userData.token, { path: "/" });
+      }
+
+      // Lưu user vào cookie và localStorage
+      cookie.save("user", userData, { path: "/" });
+      localStorage.setItem("user", JSON.stringify(userData));
       localStorage.setItem("isLoggedIn", "true");
+
+      // Cập nhật context
+      dispatch({
+        type: "login",
+        payload: userData
+      });
+
+      // Thiết lập token cho API calls
+      if (userData.token) {
+        authApi.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
+      }
 
       toast.success("Đăng nhập thành công!");
 

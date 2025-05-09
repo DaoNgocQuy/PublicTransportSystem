@@ -63,7 +63,7 @@ public class SpringSecurityConfigs {
                 .requestMatchers(new AntPathRequestMatcher("/js/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/PTS/api/**")).permitAll()
+                    .requestMatchers(new AntPathRequestMatcher("/api/**")).permitAll()
                 .anyRequest().hasRole("ADMIN"))
                 .formLogin(form -> form
                 .loginPage("/login")

@@ -17,10 +17,12 @@ public interface StopRepository {
     boolean existsById(Integer id);
 
     List<Stops> findByStopName(String stopName);
-    
+
     List<Stops> findByAddress(String address);
-    
+
     List<Stops> findByRouteId(Integer routeId);
-    
+
     List<Stops> searchStops(String keyword);
+
+    List<Stops> findNearbyStops(double latitude, double longitude, double radius);
 }

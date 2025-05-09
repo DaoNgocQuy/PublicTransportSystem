@@ -1,7 +1,8 @@
 {
-  "name": "ecommerceweb",
+  "name": "publictransport",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:8080",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.4",
     "autoprefixer": "^10.4.21",

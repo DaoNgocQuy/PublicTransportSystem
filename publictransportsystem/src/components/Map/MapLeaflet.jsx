@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, CircleMarker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import "./map.css";
 import L from "leaflet";
@@ -29,6 +29,7 @@ const SetViewToUserLocation = ({ position }) => {
         if (position && map) {
             map.setView(position, 15, { animate: true });
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [map]); // Chỉ phụ thuộc vào map, không phụ thuộc vào position
 
     return null;
@@ -51,6 +52,7 @@ const MapEventsHandler = ({ onBoundsChange, onZoomChange }) => {
             onBoundsChange(map.getBounds());
             onZoomChange(map.getZoom());
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [map]); // Chỉ phụ thuộc vào map, không phụ thuộc vào onBoundsChange và onZoomChange
 
     return null;
@@ -126,7 +128,7 @@ const DEFAULT_BUS_STOPS = [
 
 const MapLeaflet = ({ busStops = [] }) => {
     const [userLocation, setUserLocation] = useState(null);
-    const [map, setMap] = useState(null);
+    const [setMap] = useState(null);
     const [accuracy, setAccuracy] = useState(0);
     const [nearbyStops, setNearbyStops] = useState([]);
     const [selectedStop, setSelectedStop] = useState(null);
@@ -137,11 +139,7 @@ const MapLeaflet = ({ busStops = [] }) => {
     // Cấu hình hiển thị
     const MIN_ZOOM_SHOW_STOPS = 16; // Mức zoom tối thiểu để hiện trạm
 
-    const goToUserLocation = () => {
-        if (map && userLocation) {
-            map.setView(userLocation, 15, { animate: true });
-        }
-    };
+
 
     // Lấy vị trí người dùng
     useEffect(() => {
@@ -241,7 +239,7 @@ const MapLeaflet = ({ busStops = [] }) => {
         if (nearbyChanged) {
             setNearbyStops(newNearbyStops);
         }
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [mapBounds, zoomLevel, userLocation, stopsToUse, MIN_ZOOM_SHOW_STOPS]);
 
     // Khi chưa có vị trí, hiển thị loading

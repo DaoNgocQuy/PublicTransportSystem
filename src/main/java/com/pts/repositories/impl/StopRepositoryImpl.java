@@ -35,8 +35,6 @@ public class StopRepositoryImpl implements StopRepository {
             stop.setAddress(rs.getString("address"));
 
             // Kiểm tra null cho các trường Boolean
-            
-
             Object isAccessibleObj = rs.getObject("is_accessible");
             if (isAccessibleObj != null) {
                 stop.setIsAccessible(rs.getBoolean("is_accessible"));
@@ -178,5 +176,20 @@ public class StopRepositoryImpl implements StopRepository {
                 + "WHERE s.stop_name LIKE ? OR s.address LIKE ?";
         String searchParam = "%" + keyword + "%";
         return jdbcTemplate.query(sql, stopWithRouteRowMapper, searchParam, searchParam);
+    }
+    // Thêm vào StopRepositoryImpl.java
+
+    @Override
+    public List<Stops> findNearbyStops(double latitude, double longitude, double radius) {
+        // Công thức Haversine để tính khoảng cách giữa 2 điểm trên bề mặt trái đất
+        String sql = "SELECT s.*, r.name as route_name, r.start_location, r.end_location, "
+                + "6371000 * acos(cos(radians(?)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(?)) "
+                + "+ sin(radians(?)) * sin(radians(s.latitude))) AS distance "
+                + "FROM stops s "
+                + "LEFT JOIN routes r ON s.route_id = r.id "
+                + "HAVING distance < ? "
+                + "ORDER BY distance";
+
+        return jdbcTemplate.query(sql, stopWithRouteRowMapper, latitude, longitude, latitude, radius);
     }
 }

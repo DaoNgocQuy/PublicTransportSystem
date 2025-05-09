@@ -1,10 +1,10 @@
 import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom"
-import Header from "./component/layouts/Header"
-import Footer from "./component/layouts/Footer"
-import Home from "./component/Home"
-import Register from "./component/Register"
-import Login from "./component/Login"
-import MapLeaflet from "./component/MapLeaflet"
+import Header from "./components/layouts/Header"
+import Footer from "./components/layouts/Footer"
+import Home from "./components/Home"
+import Register from "./components/Register"
+import Login from "./components/Login"
+import MapLeaflet from "./components/Map/MapLeaflet"
 import React from 'react';
 import 'react-toastify/dist/ReactToastify.css';
 import { useLocation } from "react-router-dom";
@@ -13,11 +13,11 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 

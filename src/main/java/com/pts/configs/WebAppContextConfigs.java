@@ -6,7 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.format.FormatterRegistry;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.multipart.support.StandardServletMultipartResolver;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -17,9 +19,11 @@ import org.thymeleaf.extras.springsecurity6.dialect.SpringSecurityDialect;
 
 @Configuration
 @EnableWebMvc
-// Chỉ scan controllers
+@EnableTransactionManagement
 @ComponentScan(basePackages = {
-    "com.pts.controllers"
+        "com.pts.controllers",
+        "com.pts.repositories",
+        "com.pts.services"
 })
 public class WebAppContextConfigs implements WebMvcConfigurer {
 
@@ -33,7 +37,7 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
     @Bean
     public SpringResourceTemplateResolver templateResolver() {
         SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
-        templateResolver.setPrefix("classpath:/templates/");  
+        templateResolver.setPrefix("classpath:/templates/");
         templateResolver.setSuffix(".html");
         templateResolver.setTemplateMode("HTML");
         templateResolver.setCharacterEncoding("UTF-8");
@@ -48,7 +52,7 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
         templateEngine.addDialect(new SpringSecurityDialect()); // Thêm hỗ trợ Security
         return templateEngine;
     }
-    
+
     @Bean
     public ThymeleafViewResolver viewResolver() {
         ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
@@ -68,7 +72,7 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
             route.setId(Integer.parseInt(source));
             return route;
         });
-        
+
         // Converter cho Vehicles
         registry.addConverter(String.class, Vehicles.class, source -> {
             if (source == null || source.isEmpty()) {
@@ -79,7 +83,17 @@ public class WebAppContextConfigs implements WebMvcConfigurer {
             return vehicle;
         });
     }
-    
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**")
+                .allowedOrigins("http://localhost:3000")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true)
+                .maxAge(3600);
+    }
+
     // Thêm ResourceHandlers để xử lý static resources
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

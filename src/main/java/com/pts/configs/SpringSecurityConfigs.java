@@ -31,7 +31,7 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
 @ComponentScan(basePackages = {
     "com.pts.repositories",
     "com.pts.services",
-    "com.pts.controllers"
+    // "com.pts.controllers"
 })
 public class SpringSecurityConfigs {
 
@@ -98,10 +98,10 @@ public class SpringSecurityConfigs {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
-        config.setAllowedHeaders(List.of("*"));  // Cho phép tất cả các headers
+        config.setAllowedHeaders(List.of("*"));  
         config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L); // Cache CORS preflight trong 1 giờ
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -118,7 +118,7 @@ public class SpringSecurityConfigs {
             dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
             dataSource.setUrl("jdbc:mysql://localhost:3306/pts");
             dataSource.setUsername("root");
-            dataSource.setPassword("123456");
+            dataSource.setPassword("huyduong2004");
             return dataSource;
         }
 

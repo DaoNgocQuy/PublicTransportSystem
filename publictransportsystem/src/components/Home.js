@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-
 import axios from 'axios';
 import busIcon from '../assets/icons/bus.png';
 import metroIcon from '../assets/icons/metro.png';
@@ -18,7 +17,7 @@ const Home = () => {
     const [routeStops, setRouteStops] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    // Thêm 2 state mới cho yêu thích và thông báo
+    // State mới cho yêu thích và thông báo
     const [favoriteRoutes, setFavoriteRoutes] = useState([]);
     const [notificationEnabled, setNotificationEnabled] = useState({});
     const navigate = useNavigate();
@@ -26,12 +25,15 @@ const Home = () => {
     const [activeTab, setActiveTab] = useState('lookup'); // 'lookup' hoặc 'search'
     const [tripDirection, setTripDirection] = useState('outbound'); // 'outbound' hoặc 'return'
     const [focusedStopId, setFocusedStopId] = useState(null);
+    const [allBusStops, setAllBusStops] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
+
     const handleStopClick = (stopId) => {
         setFocusedStopId(stopId);
     };
 
     useEffect(() => {
-        // Kiểm tra đăng nhập
+        // Kiểm tra đăng nhập bằng Context hoặc cookie/localStorage
         const token = cookie.load('token');
         const isLoggedIn = user || token || sessionStorage.getItem('isLoggedIn') === 'true';
         if (!isLoggedIn) {
@@ -40,16 +42,36 @@ const Home = () => {
         }
 
         fetchRoutes();
-        // Thêm gọi 2 hàm mới
+        // Gọi 2 hàm mới
         fetchFavorites();
         fetchNotificationSettings();
     }, [navigate, user]);
 
+    useEffect(() => {
+        // Fetch all bus stops when the component mounts
+        const fetchAllStops = async () => {
+            try {
+                const response = await authApi.get('/api/stops');
+                if (Array.isArray(response.data)) {
+                    setAllBusStops(response.data);
+                }
+            } catch (error) {
+                console.error("Error fetching all bus stops:", error);
+            }
+        };
+
+        fetchAllStops();
+    }, []);
 
     const fetchRoutes = async () => {
         setLoading(true);
         try {
+            // Sử dụng authApi từ configs/Apis.js để tự động gửi token
             const response = await authApi.get('/api/routes');
+
+            console.log('API Response:', response);
+
+            // Xử lý response nếu là JSON hợp lệ
             if (Array.isArray(response.data)) {
                 setRoutes(response.data);
             } else {
@@ -59,8 +81,12 @@ const Home = () => {
             }
         } catch (err) {
             console.error('Error fetching routes:', err);
+
+            // Kiểm tra nếu là lỗi phiên hết hạn
             if (err.isSessionExpired || (err.response && err.response.status === 401)) {
                 setError('Phiên làm việc đã hết hạn. Vui lòng làm mới phiên hoặc đăng nhập lại.');
+                // Thêm UI để người dùng có thể làm mới phiên hoặc đăng nhập lại
+                // Không tự động chuyển hướng
             } else {
                 setError(err.message || 'Không thể tải danh sách tuyến');
             }
@@ -68,24 +94,6 @@ const Home = () => {
             setLoading(false);
         }
     };
-    const [allBusStops, setAllBusStops] = useState([]); // Add this
-
-    useEffect(() => {
-        // Fetch all bus stops when the component mounts
-        const fetchAllStops = async () => {
-            try {
-                const response = await authApi.get('/api/stops'); // Use authApi for consistency
-                if (Array.isArray(response.data)) {
-                    setAllBusStops(response.data); // Update the correct state
-                }
-            } catch (error) {
-                console.error("Error fetching all bus stops:", error);
-            }
-        };
-
-
-        fetchAllStops();
-    }, []);
 
     // Thêm 2 hàm mới để fetch dữ liệu yêu thích và thông báo
     const fetchFavorites = async () => {
@@ -118,7 +126,7 @@ const Home = () => {
     // Thêm 2 hàm xử lý toggle
     const toggleFavorite = async (event, routeId) => {
         event.stopPropagation();
-        
+
         const userStr = sessionStorage.getItem('user');
         if (!userStr) {
             console.error('User not logged in');
@@ -129,12 +137,12 @@ const Home = () => {
 
         try {
             console.log("Toggling favorite for route:", routeId);
-            
+
             if (favoriteRoutes.includes(routeId)) {
                 console.log("Removing from favorites");
                 const response = await authApi.delete(`/api/favorites/${routeId}`);
                 console.log("Server response:", response.data);
-                
+
                 if (response.status === 200) {
                     setFavoriteRoutes(favoriteRoutes.filter(id => id !== routeId));
                     toast.success('Đã xóa khỏi danh sách yêu thích');
@@ -143,7 +151,7 @@ const Home = () => {
                 console.log("Adding to favorites");
                 const response = await authApi.post('/api/favorites', { route_id: routeId });
                 console.log("Server response:", response.data);
-                
+
                 if (response.status === 201) {
                     setFavoriteRoutes([...favoriteRoutes, routeId]);
                     toast.success('Đã thêm vào danh sách yêu thích');
@@ -162,25 +170,25 @@ const Home = () => {
 
     const toggleNotification = async (event, routeId) => {
         event.stopPropagation();
-        
+
         try {
             console.log("Toggling notification for route:", routeId);
-            
+
             const isCurrentlyEnabled = notificationEnabled[routeId];
-            
+
             if (isCurrentlyEnabled) {
                 console.log("Disabling notifications");
                 await authApi.delete(`/api/notifications/settings/${routeId}`);
-                setNotificationEnabled({...notificationEnabled, [routeId]: false});
+                setNotificationEnabled({ ...notificationEnabled, [routeId]: false });
                 toast.info('Đã tắt thông báo cho tuyến này');
             } else {
                 console.log("Enabling notifications");
-                await authApi.post('/api/notifications/settings', { 
+                await authApi.post('/api/notifications/settings', {
                     route_id: routeId,
                     notify_schedule_changes: true,
-                    notify_delays: true 
+                    notify_delays: true
                 });
-                setNotificationEnabled({...notificationEnabled, [routeId]: true});
+                setNotificationEnabled({ ...notificationEnabled, [routeId]: true });
                 toast.success('Đã bật thông báo cho tuyến này');
             }
         } catch (err) {
@@ -192,7 +200,7 @@ const Home = () => {
         }
     };
 
-    // Giữ nguyên useEffect và handleRouteSelect
+    // useEffect và handleRouteSelect
     useEffect(() => {
         if (!selectedRoute) return;
 
@@ -236,7 +244,6 @@ const Home = () => {
         setActiveTab(tab);
     };
 
-
     // Xử lý tìm tuyến từ component RouteSearch
     const handleRouteFound = (route) => {
         setSelectedRoute(route);
@@ -244,8 +251,6 @@ const Home = () => {
     };
 
     // Lọc tuyến khi tìm kiếm trong tab TRA CỨU
-    const [searchQuery, setSearchQuery] = useState('');
-
     const filteredRoutes = routes.filter(route =>
         route.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         route.route?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -284,9 +289,7 @@ const Home = () => {
                     )}
 
                     {activeTab === 'lookup' ? (
-                        // Tab TRA CỨU
                         <div className="routes-list">
-                            {/* Only show search box when no route is selected */}
                             {!selectedRoute && (
                                 <div className="search-box">
                                     <input
@@ -300,7 +303,6 @@ const Home = () => {
 
                             {loading && !selectedRoute && <p className="loading-text">Đang tải...</p>}
 
-                            {/* Display route details when a route is selected */}
                             {selectedRoute ? (
                                 <div className="route-details-panel">
                                     <div className="route-header">
@@ -312,144 +314,116 @@ const Home = () => {
                                         </button>
                                         <h3 className="selected-route-name" style={{ color: selectedRoute.color || '#4CAF50' }}>
                                             {selectedRoute.name}
-
-//                         {loading && <p className="loading-text">Đang tải...</p>}
-
-//                         <ul className="routes">
-//                             {Array.isArray(routes) && routes.map((route) => (
-//                                 <li
-//                                     key={route.id}
-//                                     className={`route-item ${selectedRoute?.id === route.id ? 'active' : ''}`}
-//                                     onClick={() => handleRouteSelect(route)}
-//                                 >
-//                                     <div className="route-icon">
-//                                         {route.name && route.name.toLowerCase().includes('metro') ? (
-//                                             <img src={metroIcon} alt="metro" />
-//                                         ) : (
-//                                             <img src={busIcon} alt="bus" />
-//                                         )}
-//                                     </div>
-//                                     <div className="route-info">
-//                                         <h3 className="route-name" style={{ color: route.color || '#4CAF50' }}>
-//                                             {route.name}
-
                                         </h3>
-                                        <p className="selected-route-path">{selectedRoute.route}</p>
+
+                                        <div className="route-actions">
+                                            <button
+                                                className={`favorite-btn ${favoriteRoutes.includes(selectedRoute.id) ? 'favorite' : ''}`}
+                                                onClick={(e) => toggleFavorite(e, selectedRoute.id)}
+                                                title={favoriteRoutes.includes(selectedRoute.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+                                            >
+                                                <i className={favoriteRoutes.includes(selectedRoute.id) ? "fas fa-heart" : "far fa-heart"}></i>
+                                            </button>
+
+                                            <button
+                                                className={`notification-btn ${notificationEnabled[selectedRoute.id] ? 'enabled' : ''}`}
+                                                onClick={(e) => toggleNotification(e, selectedRoute.id)}
+                                                title={notificationEnabled[selectedRoute.id] ? "Tắt thông báo" : "Bật thông báo"}
+                                            >
+                                                <i className={notificationEnabled[selectedRoute.id] ? "fas fa-bell" : "far fa-bell"}></i>
+                                            </button>
+                                        </div>
+
+                                        {loading && <p className="loading-text">Đang tải...</p>}
                                     </div>
 
-                                    <div className="direction-tabs">
+                                    {/* Add direction selector */}
+                                    <div className="direction-selector">
                                         <button
-                                            className={`direction-tab ${tripDirection === 'outbound' ? 'active' : ''}`}
+                                            className={`direction-btn ${tripDirection === 'outbound' ? 'active' : ''}`}
                                             onClick={() => switchDirection('outbound')}
                                         >
-                                            Lượt đi
+                                            Chiều đi
                                         </button>
                                         <button
-                                            className={`direction-tab ${tripDirection === 'return' ? 'active' : ''}`}
+                                            className={`direction-btn ${tripDirection === 'return' ? 'active' : ''}`}
                                             onClick={() => switchDirection('return')}
                                         >
-                                            Lượt về
+                                            Chiều về
                                         </button>
                                     </div>
 
-                                    <div className="direction-info">
-                                        <p className="direction-title">
-                                            {tripDirection === 'outbound' ? (
-                                                <>Từ <b>{selectedRoute.startPoint}</b> đến <b>{selectedRoute.endPoint}</b></>
-                                            ) : (
-                                                <>Từ <b>{selectedRoute.endPoint}</b> đến <b>{selectedRoute.startPoint}</b></>
-                                            )}
-                                        </p>
-                                    </div>
-
-                                    <h4 className="stops-title">Các trạm dừng:</h4>
-
-                                    {loading ? (
-                                        <p className="loading-text">Đang tải điểm dừng...</p>
-                                    ) : (
-                                        <ul className="stops-list">
-                                            {routeStops.map((stop, index) => (
-                                                <li
-                                                    key={stop.id}
-                                                    className="stop-item"
-                                                    onClick={() => handleStopClick(stop.id)}  // Add onClick handler here
-                                                >
-                                                    <div className="stop-number">{index + 1}</div>
-                                                    <div className="stop-info">
-                                                        <h4 className="stop-name">{stop.name}</h4>
-                                                        <p className="stop-address">{stop.address}</p>
-                                                    </div>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-
-                                    {!loading && routeStops.length === 0 && (
-                                        <p className="no-data">Không có thông tin điểm dừng.</p>
-                                    )}
+                                    {/* List stops for this route */}
+                                    <ul className="route-stops">
+                                        {routeStops.map(stop => (
+                                            <li
+                                                key={stop.id}
+                                                className={`stop-item ${focusedStopId === stop.id ? 'focused' : ''}`}
+                                                onClick={() => handleStopClick(stop.id)}
+                                            >
+                                                <div className="stop-marker"></div>
+                                                <div className="stop-info">
+                                                    <h4>{stop.name}</h4>
+                                                    <p>{stop.address}</p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </div>
                             ) : (
-                                <ul className="routes">
-                                    {Array.isArray(filteredRoutes) && filteredRoutes.map((route) => (
-                                        <li
-                                            key={route.id}
-                                            className="route-item"
-                                            onClick={() => handleRouteSelect(route)}
-                                        >
-                                            <div className="route-icon">
-                                                {route.icon && <img src={route.icon} alt="icon" />}
-                                            </div>
-                                            <div className="route-info">
-                                                <h3 className="route-name" style={{ color: route.color || '#4CAF50' }}>
-                                                    {route.name}
-                                                </h3>
-                                                <p className="route-path">{route.route}</p>
-                                                <div className="route-details">
-                                                    <span className="route-time">
-                                                        <i className="far fa-clock"></i> {route.operatingHours}
-                                                    </span>
+                                <>
+                                    <ul className="routes">
+                                        {Array.isArray(filteredRoutes) && filteredRoutes.map((route) => (
+                                            <li
+                                                key={route.id}
+                                                className="route-item"
+                                                onClick={() => handleRouteSelect(route)}
+                                            >
+                                                <div className="route-icon">
+                                                    {route.icon && <img src={route.icon} alt="icon" />}
                                                 </div>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                                                <div className="route-info">
+                                                    <h3 className="route-name" style={{ color: route.color || '#4CAF50' }}>
+                                                        {route.name}
+                                                    </h3>
+                                                    <p className="route-path">{route.route}</p>
+                                                    <div className="route-details">
+                                                        <span className="route-time">
+                                                            <i className="far fa-clock"></i> {route.operatingHours}
+                                                        </span>
+                                                    </div>
+                                                </div>
 
-                            {!loading && !selectedRoute && filteredRoutes.length === 0 && (
-                                <p className="no-data">Không có tuyến nào phù hợp.</p>
+                                                {/* Fixed favorite button */}
+                                                <button
+                                                    className={`favorite-btn ${favoriteRoutes.includes(route.id) ? 'favorite' : ''}`}
+                                                    onClick={(e) => toggleFavorite(e, route.id)}
+                                                    title={favoriteRoutes.includes(route.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+                                                >
+                                                    <i className={favoriteRoutes.includes(route.id) ? "fas fa-heart" : "far fa-heart"}></i>
+                                                </button>
+
+                                                {/* Fixed notification button */}
+                                                <button
+                                                    className={`notification-btn ${notificationEnabled[route.id] ? 'enabled' : ''}`}
+                                                    onClick={(e) => toggleNotification(e, route.id)}
+                                                    title={notificationEnabled[route.id] ? "Tắt thông báo" : "Bật thông báo"}
+                                                >
+                                                    <i className={notificationEnabled[route.id] ? "fas fa-bell" : "far fa-bell"}></i>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+
+                                    {!loading && filteredRoutes.length === 0 && (
+                                        <p className="no-data">Không có tuyến nào phù hợp.</p>
+                                    )}
+                                </>
                             )}
                         </div>
                     ) : (
-                        // Tab TÌM ĐƯỜNG
                         <RouteSearch onRouteFound={handleRouteFound} />
                     )}
-
-                                    
-                                    {/* Thêm nút yêu thích */}
-//                                     <button 
-//                                         className={`favorite-btn ${favoriteRoutes.includes(route.id) ? 'favorite' : ''}`}
-//                                         onClick={(e) => toggleFavorite(e, route.id)}
-//                                         title={favoriteRoutes.includes(route.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
-//                                     >
-//                                         <i className={favoriteRoutes.includes(route.id) ? "fas fa-heart" : "far fa-heart"}></i>
-//                                     </button>
-                                    
-//                                     {/* Thêm nút thông báo */}
-//                                     <button 
-//                                         className={`notification-btn ${notificationEnabled[route.id] ? 'enabled' : ''}`}
-//                                         onClick={(e) => toggleNotification(e, route.id)}
-//                                         title={notificationEnabled[route.id] ? "Tắt thông báo" : "Bật thông báo"}
-//                                     >
-//                                         <i className={notificationEnabled[route.id] ? "fas fa-bell" : "far fa-bell"}></i>
-//                                     </button>
-                                </li>
-                            ))}
-                        </ul>
-
-                        {!loading && routes.length === 0 && (
-                            <p className="no-data">Không có tuyến nào.</p>
-                        )}
-                    </div>
                 </div>
 
                 <div className="map-container">
@@ -459,7 +433,6 @@ const Home = () => {
                         selectedRoute={selectedRoute}
                         tripDirection={tripDirection}
                         focusedStopId={focusedStopId}
-
                     />
 
                     {loading && selectedRoute && (

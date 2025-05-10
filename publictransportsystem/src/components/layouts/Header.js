@@ -1,17 +1,16 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Navbar, Container, Nav, NavDropdown } from 'react-bootstrap';
+import { UserDispatchContext } from '../../configs/MyContexts';
 
 const Header = () => {
   const navigate = useNavigate();
+  const dispatch = useContext(UserDispatchContext);
 
-  // Lấy dữ liệu người dùng từ localStorage
-  const currentUser = JSON.parse(localStorage.getItem('user'));
+  const currentUser = JSON.parse(sessionStorage.getItem('user'));
 
   const handleLogout = () => {
-    // Xóa thông tin người dùng khi đăng xuất
-    localStorage.removeItem('user');
-    localStorage.removeItem('isLoggedIn');
+    dispatch({ type: "logout" });
     navigate('/login');
   };
 

@@ -5,14 +5,14 @@ import Home from "./components/Home"
 import Register from "./components/Register"
 import Login from "./components/Login"
 import MapLeaflet from "./components/Map/MapLeaflet"
+import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import cookie from "react-cookies";
 import { UserContext, UserDispatchContext } from "./configs/MyContexts";
 
-// Protected Route component
 const ProtectedRoute = ({ children }) => {
-  const isAuthenticated = localStorage.getItem('isLoggedIn') === 'true';
+  const isAuthenticated = sessionStorage.getItem('isLoggedIn') === 'true';
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -28,8 +28,8 @@ const userReducer = (currentState, action) => {
     case "logout":
       cookie.remove("token", { path: '/' });
       cookie.remove("user", { path: '/' });
-      localStorage.removeItem("isLoggedIn");
-      localStorage.removeItem("user");
+      sessionStorage.removeItem("isLoggedIn");
+      sessionStorage.removeItem("user");
       return null;
     default:
       return currentState;
@@ -37,7 +37,7 @@ const userReducer = (currentState, action) => {
 };
 
 const AppContent = () => {
-  const initialUser = cookie.load("user") || JSON.parse(localStorage.getItem("user") || "null");
+  const initialUser = cookie.load("user") || JSON.parse(sessionStorage.getItem("user") || "null");
   const [user, dispatch] = useReducer(userReducer, initialUser);
   const location = useLocation();
 
@@ -69,6 +69,19 @@ const AppContent = () => {
           </Routes>
         </UserDispatchContext.Provider>
       </UserContext.Provider>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss={false} 
+        draggable
+        pauseOnHover={false}     
+        limit={3}               
+      />
 
     </>
   );

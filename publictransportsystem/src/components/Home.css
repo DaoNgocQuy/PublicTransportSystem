@@ -185,3 +185,61 @@
         transform: rotate(360deg);
     }
 }
+
+/* CSS cho nút yêu thích và thông báo */
+.favorite-btn, .notification-btn {
+    position: absolute;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+    padding: 5px;
+}
+
+.favorite-btn {
+    bottom: 10px;
+    right: 10px;
+    color: #ccc;
+}
+
+.notification-btn {
+    bottom: 10px;
+    right: 45px;
+    color: #ccc;
+}
+
+.favorite-btn:hover {
+    color: #ff5757;
+    transform: scale(1.1);
+}
+
+.notification-btn:hover {
+    color: #4285f4;
+    transform: scale(1.1);
+}
+
+.favorite-btn.favorite {
+    color: #ff4242;
+}
+
+.notification-btn.enabled {
+    color: #4285f4;
+}
+
+/* Đảm bảo route-item có position relative để định vị các nút */
+.route-item {
+    position: relative;
+    padding-bottom: 35px; /* Tăng padding dưới để có không gian cho các nút */
+}
+
+/* Animation khi thêm vào yêu thích */
+@keyframes heartbeat {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+.favorite-btn.favorite i {
+    animation: heartbeat 0.5s ease-in-out;
+}

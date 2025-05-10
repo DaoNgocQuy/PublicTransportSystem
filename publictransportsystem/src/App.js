@@ -1,7 +1,6 @@
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom"
 import { useReducer } from "react";
 import Header from "./components/layouts/Header"
-import Footer from "./components/layouts/Footer"
 import Home from "./components/Home"
 import Register from "./components/Register"
 import Login from "./components/Login"
@@ -70,7 +69,7 @@ const AppContent = () => {
           </Routes>
         </UserDispatchContext.Provider>
       </UserContext.Provider>
-      {!isAuthPage && <Footer />}
+
     </>
   );
 };

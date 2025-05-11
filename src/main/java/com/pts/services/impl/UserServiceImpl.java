@@ -88,8 +88,9 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Optional<Users> getUserById(Integer id) {
-        return Optional.ofNullable(userRepository.getUserById(id));
+    public Optional<Users> getUserById(Integer userId) {
+        Users user = userRepository.getUserById(userId);
+        return Optional.ofNullable(user);
     }
 
     @Override
@@ -111,6 +112,11 @@ public class UserServiceImpl implements UserService {
     @Override
     public boolean updateLastLogin(Integer userId) {
         return userRepository.updateLastLogin(userId);
+    }
+
+    @Override
+    public boolean updateUser(Users user) {
+        return userRepository.updateUser(user);
     }
 
     @Override

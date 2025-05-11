@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Navbar, Container, Nav, NavDropdown } from 'react-bootstrap';
 import { UserDispatchContext } from '../../configs/MyContexts';
+import './Header.css';
 
 const Header = () => {
   const navigate = useNavigate();
@@ -10,7 +11,16 @@ const Header = () => {
   const currentUser = JSON.parse(sessionStorage.getItem('user'));
 
   const handleLogout = () => {
-    dispatch({ type: "logout" });
+    // Kiểm tra dispatch có phải là function không
+    if (typeof dispatch === 'function') {
+      dispatch({ type: "logout" });
+    } else {
+      // Nếu dispatch không có sẵn, thực hiện đăng xuất thủ công
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('isLoggedIn');
+      // Các hành động đăng xuất khác nếu cần
+    }
+    
     navigate('/login');
   };
 
@@ -44,11 +54,13 @@ const Header = () => {
                 }
                 id="basic-nav-dropdown"
               >
-                <NavDropdown.Item as={Link} to={`/profile/${currentUser.id}`}>
+                <NavDropdown.Item as={Link} to="/profile">
+                  <i className="bi bi-person-circle me-2"></i>
                   Thông tin cá nhân
                 </NavDropdown.Item>
                 <NavDropdown.Divider />
                 <NavDropdown.Item onClick={handleLogout}>
+                  <i className="bi bi-box-arrow-right me-2"></i>
                   Đăng xuất
                 </NavDropdown.Item>
               </NavDropdown>

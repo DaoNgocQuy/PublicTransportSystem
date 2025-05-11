@@ -9,10 +9,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -110,13 +114,6 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public Users getUserById(int id) {
-        String sql = "SELECT * FROM users WHERE id = ?";
-        List<Users> results = jdbcTemplate.query(sql, userMapper, id);
-        return results.isEmpty() ? null : results.get(0);
-    }
-
-    @Override
     public Users getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
         List<Users> results = jdbcTemplate.query(sql, userMapper, username);
@@ -182,22 +179,6 @@ public class UserRepositoryImpl implements UserRepository {
             return false;
         }
     }
-
-    @Override
-    @Transactional
-    public boolean updateUser(Users user) {
-        String sql = "UPDATE users SET username = ?, password = ?, email = ?, role = ?, avatar_url = ?, full_name = ?, phone = ?, is_active = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, 
-                user.getUsername(), 
-                user.getPassword(),
-                user.getEmail(), 
-                user.getRole(), 
-                user.getAvatarUrl(),
-                user.getFullName(),
-                user.getPhone(),
-                user.getIsActive(),
-                user.getId()) > 0;
-    }
     
     @Override
     @Transactional
@@ -212,4 +193,103 @@ public class UserRepositoryImpl implements UserRepository {
         String sql = "DELETE FROM users WHERE id = ?";
         return jdbcTemplate.update(sql, id) > 0;
     }
+
+    @Override
+    @Transactional
+    public boolean updateUser(Users user) {
+        try {
+            String sql = "UPDATE users SET ";
+            List<Object> params = new ArrayList<>();
+            
+            // Danh sách các trường có thể cập nhật và giá trị tương ứng
+            Map<String, Object> fields = new HashMap<>();
+            
+            if (user.getFullName() != null) {
+                fields.put("full_name", user.getFullName());
+            }
+            
+            if (user.getEmail() != null) {
+                fields.put("email", user.getEmail());
+            }
+            
+            if (user.getPhone() != null) {
+                fields.put("phone", user.getPhone());
+            }
+            
+            if (user.getPassword() != null) {
+                fields.put("password", user.getPassword());
+            }
+            
+            if (user.getAvatarUrl() != null) {
+                fields.put("avatar_url", user.getAvatarUrl());
+            }
+            
+            if (fields.isEmpty()) {
+                return false; // Không có gì để cập nhật
+            }
+            
+            // Xây dựng câu SQL động
+            StringBuilder sqlBuilder = new StringBuilder("UPDATE users SET ");
+            boolean first = true;
+            
+            for (Map.Entry<String, Object> entry : fields.entrySet()) {
+                if (!first) {
+                    sqlBuilder.append(", ");
+                }
+                sqlBuilder.append(entry.getKey()).append(" = ?");
+                params.add(entry.getValue());
+                first = false;
+            }
+            
+            sqlBuilder.append(" WHERE id = ?");
+            params.add(user.getId());
+            
+            int rowsAffected = jdbcTemplate.update(sqlBuilder.toString(), params.toArray());
+            return rowsAffected > 0;
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public Users getUserById(Integer userId) {
+        try {
+            String sql = "SELECT * FROM users WHERE id = ?";
+            return jdbcTemplate.queryForObject(sql, userRowMapper, userId);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    // RowMapper để ánh xạ kết quả truy vấn thành đối tượng Users
+    private final RowMapper<Users> userRowMapper = (resultSet, rowNum) -> {
+        Users user = new Users();
+        user.setId(resultSet.getInt("id"));
+        user.setUsername(resultSet.getString("username"));
+        user.setPassword(resultSet.getString("password"));
+        user.setFullName(resultSet.getString("full_name"));
+        user.setEmail(resultSet.getString("email"));
+        user.setPhone(resultSet.getString("phone"));
+        user.setRole(resultSet.getString("role"));
+        user.setAvatarUrl(resultSet.getString("avatar_url"));
+        
+        // Xử lý các trường ngày tháng
+        try {
+            java.sql.Timestamp createdAtTs = resultSet.getTimestamp("created_at");
+            if (createdAtTs != null) {
+                user.setCreatedAt(new Date(createdAtTs.getTime()));
+            }
+            
+            java.sql.Timestamp lastLoginTs = resultSet.getTimestamp("last_login");
+            if (lastLoginTs != null) {
+                user.setLastLogin(new Date(lastLoginTs.getTime()));
+            }
+        } catch (SQLException e) {
+            // Bỏ qua nếu không có các trường này
+        }
+        
+        return user;
+    };
 }

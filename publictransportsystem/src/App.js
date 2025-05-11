@@ -4,11 +4,13 @@ import Header from "./components/layouts/Header"
 import Home from "./components/Home"
 import Register from "./components/Register"
 import Login from "./components/Login"
+import Userinfo from "./components/userInfo";
 import MapLeaflet from "./components/Map/MapLeaflet"
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import cookie from "react-cookies";
+import './App.css';
 import { UserContext, UserDispatchContext } from "./configs/MyContexts";
 
 const ProtectedRoute = ({ children }) => {
@@ -26,10 +28,10 @@ const userReducer = (currentState, action) => {
     case "login":
       return action.payload;
     case "logout":
+      sessionStorage.removeItem('user');
+      sessionStorage.removeItem('isLoggedIn');
       cookie.remove("token", { path: '/' });
       cookie.remove("user", { path: '/' });
-      sessionStorage.removeItem("isLoggedIn");
-      sessionStorage.removeItem("user");
       return null;
     default:
       return currentState;
@@ -65,6 +67,11 @@ const AppContent = () => {
             } />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Userinfo />
+              </ProtectedRoute>
+            } />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </UserDispatchContext.Provider>

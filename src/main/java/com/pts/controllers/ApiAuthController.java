@@ -278,22 +278,51 @@ public class ApiAuthController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-    
-    @PostMapping("/change-password/{id}")
+
+    @PostMapping("/change-password/{userId}")
     public ResponseEntity<?> changePassword(
-            @PathVariable Integer id,
+            @PathVariable Integer userId,
             @RequestParam String oldPassword,
             @RequestParam String newPassword) {
         
         try {
-            boolean result = userService.changePassword(id, oldPassword, newPassword);
-            if (result) {
-                return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
-            } else {
-                return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu cũ không đúng"));
+            // Xác thực người dùng
+            Optional<Users> userOpt = userService.getUserById(userId);
+            
+            if (!userOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Không tìm thấy người dùng"));
             }
+            
+            Users user = userOpt.get();
+            
+            // Kiểm tra mật khẩu cũ
+            if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Mật khẩu hiện tại không đúng"));
+            }
+            
+            // Kiểm tra mật khẩu mới có giống mật khẩu cũ không
+            if (passwordEncoder.matches(newPassword, user.getPassword())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Mật khẩu mới không được trùng với mật khẩu hiện tại"));
+            }
+            
+            // Cập nhật mật khẩu mới
+            user.setPassword(passwordEncoder.encode(newPassword));
+            boolean updated = userService.updateUser(user);
+            
+            if (!updated) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Không thể cập nhật mật khẩu"));
+            }
+            
+            return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
+            
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Lỗi hệ thống: " + e.getMessage()));
         }
     }
 }

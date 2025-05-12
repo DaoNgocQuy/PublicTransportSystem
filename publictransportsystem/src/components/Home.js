@@ -9,6 +9,8 @@ import { toast } from 'react-toastify';
 import './Home.css';
 
 const Home = () => {
+    const [landmarks, setLandmarks] = useState([]);
+
     const [routes, setRoutes] = useState([]);
     const [selectedRoute, setSelectedRoute] = useState(null);
     const [routeStops, setRouteStops] = useState([]);
@@ -24,11 +26,19 @@ const Home = () => {
     const [focusedStopId, setFocusedStopId] = useState(null);
     const [allBusStops, setAllBusStops] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
-
+    const [selectedMapLocation, setSelectedMapLocation] = useState(null);
+    const [mapSelectionType, setMapSelectionType] = useState('destination'); // Thêm dòng này
     const handleStopClick = (stopId) => {
         setFocusedStopId(stopId);
     };
-
+    const handleMapLocationSelect = (locationData) => {
+        setSelectedMapLocation(locationData);
+        // We'll pass this to RouteSearch, which will handle differently based on locationType
+    };
+    const handleMapSelectionTypeChange = (type) => {
+        console.log("Thay đổi loại chọn trên bản đồ:", type);
+        setMapSelectionType(type);  // Đây là state đã khai báo ở Home.js
+    };
     useEffect(() => {
         // Kiểm tra đăng nhập bằng Context hoặc cookie/localStorage
         const token = cookie.load('token');
@@ -42,8 +52,18 @@ const Home = () => {
         // Gọi 2 hàm mới
         fetchFavorites();
         fetchNotificationSettings();
+        fetchLandmarks();
     }, [navigate, user]);
-
+    const fetchLandmarks = async () => {
+        try {
+            const response = await authApi.get('/api/landmarks');
+            if (Array.isArray(response.data)) {
+                setLandmarks(response.data);
+            }
+        } catch (err) {
+            console.error('Error fetching landmarks:', err);
+        }
+    };
     useEffect(() => {
         // Fetch all bus stops when the component mounts
         const fetchAllStops = async () => {
@@ -420,7 +440,10 @@ const Home = () => {
                             )}
                         </div>
                     ) : (
-                        <RouteSearch onRouteFound={handleRouteFound} />
+                        <RouteSearch
+                            onRouteFound={handleRouteFound}
+                            selectedMapLocation={selectedMapLocation}
+                            onMapSelectionChange={handleMapSelectionTypeChange} />
                     )}
                 </div>
 
@@ -430,7 +453,9 @@ const Home = () => {
                         allStops={allBusStops}
                         selectedRoute={selectedRoute}
                         tripDirection={tripDirection}
-                        focusedStopId={focusedStopId}
+                        landmarks={landmarks}
+                        onLocationSelect={handleMapLocationSelect}
+                        selectionMode={mapSelectionType}
                     />
 
                     {loading && selectedRoute && (

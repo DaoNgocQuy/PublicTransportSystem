@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { authApi } from '../../configs/Apis';
-import { FaMapMarkerAlt, FaExchangeAlt, FaDotCircle, FaFlag } from 'react-icons/fa';
-import './RouteSearch.css';
+import { getStops } from '../../services/stopService';
+import { getRoutes } from '../../services/routeService';
+import './css/RouteSearch.css';
 
 const RouteSearch = ({ onRouteFound }) => {
     const [origin, setOrigin] = useState('');
@@ -14,58 +14,32 @@ const RouteSearch = ({ onRouteFound }) => {
     const [error, setError] = useState(null);
     const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
     const [showDestSuggestions, setShowDestSuggestions] = useState(false);
-    const [activeRouteCount, setActiveRouteCount] = useState(1); // Tuyến hoạt động (mặc định là 1)
+    const [activeRouteCount, setActiveRouteCount] = useState(1);
 
     // Lấy danh sách tất cả các trạm
     useEffect(() => {
-        const fetchStops = async () => {
+        const fetchAllStops = async () => {
             try {
-                setLoading(true);
-                const response = await authApi.get('/api/stops');
-                console.log('API stops response:', response);
-
-                if (Array.isArray(response.data)) {
-                    console.log('Got suggestions:', response.data.length, 'items');
-                    if (response.data.length === 0) {
-                        console.warn('API returned empty suggestions array');
-                    } else {
-                        console.log('First suggestion:', response.data[0]);
-                    }
-                    setSuggestions(response.data);
-                } else {
-                    console.error('API response is not an array:', response.data);
-                }
+                const allStops = await getStops();
+                setSuggestions(allStops);
             } catch (err) {
-                console.error('Error fetching stops:', err);
-                setError('Không thể tải danh sách điểm dừng');
-            } finally {
-                setLoading(false);
+                console.error('Lỗi khi tải danh sách các trạm:', err);
             }
         };
-
-        fetchStops();
+        fetchAllStops();
     }, []);
 
     // Lọc gợi ý khi người dùng gõ
     const handleOriginChange = (e) => {
         const value = e.target.value;
-        console.log('Origin input value:', value);
-        // Chỉ lưu trữ chuỗi văn bản, không phải đối tượng
         setOrigin(value);
 
         if (value.length > 1) {
-            console.log('Filtering suggestions with:', value);
-            const filtered = suggestions.filter(stop => {
-                if (!stop || typeof stop !== 'object') return false;
-
-                const nameMatch = stop.stop_name && stop.stop_name.toLowerCase().includes(value.toLowerCase());
-                const addressMatch = stop.address && stop.address.toLowerCase().includes(value.toLowerCase());
-
-                return nameMatch || addressMatch;
-            });
-
-            console.log('Filtered suggestions:', filtered);
-            setOriginSuggestions(filtered);
+            const filtered = suggestions.filter(stop =>
+                stop.name.toLowerCase().includes(value.toLowerCase()) ||
+                stop.address?.toLowerCase().includes(value.toLowerCase())
+            );
+            setOriginSuggestions(filtered.slice(0, 5));
             setShowOriginSuggestions(true);
         } else {
             setOriginSuggestions([]);
@@ -78,17 +52,11 @@ const RouteSearch = ({ onRouteFound }) => {
         setDestination(value);
 
         if (value.length > 1) {
-            const filtered = suggestions.filter(stop => {
-                // Kiểm tra stop tồn tại và stop_name tồn tại
-                if (!stop || typeof stop !== 'object') return false;
-
-                const nameMatch = stop.stop_name && stop.stop_name.toLowerCase().includes(value.toLowerCase());
-                const addressMatch = stop.address && stop.address.toLowerCase().includes(value.toLowerCase());
-
-                return nameMatch || addressMatch;
-            });
-
-            setDestSuggestions(filtered);
+            const filtered = suggestions.filter(stop =>
+                stop.name.toLowerCase().includes(value.toLowerCase()) ||
+                stop.address?.toLowerCase().includes(value.toLowerCase())
+            );
+            setDestSuggestions(filtered.slice(0, 5));
             setShowDestSuggestions(true);
         } else {
             setDestSuggestions([]);
@@ -98,20 +66,14 @@ const RouteSearch = ({ onRouteFound }) => {
 
     // Xử lý chọn trạm từ gợi ý
     const selectOrigin = (stop) => {
-        // Lưu lại cả đối tượng stop để có thể truy cập ID khi tìm kiếm
-        setOrigin({
-            ...stop,
-            displayName: stop.stop_name
-        });
+        setOrigin(stop.name);
+        setOriginSuggestions([]);
         setShowOriginSuggestions(false);
     };
 
     const selectDestination = (stop) => {
-        // Lưu lại cả đối tượng stop để có thể truy cập ID khi tìm kiếm
-        setDestination({
-            ...stop,
-            displayName: stop.stop_name
-        });
+        setDestination(stop.name);
+        setDestSuggestions([]);
         setShowDestSuggestions(false);
     };
 
@@ -122,16 +84,10 @@ const RouteSearch = ({ onRouteFound }) => {
         setDestination(tempOrigin);
     };
 
-
     // Tìm kiếm tuyến
     const handleSearch = async () => {
         if (!origin || !destination) {
-            setError('Vui lòng nhập điểm đi và điểm đến');
-            return;
-        }
-
-        if (origin === destination) {
-            setError('Điểm đi và điểm đến không được trùng nhau');
+            setError('Vui lòng nhập cả điểm đi và điểm đến');
             return;
         }
 
@@ -139,185 +95,158 @@ const RouteSearch = ({ onRouteFound }) => {
         setError(null);
 
         try {
-            // Kiểm tra xem origin và destination có phải là đối tượng không
-            // Nếu là, sử dụng ID; nếu không, sử dụng tên
-            const originParam = typeof origin === 'object' ? origin.id : origin;
-            const destinationParam = typeof destination === 'object' ? destination.id : destination;
+            // Lấy ID của điểm đi và điểm đến
+            const originStop = suggestions.find(stop =>
+                stop.name.toLowerCase() === origin.toLowerCase() ||
+                stop.address?.toLowerCase() === origin.toLowerCase()
+            );
 
-            // Gọi API với tham số đúng định dạng
-            const response = await authApi.get('/api/routes/search', {
-                params: {
-                    from: originParam,
-                    to: destinationParam
-                }
-            });
+            const destStop = suggestions.find(stop =>
+                stop.name.toLowerCase() === destination.toLowerCase() ||
+                stop.address?.toLowerCase() === destination.toLowerCase()
+            );
 
-            console.log('Search response:', response.data);
+            if (!originStop || !destStop) {
+                setError('Không tìm thấy điểm đi hoặc điểm đến');
+                setLoading(false);
+                return;
+            }
 
-            if (Array.isArray(response.data)) {
-                setSearchResults(response.data);
-                setActiveRouteCount(Math.min(response.data.length, 3)); // Giới hạn tối đa 3 tuyến
+            // Gọi API để tìm các tuyến kết nối 2 điểm
+            // Ví dụ: một API endpoint có thể là /routes/find?originId=123&destinationId=456
+            const response = await fetch(`http://localhost:8080/PTS/api/routes/find?originId=${originStop.id}&destinationId=${destStop.id}`);
 
-                // Nếu có kết quả và có hàm callback
-                if (response.data.length > 0 && onRouteFound) {
-                    onRouteFound(response.data[0]);
-                }
+            if (!response.ok) {
+                throw new Error('Không thể tìm tuyến đường');
+            }
+
+            const data = await response.json();
+
+            if (data.length === 0) {
+                setError('Không tìm thấy tuyến đường phù hợp');
             } else {
-                setSearchResults([]);
-                setActiveRouteCount(0);
+                setSearchResults(data);
+                if (onRouteFound && data.length > 0) {
+                    onRouteFound(data[0]); // Tự động chọn tuyến đầu tiên
+                }
             }
         } catch (err) {
-            console.error('Error searching routes:', err);
-            // Hiển thị thông báo lỗi chi tiết hơn
-            const errorMessage = err.response?.data?.message || 'Không thể tìm kiếm tuyến. Vui lòng thử lại sau.';
-            setError(errorMessage);
+            console.error('Lỗi khi tìm kiếm tuyến:', err);
+            setError('Có lỗi xảy ra khi tìm kiếm. Vui lòng thử lại sau.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="route-search">
-            <div className="search-container">
-                <div className="search-header">
-                    <div className="location-inputs">
-                        <div className="search-input-container origin-input">
-                            <div className="input-icon">
-                                <FaDotCircle className="origin-icon" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Điểm đi..."
-                                value={typeof origin === 'object' ? origin.displayName || origin.stop_name : origin}
-                                onChange={handleOriginChange}
-                                onFocus={() => setShowOriginSuggestions(true)}
-                                className="search-input"
-                            />
-                            {showOriginSuggestions && originSuggestions.length > 0 && (
-                                <ul className="suggestion-list">
-                                    {originSuggestions.map((stop, index) => (
-                                        <li
-                                            key={stop.id || index}
-                                            onClick={() => selectOrigin(stop)}
-                                            className="suggestion-item"
-                                        >
-                                            <div className="suggestion-icon">
-                                                <FaMapMarkerAlt />
-                                            </div>
-                                            <div className="suggestion-text">
-                                                <span className="suggestion-name">{stop.stop_name || 'Không có tên'}</span>
-                                                {stop.address && <span className="suggestion-address">{stop.address}</span>}
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-
-                        <button className="swap-button" onClick={swapLocations}>
-                            <FaExchangeAlt />
-                        </button>
-
-                        {/* Thêm input điểm đến ở đây */}
-                        <div className="search-input-container dest-input">
-                            <div className="input-icon">
-                                <FaFlag className="dest-icon" />
-                            </div>
-                            <input
-                                type="text"
-                                placeholder="Điểm đến..."
-                                value={typeof destination === 'object' ? destination.displayName || destination.stop_name : destination}
-                                onChange={handleDestinationChange}
-                                onFocus={() => setShowDestSuggestions(true)}
-                                className="search-input"
-                            />
-                            {showDestSuggestions && destSuggestions.length > 0 && (
-                                <ul className="suggestion-list">
-                                    {destSuggestions.map((stop, index) => (
-                                        <li
-                                            key={stop.id || index}
-                                            onClick={() => selectDestination(stop)}
-                                            className="suggestion-item"
-                                        >
-                                            <div className="suggestion-icon">
-                                                <FaMapMarkerAlt />
-                                            </div>
-                                            <div className="suggestion-text">
-                                                <span className="suggestion-name">{stop.stop_name || 'Không có tên'}</span>
-                                                {stop.address && <span className="suggestion-address">{stop.address}</span>}
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-
-
+        <div className="route-search-container">
+            <div className="search-inputs">
+                <div className="input-group">
+                    <div className="input-icon origin-icon">
+                        <i className="fas fa-map-marker-alt"></i>
                     </div>
-
-                    <button
-                        className="search-button"
-                        onClick={handleSearch}
-                        disabled={loading}
-                    >
-                        {loading ? 'Đang tìm...' : 'Tìm kiếm'}
-                    </button>
+                    <div className="input-wrapper">
+                        <input
+                            type="text"
+                            placeholder="Điểm đi"
+                            value={origin}
+                            onChange={handleOriginChange}
+                            onFocus={() => setShowOriginSuggestions(true)}
+                        />
+                        {showOriginSuggestions && originSuggestions.length > 0 && (
+                            <div className="suggestions-dropdown">
+                                {originSuggestions.map(stop => (
+                                    <div
+                                        key={stop.id}
+                                        className="suggestion-item"
+                                        onClick={() => selectOrigin(stop)}
+                                    >
+                                        <div className="suggestion-name">{stop.name}</div>
+                                        <div className="suggestion-address">{stop.address}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                {error && <div className="error-message">{error}</div>}
+                <button className="swap-button" onClick={swapLocations}>
+                    <i className="fas fa-exchange-alt"></i>
+                </button>
 
-                {searchResults.length > 0 && (
-                    <div className="route-options">
-                        <div className="route-count-header">
-                            <span>SỐ TUYẾN ĐI TỐI ĐA</span>
-                            <div className="route-counter">
-                                <span className={`route-option ${activeRouteCount === 1 ? 'active' : ''}`}>1 Tuyến</span>
-                                <span className={`route-option ${activeRouteCount === 2 ? 'active' : ''}`}>2 Tuyến</span>
-                                <span className={`route-option ${activeRouteCount === 3 ? 'active' : ''}`}>3 Tuyến</span>
-                            </div>
-                        </div>
+                <div className="input-group">
+                    <div className="input-icon dest-icon">
+                        <i className="fas fa-map-marker"></i>
                     </div>
-                )}
+                    <div className="input-wrapper">
+                        <input
+                            type="text"
+                            placeholder="Điểm đến"
+                            value={destination}
+                            onChange={handleDestinationChange}
+                            onFocus={() => setShowDestSuggestions(true)}
+                        />
+                        {showDestSuggestions && destSuggestions.length > 0 && (
+                            <div className="suggestions-dropdown">
+                                {destSuggestions.map(stop => (
+                                    <div
+                                        key={stop.id}
+                                        className="suggestion-item"
+                                        onClick={() => selectDestination(stop)}
+                                    >
+                                        <div className="suggestion-name">{stop.name}</div>
+                                        <div className="suggestion-address">{stop.address}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
 
-            <div className="search-results">
-                {searchResults.length > 0 ? (
-                    <ul className="routes">
-                        {searchResults.map((route) => (
-                            <li
+            <button
+                className="search-button"
+                onClick={handleSearch}
+                disabled={loading}
+            >
+                {loading ? 'Đang tìm...' : 'Tìm Kiếm'}
+            </button>
+
+            {error && <div className="error-message">{error}</div>}
+
+            {searchResults.length > 0 && (
+                <div className="search-results">
+                    <h3>Kết quả tìm kiếm:</h3>
+                    <div className="routes-result-list">
+                        {searchResults.map((route, index) => (
+                            <div
                                 key={route.id}
-                                className="route-item"
-                                onClick={() => onRouteFound && onRouteFound(route)}
+                                className={`route-result-item ${index === 0 ? 'active' : ''}`}
+                                onClick={() => {
+                                    onRouteFound(route);
+                                    setActiveRouteCount(index + 1);
+                                }}
                             >
-                                <div className="route-icon">
-                                    {route.icon && <img src={route.icon} alt="icon" /> ||
-                                        <div className="route-number" style={{ backgroundColor: route.route_color || '#4CAF50' }}>
-                                            {route.id}
-                                        </div>}
+                                <div className="route-number" style={{ backgroundColor: route.color || '#4CAF50' }}>
+                                    {index + 1}
                                 </div>
-                                <div className="route-info">
-                                    <h3 className="route-name" style={{ color: route.route_color || '#4CAF50' }}>
-                                        {route.name}
-                                    </h3>
-                                    <p className="route-path">{route.start_location} - {route.end_location}</p>
-                                    <div className="route-details">
-                                        <span className="route-time">
-                                            <i className="far fa-clock"></i> {route.operation_start_time?.substring(0, 5)} - {route.operation_end_time?.substring(0, 5)}
+                                <div className="route-result-info">
+                                    <div className="route-result-name">{route.name}</div>
+                                    <div className="route-result-path">{route.route}</div>
+                                    <div className="route-result-details">
+                                        <span className="time">
+                                            <i className="far fa-clock"></i> {route.operatingHours || "06:00 - 20:00"}
                                         </span>
-                                        <span className="route-frequency">
-                                            <i className="fas fa-sync-alt"></i> {route.frequency_minutes || '15'} phút/chuyến
+                                        <span className="stops">
+                                            <i className="fas fa-bus"></i> {route.totalStops || "?"} trạm
                                         </span>
                                     </div>
                                 </div>
-                            </li>
+                            </div>
                         ))}
-                    </ul>
-                ) : (
-                    !loading && searchResults.length === 0 && origin && destination && (
-                        <p className="no-data">Không tìm thấy tuyến đường phù hợp.</p>
-                    )
-                )}
-            </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,28 +1,29 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { Button, Form, Card, Spinner } from 'react-bootstrap';
 import { UserDispatchContext } from "../configs/MyContexts";
-import { authApi, endpoints } from "../configs/Apis";
+import { authApi } from "../configs/Apis";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  
+
   // State cho các chế độ giao diện
   const [view, setView] = useState('login'); // 'login', 'forgotPassword', 'resetPassword'
-  
+
   // State cho quên mật khẩu
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  
+
   // State cho đặt lại mật khẩu
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
-  
+
   const navigate = useNavigate();
   const dispatch = useContext(UserDispatchContext);
 
@@ -52,7 +53,7 @@ const Login = () => {
 
     try {
       const response = await authApi.post("auth/login", formData);
-      
+
       const user = response.data;
       user.token = btoa(`${user.id}:${user.username}:${new Date().getTime()}`);
 
@@ -65,13 +66,13 @@ const Login = () => {
       });
 
       toast.success("Đăng nhập thành công!");
-      
+
       setTimeout(() => {
         navigate('/');
       }, 1500);
     } catch (error) {
       toast.error(
-        error.response?.data?.error || 
+        error.response?.data?.error ||
         "Đăng nhập thất bại. Vui lòng kiểm tra tên đăng nhập và mật khẩu."
       );
     } finally {
@@ -81,34 +82,34 @@ const Login = () => {
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    
+
     if (!forgotEmail) {
       toast.error("Vui lòng nhập địa chỉ email");
       return;
     }
-    
+
     // Kiểm tra định dạng email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(forgotEmail)) {
       toast.error("Vui lòng nhập địa chỉ email hợp lệ");
       return;
     }
-    
+
     setForgotLoading(true);
-    
+
     try {
       const response = await authApi.post(endpoints.forgotPassword, null, {
         params: { email: forgotEmail }
       });
-      
+
       toast.success("Mã xác nhận đã được gửi đến email của bạn");
-      
+
       // Chuyển người dùng đến trang Reset
       navigate('/reset-password');
-      
+
     } catch (error) {
       toast.error(
-        error.response?.data?.error || 
+        error.response?.data?.error ||
         "Không thể xử lý yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau."
       );
     } finally {
@@ -118,22 +119,22 @@ const Login = () => {
 
   const handleResetPassword = async (e) => {
     e.preventDefault();
-    
+
     if (!resetToken) {
       toast.error("Mã xác nhận không hợp lệ");
       return;
     }
-    
+
     if (!newPassword || !confirmPassword) {
       toast.error("Vui lòng nhập mật khẩu mới và xác nhận mật khẩu");
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       toast.error("Mật khẩu mới và xác nhận mật khẩu không khớp");
       return;
     }
-    
+
     // Kiểm tra độ phức tạp của mật khẩu
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
@@ -142,27 +143,27 @@ const Login = () => {
       );
       return;
     }
-    
+
     setResetLoading(true);
-    
+
     try {
       const formData = new FormData();
       formData.append("token", resetToken);
       formData.append("newPassword", newPassword);
-      
+
       const response = await authApi.post(endpoints.resetPassword, formData);
-      
+
       toast.success(response.data.message);
-      
+
       // Reset form và chuyển về màn hình đăng nhập
       setResetToken("");
       setNewPassword("");
       setConfirmPassword("");
       setView('login');
-      
+
     } catch (error) {
       toast.error(
-        error.response?.data?.error || 
+        error.response?.data?.error ||
         "Không thể đặt lại mật khẩu. Vui lòng thử lại sau."
       );
     } finally {
@@ -185,7 +186,7 @@ const Login = () => {
             style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
           />
         </Form.Group>
-        
+
         <Form.Group className="mb-4">
           <Form.Label>Mật khẩu</Form.Label>
           <Form.Control
@@ -197,13 +198,13 @@ const Login = () => {
             style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
           />
         </Form.Group>
-        
+
         <div className="d-grid gap-2">
           <Button
             type="submit"
             disabled={loading}
-            style={{ 
-              backgroundColor: '#000000', 
+            style={{
+              backgroundColor: '#000000',
               borderColor: '#000000',
               padding: '12px',
               fontWeight: '600',
@@ -219,18 +220,18 @@ const Login = () => {
             ) : 'Đăng nhập'}
           </Button>
         </div>
-        
+
         <div className="text-center mt-3">
           <div className="mb-2">
             <span style={{ color: '#6c757d', fontSize: '0.9rem' }}>Chưa có tài khoản? </span>
-            <Link to="/register" style={{color: '#000000', fontWeight: '500', textDecoration: 'none' }}>Đăng ký</Link>
+            <Link to="/register" style={{ color: '#000000', fontWeight: '500', textDecoration: 'none' }}>Đăng ký</Link>
           </div>
           <div>
-            <span 
+            <span
               onClick={() => setView('forgotPassword')}
-              style={{ 
-                color: '#000000', 
-                fontWeight: '500', 
+              style={{
+                color: '#000000',
+                fontWeight: '500',
                 cursor: 'pointer',
                 textDecoration: 'none'
               }}
@@ -246,7 +247,7 @@ const Login = () => {
   const renderForgotPasswordView = () => (
     <>
       <div className="mb-3">
-        <button 
+        <button
           className="btn btn-sm"
           onClick={() => setView('login')}
           style={{
@@ -259,13 +260,13 @@ const Login = () => {
           <i className="fas fa-arrow-left me-1"></i> Quay lại đăng nhập
         </button>
       </div>
-      
+
       <h3 className="text-center mb-4" style={{ color: '#2b2b2b', fontWeight: '600' }}>Khôi phục mật khẩu</h3>
       <p className="text-center mb-4" style={{ color: '#6c757d', fontSize: '0.9rem' }}>
-        Nhập địa chỉ email đã đăng ký. Chúng tôi sẽ gửi cho bạn hướng dẫn 
+        Nhập địa chỉ email đã đăng ký. Chúng tôi sẽ gửi cho bạn hướng dẫn
         để đặt lại mật khẩu.
       </p>
-      
+
       <Form onSubmit={handleForgotPassword}>
         <Form.Group className="mb-4">
           <Form.Label>Địa chỉ Email</Form.Label>
@@ -278,13 +279,13 @@ const Login = () => {
             style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
           />
         </Form.Group>
-        
+
         <div className="d-grid gap-2">
           <Button
             type="submit"
             disabled={forgotLoading}
-            style={{ 
-              backgroundColor: '#000000', 
+            style={{
+              backgroundColor: '#000000',
               borderColor: '#000000',
               padding: '12px',
               fontWeight: '600',
@@ -306,7 +307,7 @@ const Login = () => {
   const renderResetPasswordView = () => (
     <>
       <div className="mb-3">
-        <button 
+        <button
           className="btn btn-sm"
           onClick={() => setView('forgotPassword')}
           style={{
@@ -319,9 +320,9 @@ const Login = () => {
           <i className="fas fa-arrow-left me-1"></i> Quay lại
         </button>
       </div>
-      
+
       <h3 className="text-center mb-4" style={{ color: '#2b2b2b', fontWeight: '600' }}>Đặt lại mật khẩu</h3>
-      
+
       <Form onSubmit={handleResetPassword}>
         <Form.Group className="mb-3">
           <Form.Label>Mã xác nhận</Form.Label>
@@ -337,7 +338,7 @@ const Login = () => {
             Nhập mã xác nhận từ email hoặc từ phản hồi hệ thống.
           </Form.Text>
         </Form.Group>
-        
+
         <Form.Group className="mb-3">
           <Form.Label>Mật khẩu mới</Form.Label>
           <Form.Control
@@ -349,7 +350,7 @@ const Login = () => {
             style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
           />
         </Form.Group>
-        
+
         <Form.Group className="mb-4">
           <Form.Label>Xác nhận mật khẩu mới</Form.Label>
           <Form.Control
@@ -361,17 +362,17 @@ const Login = () => {
             style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
           />
           <Form.Text style={{ color: '#6c757d', fontSize: '0.85rem' }}>
-            Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, 
+            Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường,
             số và ký tự đặc biệt (@$!%*?&)
           </Form.Text>
         </Form.Group>
-        
+
         <div className="d-grid gap-2">
           <Button
             type="submit"
             disabled={resetLoading}
-            style={{ 
-              backgroundColor: '#000000', 
+            style={{
+              backgroundColor: '#000000',
               borderColor: '#000000',
               padding: '12px',
               fontWeight: '600',
@@ -392,22 +393,22 @@ const Login = () => {
 
   return (
     <div className="login-container d-flex align-items-center justify-content-center"
-        style={{ 
-          minHeight: "100vh", 
-          width: "100vw",
-          margin: "0",
-          padding: "0",
-          background: "#121212", /* Nền đen */
-          position: "fixed", 
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: "hidden"
-        }}>
-      <Card className="shadow-lg" style={{ 
-        width: "420px", 
-        maxWidth: "90%", 
+      style={{
+        minHeight: "100vh",
+        width: "100vw",
+        margin: "0",
+        padding: "0",
+        background: "#121212", /* Nền đen */
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        overflow: "hidden"
+      }}>
+      <Card className="shadow-lg" style={{
+        width: "420px",
+        maxWidth: "90%",
         borderRadius: "12px",
         border: "none",
         backgroundColor: "#ffffff", /* Card màu trắng */

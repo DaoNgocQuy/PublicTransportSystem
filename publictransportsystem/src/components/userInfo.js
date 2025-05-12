@@ -3,14 +3,14 @@ import { Container, Row, Col, Card, Form, Button, Tab, Tabs, Spinner, Alert } fr
 import { toast } from 'react-toastify';
 import { authApi } from '../configs/Apis';
 import { FaEnvelope, FaPhone, FaCalendar, FaClock } from 'react-icons/fa';
-import './userInfo.css'; 
+import './userInfo.css';
 
 const Userinfo = () => {
   // State cho thông tin người dùng
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // State cho form chỉnh sửa thông tin
   const [formData, setFormData] = useState({
     fullName: '',
@@ -18,21 +18,21 @@ const Userinfo = () => {
     phone: '',
     avatar: null
   });
-  
+
   // State cho form đổi mật khẩu
   const [passwordData, setPasswordData] = useState({
     oldPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
-  
+
   // State cho hiển thị ảnh xem trước
   const [previewImage, setPreviewImage] = useState(null);
-  
+
   // State cho các thao tác đang xử lý
   const [updating, setUpdating] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
-  
+
   // State cho thông báo kết quả
   const [updateMessage, setUpdateMessage] = useState(null);
   const [passwordMessage, setPasswordMessage] = useState(null);
@@ -46,18 +46,18 @@ const Userinfo = () => {
   const fetchUserInfo = async () => {
     try {
       setLoading(true);
-      
+
       // Lấy thông tin người dùng từ sessionStorage
       const userStr = sessionStorage.getItem('user');
       if (!userStr) {
         throw new Error('Không tìm thấy thông tin người dùng');
       }
-      
+
       const userData = JSON.parse(userStr);
-      
+
       // Gọi API để lấy thông tin chi tiết nhất
       const response = await authApi.get(`/auth/profile/${userData.id}`);
-      
+
       // Cập nhật state
       setUser(response.data);
       setFormData({
@@ -65,7 +65,7 @@ const Userinfo = () => {
         email: response.data.email || '',
         phone: response.data.phone || ''
       });
-      
+
       setError(null);
     } catch (err) {
       console.error('Lỗi khi lấy thông tin người dùng:', err);
@@ -102,7 +102,7 @@ const Userinfo = () => {
         ...formData,
         avatar: file
       });
-      
+
       // Hiển thị ảnh xem trước
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -115,34 +115,34 @@ const Userinfo = () => {
   // Xử lý cập nhật thông tin
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
-    
+
     try {
       setUpdating(true);
       setUpdateMessage(null);
-      
+
       // Tạo form data để gửi lên server
       const updateFormData = new FormData();
       updateFormData.append('fullName', formData.fullName);
       updateFormData.append('email', formData.email);
       updateFormData.append('phone', formData.phone);
-      
+
       if (formData.avatar) {
         updateFormData.append('avatar', formData.avatar);
       }
-      
+
       // Gọi API cập nhật thông tin
       const response = await authApi.put(`/auth/profile/${user.id}`, updateFormData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      
+
       // Cập nhật user state và sessionStorage
       setUser({
         ...user,
         ...response.data
       });
-      
+
       // Cập nhật thông tin trong sessionStorage
       const userStr = sessionStorage.getItem('user');
       if (userStr) {
@@ -153,10 +153,10 @@ const Userinfo = () => {
         };
         sessionStorage.setItem('user', JSON.stringify(updatedUserData));
       }
-      
+
       setUpdateMessage({ type: 'success', text: 'Cập nhật thông tin thành công!' });
       toast.success('Cập nhật thông tin thành công!');
-      
+
     } catch (err) {
       console.error('Lỗi khi cập nhật thông tin:', err);
       const errorMessage = err.response?.data?.error || 'Không thể cập nhật thông tin. Vui lòng thử lại sau.';
@@ -170,27 +170,27 @@ const Userinfo = () => {
   // Xử lý đổi mật khẩu
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    
+
     // Kiểm tra mật khẩu mới và xác nhận mật khẩu
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setPasswordMessage({ type: 'danger', text: 'Mật khẩu mới và xác nhận mật khẩu không khớp' });
       return;
     }
-    
+
     // Kiểm tra độ phức tạp của mật khẩu
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(passwordData.newPassword)) {
-      setPasswordMessage({ 
-        type: 'danger', 
-        text: 'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)' 
+      setPasswordMessage({
+        type: 'danger',
+        text: 'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)'
       });
       return;
     }
-    
+
     try {
       setChangingPassword(true);
       setPasswordMessage(null);
-      
+
       // Gọi API đổi mật khẩu
       const response = await authApi.post(`/auth/change-password/${user.id}`, null, {
         params: {
@@ -198,17 +198,17 @@ const Userinfo = () => {
           newPassword: passwordData.newPassword
         }
       });
-      
+
       // Xóa dữ liệu form mật khẩu
       setPasswordData({
         oldPassword: '',
         newPassword: '',
         confirmPassword: ''
       });
-      
+
       setPasswordMessage({ type: 'success', text: 'Đổi mật khẩu thành công!' });
       toast.success('Đổi mật khẩu thành công!');
-      
+
     } catch (err) {
       console.error('Lỗi khi đổi mật khẩu:', err);
       const errorMessage = err.response?.data?.error || 'Không thể đổi mật khẩu. Vui lòng thử lại sau.';
@@ -244,50 +244,50 @@ const Userinfo = () => {
         <Col lg={4} md={5}>
           <Card className="profile-card text-center mb-4">
             <Card.Body>
-                <div className="avatar-container">
-                <img 
-                    src={previewImage || user.avatarUrl || 'https://via.placeholder.com/150/CCCCCC/FFFFFF?text=User'}
-                    alt="Avatar"
-                    className="avatar-img"
+              <div className="avatar-container">
+                <img
+                  src={previewImage || user.avatarUrl || 'https://via.placeholder.com/150/CCCCCC/FFFFFF?text=User'}
+                  alt="Avatar"
+                  className="avatar-img"
                 />
-                </div>
-                <h4 className="user-name">{user.fullName || user.username}</h4>
-                <p className="user-role">{user.role || 'USER'}</p>
-                
-                {/* Phần thông tin liên hệ được cập nhật */}
-                <div className="contact-info">
+              </div>
+              <h4 className="user-name">{user.fullName || user.username}</h4>
+              <p className="user-role">{user.role || 'USER'}</p>
+
+              {/* Phần thông tin liên hệ được cập nhật */}
+              <div className="contact-info">
                 <div className="info-item">
-                    <FaEnvelope />
-                    <div>
+                  <FaEnvelope />
+                  <div>
                     <span className="contact-label">Email</span>
                     <div className="contact-value">{user.email || 'Chưa có email'}</div>
-                    </div>
+                  </div>
                 </div>
                 {user.phone && (
-                    <div className="info-item">
+                  <div className="info-item">
                     <FaPhone />
                     <div>
-                        <span className="contact-label">Số điện thoại</span>
-                        <div className="contact-value">{user.phone}</div>
+                      <span className="contact-label">Số điện thoại</span>
+                      <div className="contact-value">{user.phone}</div>
                     </div>
-                    </div>
+                  </div>
                 )}
-                </div>
-                
-                <div className="last-login">
+              </div>
+
+              <div className="last-login">
                 <div>
-                    <FaClock />
-                    <span>Đăng nhập cuối: {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A'}</span>
+                  <FaClock />
+                  <span>Đăng nhập cuối: {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'N/A'}</span>
                 </div>
                 {user.createdAt && (
-                    <div>
+                  <div>
                     <FaCalendar />
                     <span>Tham gia: {new Date(user.createdAt).toLocaleDateString()}</span>
-                    </div>
+                  </div>
                 )}
-                </div>
+              </div>
             </Card.Body>
-            </Card>
+          </Card>
         </Col>
 
         <Col lg={8} md={7}>
@@ -303,15 +303,15 @@ const Userinfo = () => {
                       {updateMessage.text}
                     </Alert>
                   )}
-                  
+
                   <Form onSubmit={handleUpdateProfile}>
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Tên đăng nhập</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          plaintext 
-                          readOnly 
-                          defaultValue={user.username} 
+                        <Form.Control
+                          plaintext
+                          readOnly
+                          defaultValue={user.username}
                           className="form-control-plaintext"
                         />
                       </Col>
@@ -320,9 +320,9 @@ const Userinfo = () => {
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Họ và tên</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="text" 
-                          name="fullName" 
+                        <Form.Control
+                          type="text"
+                          name="fullName"
                           value={formData.fullName}
                           onChange={handleInputChange}
                         />
@@ -332,9 +332,9 @@ const Userinfo = () => {
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Email</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="email" 
-                          name="email" 
+                        <Form.Control
+                          type="email"
+                          name="email"
                           value={formData.email}
                           onChange={handleInputChange}
                         />
@@ -344,9 +344,9 @@ const Userinfo = () => {
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Số điện thoại</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="text" 
-                          name="phone" 
+                        <Form.Control
+                          type="text"
+                          name="phone"
                           value={formData.phone}
                           onChange={handleInputChange}
                         />
@@ -356,8 +356,8 @@ const Userinfo = () => {
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Ảnh đại diện</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="file" 
+                        <Form.Control
+                          type="file"
                           accept="image/*"
                           onChange={handleFileChange}
                         />
@@ -368,8 +368,8 @@ const Userinfo = () => {
                     </Form.Group>
 
                     <div className="d-flex justify-content-end">
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         variant="primary"
                         disabled={updating}
                       >
@@ -383,21 +383,21 @@ const Userinfo = () => {
                     </div>
                   </Form>
                 </Tab>
-                
+
                 <Tab eventKey="password" title="Đổi mật khẩu">
                   {passwordMessage && (
                     <Alert variant={passwordMessage.type} dismissible onClose={() => setPasswordMessage(null)}>
                       {passwordMessage.text}
                     </Alert>
                   )}
-                  
+
                   <Form onSubmit={handleChangePassword}>
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Mật khẩu hiện tại</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="password" 
-                          name="oldPassword" 
+                        <Form.Control
+                          type="password"
+                          name="oldPassword"
                           value={passwordData.oldPassword}
                           onChange={handlePasswordChange}
                           required
@@ -408,9 +408,9 @@ const Userinfo = () => {
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Mật khẩu mới</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="password" 
-                          name="newPassword" 
+                        <Form.Control
+                          type="password"
+                          name="newPassword"
                           value={passwordData.newPassword}
                           onChange={handlePasswordChange}
                           required
@@ -424,9 +424,9 @@ const Userinfo = () => {
                     <Form.Group as={Row} className="mb-3">
                       <Form.Label column sm={3}>Xác nhận mật khẩu</Form.Label>
                       <Col sm={9}>
-                        <Form.Control 
-                          type="password" 
-                          name="confirmPassword" 
+                        <Form.Control
+                          type="password"
+                          name="confirmPassword"
                           value={passwordData.confirmPassword}
                           onChange={handlePasswordChange}
                           required
@@ -435,8 +435,8 @@ const Userinfo = () => {
                     </Form.Group>
 
                     <div className="d-flex justify-content-end">
-                      <Button 
-                        type="submit" 
+                      <Button
+                        type="submit"
                         variant="primary"
                         disabled={changingPassword}
                       >

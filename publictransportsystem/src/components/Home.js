@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import busIcon from '../assets/icons/bus.png';
-import metroIcon from '../assets/icons/metro.png';
 import MapLeaflet from './Map/MapLeaflet';
 import RouteSearch from './RoutesList/RouteSearch'; // Import component tìm kiếm
 import { UserContext } from '../configs/MyContexts';
@@ -230,7 +227,8 @@ const Home = () => {
 
     const handleRouteSelect = (route) => {
         setSelectedRoute(route);
-        setTripDirection('outbound'); // Reset to outbound when selecting a new route
+        setTripDirection('outbound');
+        // Reset to outbound when selecting a new route
     };
 
     // Switch between outbound and return trips

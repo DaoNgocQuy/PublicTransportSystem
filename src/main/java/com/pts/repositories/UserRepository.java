@@ -1,6 +1,8 @@
 package com.pts.repositories;
 
 import com.pts.pojo.Users;
+
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +20,8 @@ public interface UserRepository {
     boolean deleteUser(int id);
     boolean updateLastLogin(int id);
     Users getUserById(Integer userId);
+    boolean saveResetPasswordToken(Integer userId, String token, Date expiryTime);
+    Optional<Integer> getUserIdByResetToken(String token);
+    boolean isResetTokenExpired(String token);
+    boolean deleteResetToken(String token);
 }

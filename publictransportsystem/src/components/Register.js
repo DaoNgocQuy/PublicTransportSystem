@@ -123,15 +123,32 @@ const Register = () => {
     <div className="register-container d-flex align-items-center justify-content-center"
          style={{ 
            minHeight: "100vh", 
-           background: "linear-gradient(135deg, #6e8efb, #a777e3)",
-           padding: "40px 0" 
+           width: "100vw",
+           margin: "0",
+           padding: "0",
+           background: "#121212", /* Nền đen */
+           position: "fixed",
+           top: 0,
+           left: 0,
+           right: 0,
+           bottom: 0,
+           overflow: "hidden"
          }}>
-      <div className="card shadow-lg p-4" style={{ width: "600px", maxWidth: "90%" }}>
-        <h2 className="text-center mb-4">Đăng ký tài khoản</h2>
+      <div className="card shadow-lg p-4" style={{ 
+        width: "600px", 
+        maxWidth: "90%", 
+        borderRadius: "12px",
+        border: "none",
+        backgroundColor: "#ffffff", /* Card màu trắng */
+        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)"
+      }}>
+        <h2 className="text-center mb-4" style={{ color: '#212529', fontWeight: 600 }}>Đăng ký tài khoản</h2>
         <form onSubmit={handleSubmit}>
           <div className="row">
             <div className="col-md-6 mb-3">
-              <label htmlFor="username" className="form-label">Tên đăng nhập <span className="text-danger">*</span></label>
+              <label htmlFor="username" className="form-label" style={{ fontWeight: 500 }}>
+                Tên đăng nhập <span className="text-danger">*</span>
+              </label>
               <input 
                 type="text" 
                 className="form-control" 
@@ -140,10 +157,13 @@ const Register = () => {
                 value={userData.username}
                 onChange={handleChange}
                 disabled={loading}
+                style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
               />
             </div>
             <div className="col-md-6 mb-3">
-              <label htmlFor="fullName" className="form-label">Họ và tên <span className="text-danger">*</span></label>
+              <label htmlFor="fullName" className="form-label" style={{ fontWeight: 500 }}>
+                Họ và tên <span className="text-danger">*</span>
+              </label>
               <input 
                 type="text" 
                 className="form-control" 
@@ -152,28 +172,34 @@ const Register = () => {
                 value={userData.fullName}
                 onChange={handleChange}
                 disabled={loading}
+                style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
               />
             </div>
           </div>
 
           <div className="row">
-          <div className="col-md-6 mb-3">
-            <label htmlFor="password" className="form-label">Mật khẩu <span className="text-danger">*</span></label>
-            <input 
-              type="password" 
-              className="form-control" 
-              id="password" 
-              name="password"
-              value={userData.password}
-              onChange={handleChange}
-              disabled={loading}
-            />
-            <small className="form-text text-muted">
-              Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)
-            </small>
-          </div>
             <div className="col-md-6 mb-3">
-              <label htmlFor="confirmPassword" className="form-label">Xác nhận mật khẩu <span className="text-danger">*</span></label>
+              <label htmlFor="password" className="form-label" style={{ fontWeight: 500 }}>
+                Mật khẩu <span className="text-danger">*</span>
+              </label>
+              <input 
+                type="password" 
+                className="form-control" 
+                id="password" 
+                name="password"
+                value={userData.password}
+                onChange={handleChange}
+                disabled={loading}
+                style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
+              />
+              <small className="form-text" style={{ color: '#6c757d', fontSize: '0.85rem' }}>
+                Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)
+              </small>
+            </div>
+            <div className="col-md-6 mb-3">
+              <label htmlFor="confirmPassword" className="form-label" style={{ fontWeight: 500 }}>
+                Xác nhận mật khẩu <span className="text-danger">*</span>
+              </label>
               <input 
                 type="password" 
                 className="form-control" 
@@ -182,13 +208,16 @@ const Register = () => {
                 value={userData.confirmPassword}
                 onChange={handleChange}
                 disabled={loading}
+                style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
               />
             </div>
           </div>
 
           <div className="row">
             <div className="col-md-6 mb-3">
-              <label htmlFor="email" className="form-label">Email <span className="text-danger">*</span></label>
+              <label htmlFor="email" className="form-label" style={{ fontWeight: 500 }}>
+                Email <span className="text-danger">*</span>
+              </label>
               <input 
                 type="email" 
                 className="form-control" 
@@ -197,10 +226,11 @@ const Register = () => {
                 value={userData.email}
                 onChange={handleChange}
                 disabled={loading}
+                style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
               />
             </div>
             <div className="col-md-6 mb-3">
-              <label htmlFor="phone" className="form-label">Số điện thoại</label>
+              <label htmlFor="phone" className="form-label" style={{ fontWeight: 500 }}>Số điện thoại</label>
               <input 
                 type="tel" 
                 className="form-control" 
@@ -209,12 +239,13 @@ const Register = () => {
                 value={userData.phone}
                 onChange={handleChange}
                 disabled={loading}
+                style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
               />
             </div>
           </div>
 
           <div className="mb-3">
-            <label htmlFor="avatar" className="form-label">Ảnh đại diện</label>
+            <label htmlFor="avatar" className="form-label" style={{ fontWeight: 500 }}>Ảnh đại diện</label>
             <input 
               type="file" 
               className="form-control" 
@@ -222,6 +253,7 @@ const Register = () => {
               accept="image/*"
               onChange={handleAvatarChange}
               disabled={loading}
+              style={{ padding: '12px', borderRadius: '4px', fontSize: '0.95rem' }}
             />
             {avatarPreview && (
               <div className="mt-2 text-center">
@@ -237,8 +269,16 @@ const Register = () => {
           <div className="d-grid gap-2 mt-4">
             <button 
               type="submit" 
-              className="btn btn-primary" 
+              className="btn" 
               disabled={loading}
+              style={{ 
+                backgroundColor: '#000000', 
+                borderColor: '#000000',
+                color: '#ffffff',
+                padding: '12px',
+                fontWeight: '600',
+                borderRadius: '4px'
+              }}
             >
               {loading ? (
                 <span>
@@ -249,7 +289,17 @@ const Register = () => {
             </button>
           </div>
           <div className="mt-3 text-center">
-            <p>Đã có tài khoản? <a href="/login">Đăng nhập</a></p>
+            <p style={{ fontSize: '0.9rem' }}>
+              Đã có tài khoản? 
+              <a href="/login" style={{ 
+                color: '#000000', 
+                fontWeight: '500', 
+                textDecoration: 'none',
+                marginLeft: '5px'
+              }}>
+                Đăng nhập
+              </a>
+            </p>
           </div>
         </form>
       </div>

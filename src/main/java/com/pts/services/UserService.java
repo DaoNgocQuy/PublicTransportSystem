@@ -1,6 +1,8 @@
 package com.pts.services;
 
 import com.pts.pojo.Users;
+
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +14,9 @@ public interface UserService {
     boolean updateLastLogin(Integer userId);
     boolean updateUser(Users user);
     Optional<Users> getUserById(Integer userId);
+    boolean saveResetPasswordToken(Integer userId, String token, Date expiryTime);
+    Optional<Integer> validateResetPasswordToken(String token);
+    boolean deleteResetPasswordToken(String token);
     
     // Kiểm tra tồn tại
     boolean existsByUsername(String username);

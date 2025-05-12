@@ -9,6 +9,8 @@ const BASE_URL = 'http://localhost:8080/PTS/';
         getUserProfile: (id) => `auth/profile/${id}`,
         updateProfile: (id) => `auth/profile/${id}`,
         changePassword: (id) => `auth/change-password/${id}`,
+        forgotPassword: "auth/forgot-password", 
+        resetPassword: "auth/reset-password",   
 
         favorites: "api/favorites",
         favoritesById: (id) => `api/favorites/${id}`,

@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './map.css';
 
-// Xóa cài đặt icon mặc định để tránh lỗi
+// Solve default icon issues
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
@@ -12,17 +12,7 @@ L.Icon.Default.mergeOptions({
     shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
 });
 
-// Icon cho trạm xe buýt
-const busStopIcon = L.icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-// Component để di chuyển map đến vị trí user mỗi khi update
+// Component to fly map to user location
 const SetViewToUserLocation = ({ position }) => {
     const map = useMap();
     useEffect(() => {
@@ -33,40 +23,34 @@ const SetViewToUserLocation = ({ position }) => {
     return null;
 };
 
-// Component để di chuyển map đến trạm được chọn
+// Component to fly map to selected stop
 const SetViewToSelectedStop = ({ selectedStop }) => {
     const map = useMap();
-
     useEffect(() => {
-        if (selectedStop && selectedStop.latitude && selectedStop.longitude) {
+        if (selectedStop?.latitude && selectedStop?.longitude) {
             map.flyTo([selectedStop.latitude, selectedStop.longitude], 17);
         }
     }, [map, selectedStop]);
-
     return null;
 };
 
-// Component để di chuyển map đến trạm đầu tiên khi chọn route
+// Component to fly map to first/last stop when route is selected
 const SetViewToFirstStop = ({ busStops, selectedRoute, tripDirection, focusFirstStop }) => {
     const map = useMap();
     const previousDirectionRef = useRef(tripDirection);
 
     useEffect(() => {
-        // Focus appropriate stop when route is selected or direction changes
-        if (selectedRoute && busStops && busStops.length > 0 && focusFirstStop) {
-            // Focus on appropriate stop if direction changed or new route selected
+        if (selectedRoute && busStops?.length > 0 && focusFirstStop) {
             if (tripDirection !== previousDirectionRef.current || busStops.length > 0) {
                 previousDirectionRef.current = tripDirection;
 
-                // Lấy trạm phù hợp để focus (đầu tiên cho lượt đi, cuối cùng cho lượt về)
                 const stopToFocus = tripDirection === 'outbound'
-                    ? busStops[0]                         // first stop for outbound
-                    : busStops[busStops.length - 1];      // last stop for return
+                    ? busStops[0]
+                    : busStops[busStops.length - 1];
 
-                if (stopToFocus && stopToFocus.latitude && stopToFocus.longitude) {
-                    // Fly to appropriate stop with animation
+                if (stopToFocus?.latitude && stopToFocus?.longitude) {
                     map.flyTo([stopToFocus.latitude, stopToFocus.longitude], 16, {
-                        duration: 1.5 // Smooth animation
+                        duration: 1.5
                     });
                 }
             }
@@ -75,79 +59,99 @@ const SetViewToFirstStop = ({ busStops, selectedRoute, tripDirection, focusFirst
 
     return null;
 };
-const RoutePath = ({ busStops, tripDirection }) => {
+
+const RoutePath = React.memo(({ busStops, tripDirection }) => {
     const [routeSegments, setRouteSegments] = useState([]);
-    const [loading, setLoading] = useState(false);
     const map = useMap();
+    const routeCache = useRef({});
+    const isLoadingRef = useRef(false);
+    const routeKeyRef = useRef('');
 
-    // Generate route segments between stops using OSRM
+    // Tạo key duy nhất cho tuyến đường hiện tại
+    const routeKey = useMemo(() => {
+        if (!busStops || busStops.length < 2) return '';
+        return busStops.map(stop => stop.id).join('-') + '-' + tripDirection;
+    }, [busStops, tripDirection]);
+
+    // Xử lý việc fetch dữ liệu đường đi
     useEffect(() => {
-        if (!busStops || busStops.length < 2) {
-            setRouteSegments([]);
-            return;
-        }
+        // Nếu route key không thay đổi hoặc đang loading, không thực hiện lại
+        if (routeKey === routeKeyRef.current || isLoadingRef.current || !busStops || busStops.length < 2) return;
 
-        // Choose order based on direction
+        // Cập nhật route key hiện tại
+        routeKeyRef.current = routeKey;
+        isLoadingRef.current = true;
+
         const stopsToUse = tripDirection === 'outbound'
             ? busStops
             : [...busStops].reverse();
 
         const fetchRouteSegment = async (start, end) => {
+            const cacheKey = `${start.id}-${end.id}`;
+
+            if (routeCache.current[cacheKey]) {
+                return routeCache.current[cacheKey];
+            }
+
             try {
-                // Format: lon,lat for OSRM
                 const startPoint = `${start.longitude},${start.latitude}`;
                 const endPoint = `${end.longitude},${end.latitude}`;
 
-                // Use OSRM routing service
                 const response = await fetch(
                     `https://router.project-osrm.org/route/v1/driving/${startPoint};${endPoint}?overview=full&geometries=geojson`
                 );
 
                 const data = await response.json();
 
+                let coordinates;
                 if (data.routes && data.routes.length > 0) {
-                    // OSRM returns coordinates as [longitude, latitude], but Leaflet needs [latitude, longitude]
-                    const coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                    return coordinates;
+                    coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                } else {
+                    coordinates = [
+                        [start.latitude, start.longitude],
+                        [end.latitude, end.longitude]
+                    ];
                 }
 
-                // Fallback to direct line if routing fails
-                return [
-                    [start.latitude, start.longitude],
-                    [end.latitude, end.longitude]
-                ];
+                routeCache.current[cacheKey] = coordinates;
+                return coordinates;
             } catch (error) {
-                console.error("Error fetching route:", error);
-                // Fallback to direct line
-                return [
+                const fallback = [
                     [start.latitude, start.longitude],
                     [end.latitude, end.longitude]
                 ];
+                routeCache.current[cacheKey] = fallback;
+                return fallback;
             }
         };
 
+        // Hàm fetch tất cả các đoạn đường
         const fetchAllSegments = async () => {
-            setLoading(true);
             const segments = [];
+            const fetchPromises = [];
 
             for (let i = 0; i < stopsToUse.length - 1; i++) {
                 const start = stopsToUse[i];
                 const end = stopsToUse[i + 1];
 
-                if (start.latitude && start.longitude && end.latitude && end.longitude) {
-                    const coordinates = await fetchRouteSegment(start, end);
-
-                    segments.push({
-                        id: `${start.id}-${end.id}`,
-                        positions: coordinates
+                if (start?.latitude && start?.longitude && end?.latitude && end?.longitude) {
+                    const promise = fetchRouteSegment(start, end).then(coordinates => {
+                        segments.push({
+                            id: `${start.id}-${end.id}`,
+                            positions: coordinates
+                        });
                     });
+                    fetchPromises.push(promise);
                 }
             }
 
-            setRouteSegments(segments);
-            setLoading(false);
+            await Promise.all(fetchPromises);
 
-            // Adjust map bounds to fit the entire route
+            // Lưu kết quả và cập nhật state
+            setRouteSegments(segments);
+            isLoadingRef.current = false;
+
+            // Điều chỉnh view bản đồ chỉ khi cần thiết
             if (segments.length > 0 && map) {
                 const allCoordinates = segments.flatMap(segment => segment.positions);
                 if (allCoordinates.length > 0) {
@@ -160,13 +164,15 @@ const RoutePath = ({ busStops, tripDirection }) => {
         };
 
         fetchAllSegments();
-    }, [busStops, tripDirection, map]);
+    }, [routeKey, busStops, tripDirection, map]);
 
-    // Color based on direction
+    // Không bao giờ trả về null để đảm bảo component không bị unmount/remount
     const pathColor = tripDirection === 'outbound' ? '#4CAF50' : '#1976D2';
 
-    if (loading) return null;
-    if (routeSegments.length === 0) return null;
+    if (routeSegments.length === 0) {
+        // Trả về một element trống thay vì null để giữ component trong DOM
+        return <div style={{ display: 'none' }} />;
+    }
 
     return (
         <>
@@ -181,52 +187,48 @@ const RoutePath = ({ busStops, tripDirection }) => {
                     lineCap="round"
                 />
             ))}
-
-
         </>
     );
-};
-// Component để theo dõi sự kiện map
+}, (prevProps, nextProps) => {
+    // Custom comparison function để tránh re-render không cần thiết
+    if (!prevProps.busStops || !nextProps.busStops) return false;
+
+    if (prevProps.tripDirection !== nextProps.tripDirection) return false;
+
+    if (prevProps.busStops.length !== nextProps.busStops.length) return false;
+
+    // Chỉ so sánh ID của các trạm để đơn giản hóa
+    const prevIds = prevProps.busStops.map(stop => stop.id).join('-');
+    const nextIds = nextProps.busStops.map(stop => stop.id).join('-');
+
+    return prevIds === nextIds;
+});
+// Optimized Map events handler
 const MapEventsHandler = ({ onBoundsChange, onZoomChange }) => {
     const map = useMapEvents({
-        moveend: () => {
-            if (onBoundsChange) {
-                onBoundsChange(map.getBounds());
-            }
-        },
-        zoomend: () => {
-            if (onZoomChange) {
-                onZoomChange(map.getZoom());
-            }
-        }
+        moveend: () => onBoundsChange?.(map.getBounds()),
+        zoomend: () => onZoomChange?.(map.getZoom())
     });
 
-    // Kích hoạt sự kiện ngay khi component mount
     useEffect(() => {
-        if (onBoundsChange) {
-            onBoundsChange(map.getBounds());
-        }
-        if (onZoomChange) {
-            onZoomChange(map.getZoom());
-        }
+        onBoundsChange?.(map.getBounds());
+        onZoomChange?.(map.getZoom());
     }, [map, onBoundsChange, onZoomChange]);
 
     return null;
 };
 
-// Custom control cho nút định vị
+// Custom locate control
 const LocateControl = ({ userLocation }) => {
     const map = useMap();
 
     useEffect(() => {
-        // Tạo nút định vị và thêm vào góc phải dưới
         const locateControl = L.control({ position: 'bottomright' });
 
         locateControl.onAdd = function () {
             const div = L.DomUtil.create('div', 'leaflet-control-locate');
             const button = L.DomUtil.create('button', 'leaflet-control-locate-button', div);
 
-            // Thêm biểu tượng định vị
             button.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -234,16 +236,11 @@ const LocateControl = ({ userLocation }) => {
                 </svg>
             `;
 
-            // Thêm sự kiện click để di chuyển đến vị trí người dùng
             L.DomEvent.on(button, 'click', function () {
                 if (userLocation) {
                     button.classList.add('active');
                     map.flyTo(userLocation, 17);
-
-                    // Xóa class active sau khi animation hoàn thành
-                    setTimeout(() => {
-                        button.classList.remove('active');
-                    }, 500);
+                    setTimeout(() => button.classList.remove('active'), 500);
                 }
             });
 
@@ -252,18 +249,15 @@ const LocateControl = ({ userLocation }) => {
         };
 
         locateControl.addTo(map);
-
-        // Cleanup khi component unmount
-        return () => {
-            locateControl.remove();
-        };
+        return () => locateControl.remove();
     }, [map, userLocation]);
 
     return null;
 };
 
-// Mẫu dữ liệu trạm bus nếu không có dữ liệu truyền vào
-
+// Default coordinates for Ho Chi Minh City
+const DEFAULT_LOCATION = [10.7769, 106.7009];
+const MIN_ZOOM_SHOW_STOPS = 17;
 
 const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection, focusedStopId }) => {
     const [userLocation, setUserLocation] = useState(null);
@@ -276,40 +270,39 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
     const [focusFirstStop, setFocusFirstStop] = useState(true);
     const prevDirectionRef = useRef(tripDirection);
 
-    // Khi focusedStopId thay đổi, tìm và cập nhật trạm được focus
+    // Move the icon creation inside component
+    const busStopIcon = useMemo(() => L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    }), []);
+
+    // Set selected stop when focusedStopId changes
     useEffect(() => {
-        if (focusedStopId && busStops && busStops.length > 0) {
+        if (focusedStopId && busStops?.length > 0) {
             const stopToFocus = busStops.find(stop => stop.id === focusedStopId);
             if (stopToFocus) {
                 setSelectedStop(stopToFocus);
-                // Mark that we've focused on a specific stop
                 setFocusFirstStop(false);
             }
         }
     }, [focusedStopId, busStops]);
-    useEffect(() => {
-        console.log("Bus stops data received:", busStops?.length || 0);
-        console.log("All stops data received:", allStops?.length || 0);
-    }, [busStops, allStops]);
 
-    // Focus vào trạm đầu tiên khi route hoặc direction thay đổi
+    // Handle route or direction changes
     useEffect(() => {
         if (selectedRoute) {
-            // Reset if the direction changed
             if (prevDirectionRef.current !== tripDirection) {
                 prevDirectionRef.current = tripDirection;
-                setSelectedStop(null); // Clear any selected stop
+                setSelectedStop(null);
             }
-            setFocusFirstStop(true); // Enable auto-focus on first/last stop
+            setFocusFirstStop(true);
         }
     }, [selectedRoute, tripDirection]);
-    useEffect(() => {
-        console.log("Bus stops data received:", busStops);
-    }, [busStops]);
-    // Cấu hình hiển thị
-    const MIN_ZOOM_SHOW_STOPS = 17;
 
-    // Lấy vị trí người dùng
+    // Get user location
     useEffect(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -318,91 +311,85 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
                     setUserLocation([latitude, longitude]);
                     setAccuracy(accuracy);
                 },
-                (error) => {
-                    console.error("Error getting user location:", error);
-                    // Default to Ho Chi Minh City center if no location
-                    setUserLocation([10.7769, 106.7009]);
-                },
+                () => setUserLocation(DEFAULT_LOCATION),
                 { enableHighAccuracy: true }
             );
         } else {
-            console.error("Geolocation is not supported by this browser.");
-            // Default to Ho Chi Minh City center
-            setUserLocation([10.7769, 106.7009]);
+            setUserLocation(DEFAULT_LOCATION);
         }
     }, []);
 
-    // Memoize stopsToUse để tránh tính toán lại mỗi khi render
+    // Memoize stopsToUse
     const stopsToUse = useMemo(() => {
-        // Use allStops when no route is selected, otherwise use busStops (route-specific stops)
         if (selectedRoute) {
-            return busStops && busStops.length > 0 ? busStops : [];
-        } else {
-            return allStops && allStops.length > 0 ? allStops : [];
+            return busStops?.length > 0 ? busStops : [];
         }
+        return allStops?.length > 0 ? allStops : [];
     }, [busStops, allStops, selectedRoute]);
 
-    // Xử lý khi bounds map thay đổi
+    // Map event handlers
     const handleBoundsChange = useCallback((bounds) => {
         setMapBounds(bounds);
     }, []);
 
-    // Xử lý khi zoom level thay đổi
     const handleZoomChange = useCallback((zoom) => {
         setZoomLevel(zoom);
     }, []);
 
-    // Lọc trạm xe buýt hiển thị dựa vào bounds map và zoom level
+    // Filter visible stops based on map bounds and zoom
     useEffect(() => {
-        if (!mapBounds || !stopsToUse || stopsToUse.length === 0) return;
+        if (!mapBounds || !stopsToUse?.length) return;
 
-        // For debugging
-        console.log("Filtering stops. Available:", stopsToUse.length, "Zoom:", zoomLevel);
-
-        // Always show all route stops when a route is selected
+        // Show all route stops when a route is selected
         if (selectedRoute) {
             setVisibleStops(stopsToUse);
             return;
         }
 
-        // For testing purposes, show ALL stops to verify they're loading correctly
+        // Show all stops at high zoom levels
         if (zoomLevel >= 18) {
             setVisibleStops(stopsToUse);
             return;
         }
 
-        // Original filtering logic (only runs at very low zoom levels)
         const shouldShowAllStops = zoomLevel >= MIN_ZOOM_SHOW_STOPS;
         const filtered = stopsToUse.filter(stop => {
-            if (!stop.latitude || !stop.longitude) return false;
+            if (!stop?.latitude || !stop?.longitude) return false;
 
-            // Always show the selected stop
-            if (selectedStop && selectedStop.id === stop.id) {
-                return true;
-            }
+            // Always show selected stop
+            if (selectedStop?.id === stop.id) return true;
 
-            // For general map browsing, show stops based on zoom level and map bounds
+            // Filter by map bounds and zoom
             if (mapBounds.contains([stop.latitude, stop.longitude])) {
-                if (shouldShowAllStops) {
-                    return true; // Show all stops in bounds if zoom is sufficient
-                }
-                // At lower zoom, only show main stops if that property exists
-                if (stop.isMainStop) {
-                    return true;
-                }
+                if (shouldShowAllStops) return true;
+                if (stop.isMainStop) return true;
             }
 
             return false;
         });
 
-        // Log for debugging
-        console.log("Visible stops:", filtered.length);
-
-        // Use filtered stops at very low zoom, otherwise show all stops
         setVisibleStops(filtered);
-    }, [mapBounds, zoomLevel, selectedRoute, selectedStop, stopsToUse, MIN_ZOOM_SHOW_STOPS]);
+    }, [mapBounds, zoomLevel, selectedRoute, selectedStop, stopsToUse]);
 
-    // Khi chưa có vị trí, hiển thị loading
+    // Create user location marker icon
+    const userLocationIcon = useMemo(() => L.divIcon({
+        className: 'user-location-marker',
+        html: `
+            <div style="
+                background-color: #2196F3;
+                border: 2px solid white;
+                border-radius: 50%;
+                width: 16px;
+                height: 16px;
+                box-shadow: 0 0 10px rgba(33, 150, 243, 0.7);
+                animation: pulse 1.5s infinite;
+            "></div>
+        `,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+        popupAnchor: [0, -10]
+    }), []);
+
     if (!userLocation) {
         return <div className="map-loading">Đang tải bản đồ...</div>;
     }
@@ -418,33 +405,15 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
+
             {selectedRoute && busStops.length > 1 && (
                 <RoutePath
                     busStops={busStops}
                     tripDirection={tripDirection}
                 />
             )}
-            {/* Marker cho vị trí người dùng */}
-            <Marker
-                position={userLocation}
-                icon={L.divIcon({
-                    className: 'user-location-marker',
-                    html: `
-            <div style="
-                background-color: #2196F3;
-                border: 2px solid white;
-                border-radius: 50%;
-                width: 16px;
-                height: 16px;
-                box-shadow: 0 0 10px rgba(33, 150, 243, 0.7);
-                animation: pulse 1.5s infinite;
-            "></div>
-        `,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10],
-                    popupAnchor: [0, -10]
-                })}
-            >
+
+            <Marker position={userLocation} icon={userLocationIcon}>
                 <Popup>
                     <div>
                         <strong>Vị trí của bạn</strong>
@@ -454,7 +423,6 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
                 </Popup>
             </Marker>
 
-            {/* Markers cho các trạm xe buýt */}
             {visibleStops.map(stop => (
                 <Marker
                     key={stop.id}
@@ -474,27 +442,19 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
                 </Marker>
             ))}
 
-            {/* Component để cập nhật view khi vị trí user thay đổi */}
             <SetViewToUserLocation position={userLocation} />
-
-            {/* Component để focus vào trạm đã chọn từ danh sách */}
             <SetViewToSelectedStop selectedStop={selectedStop} />
-
-            {/* Component để focus vào trạm đầu tiên khi chọn route */}
             <SetViewToFirstStop
                 busStops={busStops}
                 selectedRoute={selectedRoute}
                 tripDirection={tripDirection}
                 focusFirstStop={focusFirstStop}
-            />
 
-            {/* Component theo dõi sự kiện map */}
+            />
             <MapEventsHandler
                 onBoundsChange={handleBoundsChange}
                 onZoomChange={handleZoomChange}
             />
-
-            {/* Nút định vị */}
             <LocateControl userLocation={userLocation} />
         </MapContainer>
     );

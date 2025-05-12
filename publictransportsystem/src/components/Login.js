@@ -2,9 +2,8 @@ import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import cookie from "react-cookies";
 import { UserDispatchContext } from "../configs/MyContexts";
-import { authApi, endpoints } from "../configs/Apis";
+import { authApi } from "../configs/Apis";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -60,7 +59,7 @@ const Login = () => {
       toast.success("Đăng nhập thành công!", {
         autoClose: 2000, // Đóng sau 2 giây
       });
-      
+
       // Chuyển hướng sau khi thông báo hiển thị
       setTimeout(() => {
         navigate('/');

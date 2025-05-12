@@ -3,6 +3,9 @@ import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap, useMapEvents 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './map.css';
+import { FaLandmark } from 'react-icons/fa';
+import { divIcon } from 'leaflet';
+import { renderToString } from 'react-dom/server';
 
 // Solve default icon issues
 delete L.Icon.Default.prototype._getIconUrl;
@@ -259,7 +262,7 @@ const LocateControl = ({ userLocation }) => {
 const DEFAULT_LOCATION = [10.7769, 106.7009];
 const MIN_ZOOM_SHOW_STOPS = 17;
 
-const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection, focusedStopId }) => {
+const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection, focusedStopId, landmarks = [], selectionMode = 'destination', onLocationSelect }) => {
     const [userLocation, setUserLocation] = useState(null);
     const [map, setMap] = useState(null);
     const [accuracy, setAccuracy] = useState(0);
@@ -269,6 +272,80 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
     const [visibleStops, setVisibleStops] = useState([]);
     const [focusFirstStop, setFocusFirstStop] = useState(true);
     const prevDirectionRef = useRef(tripDirection);
+    const markersRef = useRef([]);
+    const [selectedMapLocation, setSelectedMapLocation] = useState(null);
+    const [originLocation, setOriginLocation] = useState(null);
+    const [destinationLocation, setDestinationLocation] = useState(null);
+
+    const originMarkerIcon = useMemo(() => L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    }), []);
+
+    const destinationMarkerIcon = useMemo(() => L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    }), []);
+
+    const DoubleClickHandler = () => {
+        useMapEvents({
+            dblclick: (e) => {
+                const { lat, lng } = e.latlng;
+                console.log(`Double clicked at: ${lat}, ${lng} in mode: ${selectionMode}`);
+
+                // Tạo marker mới với màu phù hợp
+                const markerIcon = selectionMode === 'origin' ? originMarkerIcon : destinationMarkerIcon;
+
+                // Lưu vị trí click theo loại điểm
+                if (selectionMode === 'origin') {
+                    setOriginLocation({
+                        coords: [lat, lng],
+                        type: 'origin'
+                    });
+                } else {
+                    setDestinationLocation({
+                        coords: [lat, lng],
+                        type: 'destination'
+                    });
+                }
+
+                // Gửi thông tin địa điểm đã chọn về component cha
+                const locationData = {
+                    latitude: lat,
+                    longitude: lng,
+                    stop_name: 'Vị trí đã chọn',
+                    address: `[${lat.toFixed(6)}, ${lng.toFixed(6)}]`,
+                    locationType: selectionMode
+                };
+
+                // Thực hiện reverse geocoding nếu cần
+                fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const betterLocationData = {
+                            ...locationData,
+                            stop_name: data.display_name.split(',')[0] || 'Vị trí đã chọn',
+                            address: data.display_name
+                        };
+                        onLocationSelect(betterLocationData);
+                    })
+                    .catch(err => {
+                        console.error("Lỗi reverse geocoding:", err);
+                        onLocationSelect(locationData);
+                    });
+            }
+        });
+        return null;
+    };
+
 
     // Move the icon creation inside component
     const busStopIcon = useMemo(() => L.icon({
@@ -370,7 +447,69 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
 
         setVisibleStops(filtered);
     }, [mapBounds, zoomLevel, selectedRoute, selectedStop, stopsToUse]);
+    useEffect(() => {
+        // Đảm bảo map đã được khởi tạo trước khi thêm markers
+        if (!map || !landmarks || landmarks.length === 0) return;
 
+        // Xóa markers hiện tại
+        markersRef.current.forEach(marker => {
+            if (marker._map) { // Kiểm tra marker có tồn tại trên map không
+                marker.remove();
+            }
+        });
+
+        // Mảng để lưu các markers mới
+        const newMarkers = [];
+
+        landmarks.forEach(landmark => {
+            if (landmark.latitude && landmark.longitude) {
+                const landmarkIcon = divIcon({
+                    html: renderToString(
+                        <div style={{ color: '#E91E63' }}>
+                            <FaLandmark size={22} />
+                        </div>
+                    ),
+                    className: 'landmark-icon',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24]
+                });
+
+                try {
+                    // Tạo marker và thêm vào map nếu map đã được khởi tạo
+                    const marker = L.marker([landmark.latitude, landmark.longitude], {
+                        icon: landmarkIcon
+                    });
+
+                    marker.addTo(map);
+
+                    // Popup cho landmark
+                    marker.bindPopup(`
+                <div class="landmark-popup">
+                    <h3>${landmark.name}</h3>
+                    <p>${landmark.address || ''}</p>
+                    ${landmark.description ? `<p class="description">${landmark.description}</p>` : ''}
+                </div>
+            `);
+
+                    newMarkers.push(marker);
+                } catch (error) {
+                    console.error("Lỗi khi thêm landmark marker:", error);
+                }
+            }
+        });
+
+        // Cập nhật ref thay vì state
+        markersRef.current = newMarkers;
+
+        // Cleanup function
+        return () => {
+            newMarkers.forEach(marker => {
+                if (marker._map) { // Kiểm tra marker có tồn tại trên map không
+                    marker.remove();
+                }
+            });
+        };
+    }, [map, landmarks]);
     // Create user location marker icon
     const userLocationIcon = useMemo(() => L.divIcon({
         className: 'user-location-marker',
@@ -405,7 +544,40 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
+            <div className="map-instructions">
+                Nhấp đúp để chọn {selectionMode === 'origin' ? 'điểm đi' : 'điểm đến'} trên bản đồ
+            </div>
 
+            <DoubleClickHandler />
+
+            {originLocation && (
+                <Marker
+                    position={originLocation.coords}
+                    icon={originMarkerIcon}
+                >
+                    <Popup>
+                        <div>
+                            <strong>Điểm đi đã chọn</strong>
+                            <p>Nhấn đúp để chọn vị trí khác</p>
+                        </div>
+                    </Popup>
+                </Marker>
+            )}
+
+            {/* Hiển thị marker cho điểm đến nếu có */}
+            {destinationLocation && (
+                <Marker
+                    position={destinationLocation.coords}
+                    icon={destinationMarkerIcon}
+                >
+                    <Popup>
+                        <div>
+                            <strong>Điểm đến đã chọn</strong>
+                            <p>Nhấn đúp để chọn vị trí khác</p>
+                        </div>
+                    </Popup>
+                </Marker>
+            )}
             {selectedRoute && busStops.length > 1 && (
                 <RoutePath
                     busStops={busStops}

@@ -90,3 +90,60 @@
     background: none;
     border: none;
 }
+
+/* Thêm vào file CSS hiện có */
+
+.landmark-icon {
+    background: none;
+    border: none;
+}
+
+.landmark-popup h3 {
+    margin: 0 0 5px 0;
+    color: #E91E63;
+    font-size: 16px;
+}
+
+.landmark-popup p {
+    margin: 0 0 5px 0;
+    font-size: 14px;
+}
+
+.landmark-popup .description {
+    font-style: italic;
+    margin-top: 5px;
+    font-size: 13px;
+    color: #666;
+}
+
+/* Add instructions tooltip */
+.map-instructions {
+    position: absolute;
+    bottom: 70px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 6px 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    font-size: 13px;
+    z-index: 1000;
+    pointer-events: none;
+    max-width: 200px;
+}
+
+/* Animation for the selected location marker */
+@keyframes bounce {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.leaflet-marker-icon.selected-location {
+    animation: bounce 1s ease infinite;
+}

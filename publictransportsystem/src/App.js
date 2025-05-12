@@ -4,6 +4,7 @@ import Header from "./components/layouts/Header"
 import Home from "./components/Home"
 import Register from "./components/Register"
 import Login from "./components/Login"
+import Reset from "./components/Reset"
 import Userinfo from "./components/userInfo";
 import MapLeaflet from "./components/Map/MapLeaflet"
 import { ToastContainer } from 'react-toastify';
@@ -67,6 +68,7 @@ const AppContent = () => {
             } />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<Reset />} />
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Userinfo />

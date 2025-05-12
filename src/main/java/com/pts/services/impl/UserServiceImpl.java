@@ -3,6 +3,7 @@ package com.pts.services.impl;
 import com.pts.pojo.Users;
 import com.pts.repositories.UserRepository;
 import com.pts.services.UserService;
+import java.util.Date;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -147,5 +148,33 @@ public class UserServiceImpl implements UserService {
     @Override
     public Users registerNewUserWithAvatar(String username, String password, String email, String avatarUrl) {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public boolean saveResetPasswordToken(Integer userId, String token, Date expiryTime) {
+        return userRepository.saveResetPasswordToken(userId, token, expiryTime);
+    }
+
+    @Override
+    public Optional<Integer> validateResetPasswordToken(String token) {
+        // Kiểm tra token có tồn tại không
+        Optional<Integer> userIdOpt = userRepository.getUserIdByResetToken(token);
+        
+        if (!userIdOpt.isPresent()) {
+            return Optional.empty();
+        }
+        
+        // Kiểm tra token có hết hạn chưa
+        boolean isExpired = userRepository.isResetTokenExpired(token);
+        if (isExpired) {
+            return Optional.empty();
+        }
+        
+        return userIdOpt;
+    }
+
+    @Override
+    public boolean deleteResetPasswordToken(String token) {
+        return userRepository.deleteResetToken(token);
     }
 }

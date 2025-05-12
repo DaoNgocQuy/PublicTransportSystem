@@ -1,6 +1,7 @@
 package com.pts.controllers;
 
 import com.pts.pojo.Users;
+import com.pts.repositories.UserRepository;
 import com.pts.services.CloudinaryService;
 import com.pts.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,10 +21,16 @@ import java.util.Optional;
 public class ApiAuthController {
 
     @Autowired
+    private com.pts.services.EmailService emailService;
+
+    @Autowired
     private UserService userService;
 
     @Autowired
     private CloudinaryService cloudinaryService;
+
+    @Autowired
+    private UserRepository userRepository; 
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -324,5 +331,140 @@ public class ApiAuthController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", "Lỗi hệ thống: " + e.getMessage()));
         }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestParam String email) {
+        try {
+            // Kiểm tra email có tồn tại trong hệ thống không
+            Optional<Users> userOpt = userRepository.findByEmail(email);
+            
+            if (!userOpt.isPresent()) {
+                // Vì lý do bảo mật, không nên tiết lộ email tồn tại hay không
+                return ResponseEntity.ok(Map.of(
+                    "message", "Nếu email tồn tại trong hệ thống, hướng dẫn khôi phục mật khẩu sẽ được gửi đến email của bạn"
+                ));
+            }
+            
+            Users user = userOpt.get();
+            
+            // Tạo token ngẫu nhiên
+            String token = generateResetToken();
+            
+            // Lưu token và thời gian hết hạn (30 phút từ thời điểm hiện tại)
+            Date expiryTime = new Date(System.currentTimeMillis() + 30 * 60 * 1000); // 30 phút
+            boolean saved = userService.saveResetPasswordToken(user.getId(), token, expiryTime);
+            
+            if (!saved) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "Không thể xử lý yêu cầu đặt lại mật khẩu. Vui lòng thử lại sau."));
+            }
+            
+            // Gửi email với mã xác nhận
+            boolean emailSent = emailService.sendResetPasswordEmail(user.getEmail(), token, user.getFullName());
+            
+            if (!emailSent) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau."));
+            }
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Hướng dẫn đặt lại mật khẩu đã được gửi đến email " + maskEmail(email)
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Lỗi hệ thống: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(
+            @RequestParam String token,
+            @RequestParam String newPassword) {
+        try {
+            // Kiểm tra token có hợp lệ không
+            Optional<Integer> userIdOpt = userService.validateResetPasswordToken(token);
+            
+            if (!userIdOpt.isPresent()) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Token không hợp lệ hoặc đã hết hạn"));
+            }
+            
+            Integer userId = userIdOpt.get();
+            
+            // Kiểm tra độ phức tạp của mật khẩu
+            boolean hasDigit = false;
+            boolean hasLower = false;
+            boolean hasUpper = false;
+            boolean hasSpecial = false;
+            String specialChars = "@$!%*?&";
+            
+            if (newPassword.length() < 8) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Mật khẩu phải có ít nhất 8 ký tự"));
+            }
+            
+            for (char c : newPassword.toCharArray()) {
+                if (Character.isDigit(c)) {
+                    hasDigit = true;
+                } else if (Character.isLowerCase(c)) {
+                    hasLower = true;
+                } else if (Character.isUpperCase(c)) {
+                    hasUpper = true;
+                } else if (specialChars.contains(String.valueOf(c))) {
+                    hasSpecial = true;
+                }
+            }
+            
+            if (!hasDigit || !hasLower || !hasUpper || !hasSpecial) {
+                return ResponseEntity.badRequest().body(Map.of("error", 
+                    "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&)"));
+            }
+            
+            // Cập nhật mật khẩu mới
+            Users user = userService.getUserById(userId).get();
+            user.setPassword(passwordEncoder.encode(newPassword));
+            boolean updated = userService.updateUser(user);
+            
+            if (!updated) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Không thể đặt lại mật khẩu. Vui lòng thử lại sau."));
+            }
+            
+            // Xóa token đã sử dụng
+            userService.deleteResetPasswordToken(token);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Đặt lại mật khẩu thành công. Bạn có thể đăng nhập với mật khẩu mới."
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Lỗi hệ thống: " + e.getMessage()));
+        }
+    }
+
+    // Hàm hỗ trợ tạo token
+    private String generateResetToken() {
+        byte[] randomBytes = new byte[32];
+        new java.security.SecureRandom().nextBytes(randomBytes);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+    }
+
+    // Hàm che một phần email
+    private String maskEmail(String email) {
+        if (email == null || email.length() <= 4 || !email.contains("@")) {
+            return email;
+        }
+        
+        String[] parts = email.split("@");
+        String username = parts[0];
+        String domain = parts[1];
+        
+        String maskedUsername = username.substring(0, Math.min(2, username.length())) + 
+                            "*".repeat(Math.max(0, username.length() - 2));
+        
+        return maskedUsername + "@" + domain;
     }
 }

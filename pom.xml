@@ -120,7 +120,6 @@
             <version>5.11.0</version>
             <scope>test</scope>
         </dependency>
-        
 
         <!-- Spring Test (cho MockMvc, @WebMvcTest, etc.) -->
         <dependency>
@@ -130,6 +129,19 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Boot Mail Starter -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+            <version>3.1.3</version> 
+        </dependency>
+
+        <!-- Thymeleaf để tạo templates email -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+            <version>3.1.3</version>
+        </dependency>
     </dependencies>
     
     <build>

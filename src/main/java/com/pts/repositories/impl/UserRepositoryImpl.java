@@ -292,4 +292,64 @@ public class UserRepositoryImpl implements UserRepository {
         
         return user;
     };
+
+    @Override
+    @Transactional
+    public boolean saveResetPasswordToken(Integer userId, String token, Date expiryTime) {
+        try {
+            // Xóa token cũ nếu có
+            String deleteSql = "DELETE FROM reset_password_token WHERE user_id = ?";
+            jdbcTemplate.update(deleteSql, userId);
+            
+            // Thêm token mới
+            String sql = "INSERT INTO reset_password_token (user_id, token, expiry_date) VALUES (?, ?, ?)";
+            int result = jdbcTemplate.update(sql, userId, token, new java.sql.Timestamp(expiryTime.getTime()));
+            
+            return result > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public Optional<Integer> getUserIdByResetToken(String token) {
+        try {
+            String sql = "SELECT user_id FROM reset_password_token WHERE token = ?";
+            Integer userId = jdbcTemplate.queryForObject(sql, Integer.class, token);
+            return Optional.ofNullable(userId);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public boolean isResetTokenExpired(String token) {
+        try {
+            String sql = "SELECT expiry_date < NOW() as expired FROM reset_password_token WHERE token = ?";
+            Boolean expired = jdbcTemplate.queryForObject(sql, Boolean.class, token);
+            return expired != null && expired;
+        } catch (EmptyResultDataAccessException e) {
+            return true; // Nếu không tìm thấy token coi như đã hết hạn
+        } catch (Exception e) {
+            e.printStackTrace();
+            return true;
+        }
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteResetToken(String token) {
+        try {
+            String sql = "DELETE FROM reset_password_token WHERE token = ?";
+            int result = jdbcTemplate.update(sql, token);
+            return result > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

@@ -2,6 +2,7 @@ package com.pts.services;
 
 import com.pts.pojo.Stops;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface StopService {
@@ -25,4 +26,6 @@ public interface StopService {
     List<Stops> searchStops(String keyword);
 
     List<Stops> findNearbyStops(double latitude, double longitude, double radius);
+    
+    List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radius);
 }

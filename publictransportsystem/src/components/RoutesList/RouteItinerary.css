@@ -1,0 +1,170 @@
+.route-itinerary {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.itinerary-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.itinerary-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.itinerary-summary>div {
+    display: flex;
+    align-items: center;
+}
+
+.summary-icon {
+    margin-right: 6px;
+    color: #666;
+}
+
+.itinerary-steps {
+    padding: 8px 0;
+}
+
+.itinerary-leg {
+    position: relative;
+}
+
+.walk-leg,
+.bus-leg {
+    padding: 12px 16px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.bus-leg {
+    cursor: pointer;
+}
+
+.bus-leg:hover {
+    background-color: #f5f5f5;
+}
+
+.leg-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.walk-icon {
+    background-color: #607D8B;
+    color: white;
+}
+
+.bus-icon {
+    color: white;
+}
+
+.leg-details {
+    flex: 1;
+}
+
+.leg-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.leg-route-number {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 2px;
+}
+
+.leg-route-name {
+    margin-bottom: 4px;
+}
+
+.leg-stats {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.leg-endpoints {
+    font-size: 13px;
+    color: #555;
+}
+
+.leg-connector {
+    position: absolute;
+    left: 31px;
+    top: 44px;
+    bottom: 0;
+    width: 2px;
+    background-color: #ddd;
+}
+
+/* Styling for route options tabs */
+.route-options-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+    padding: 0 16px 8px;
+    scrollbar-width: thin;
+}
+
+.route-option-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    min-width: 80px;
+    cursor: pointer;
+    background-color: #f5f5f5;
+    transition: all 0.2s ease;
+}
+
+.route-option-tab.active {
+    border-color: #4CAF50;
+    background-color: #E8F5E9;
+}
+
+.option-time {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.option-transfers {
+    font-size: 12px;
+    color: #666;
+}
+
+.bus-icon-small {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    margin-right: 4px;
+}
+
+.option-route-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 4px;
+}

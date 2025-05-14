@@ -622,3 +622,445 @@
     color: white;
     font-weight: 500;
 }
+
+/* Add to RouteSearch.css */
+.route-options-container {
+    margin-top: 20px;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.routes-found-title {
+    padding: 12px 16px;
+    margin: 0;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 14px;
+    color: #333;
+}
+
+.route-options-list {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+.route-option-item {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.route-option-item:hover {
+    background-color: #f9f9f9;
+}
+
+.route-option-item.active {
+    background-color: #e8f5e9;
+    border-left: 3px solid #4CAF50;
+}
+
+.option-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.option-time,
+.option-distance,
+.option-walking {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    color: #555;
+}
+
+.option-route-numbers {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.bus-icon-small {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+
+.option-transfers {
+    font-size: 12px;
+    color: #777;
+}
+
+.loading-details {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100px;
+    gap: 8px;
+    color: #555;
+}
+
+.loading-details .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #4CAF50;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Add to RouteSearch.css */
+.route-options-container {
+    margin-top: 15px;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+}
+
+.routes-found-title {
+    padding: 12px 16px;
+    margin: 0;
+    background-color: #f5f5f5;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 14px;
+    color: #555;
+    font-weight: 500;
+}
+
+.route-options-list {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+}
+
+.route-option-item {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.route-option-item:hover {
+    background-color: #f9f9f9;
+}
+
+.route-option-item.active {
+    background-color: #e8f5e9;
+    border-left: 3px solid #4CAF50;
+}
+
+.option-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.option-time,
+.option-distance,
+.option-walking {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    color: #555;
+}
+
+.option-route-numbers {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 8px;
+}
+
+.bus-icon-small {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+}
+
+.option-transfers {
+    font-size: 12px;
+    color: #777;
+}
+
+.loading-details {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 10px;
+    color: #555;
+    background-color: #fff;
+    border-radius: 8px;
+    margin-top: 15px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+}
+
+.loading-details .spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(76, 175, 80, 0.3);
+    border-top-color: #4CAF50;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Add this at the end of your existing CSS file */
+
+.route-directions-container {
+    margin-top: 15px;
+    padding: 16px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+}
+
+.directions-title {
+    margin: 0 0 16px 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.journey-steps {
+    display: flex;
+    flex-direction: column;
+}
+
+.journey-step {
+    display: flex;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.journey-step:not(:last-child):after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 40px;
+    bottom: -8px;
+    width: 2px;
+    background-color: #ddd;
+}
+
+.step-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    margin-right: 16px;
+    z-index: 1;
+}
+
+.journey-step-walk .step-icon {
+    background-color: #e3f2fd;
+}
+
+.journey-step-bus .step-icon {
+    background-color: #e8f5e9;
+}
+
+.walk-icon {
+    color: #2196F3;
+    font-size: 18px;
+}
+
+.bus-icon {
+    color: #4CAF50;
+    font-size: 18px;
+}
+
+.step-details {
+    flex: 1;
+}
+
+.step-title {
+    display: flex;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.step-type {
+    font-weight: 500;
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+}
+
+.bus-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 0 5px;
+    margin-right: 8px;
+}
+
+.step-distance,
+.step-time {
+    color: #666;
+    font-size: 13px;
+    margin-left: 8px;
+}
+
+.step-instruction {
+    color: #555;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.stop-count {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #757575;
+    font-style: italic;
+}
+
+/* Thêm !important vào một số thuộc tính CSS quan trọng để đảm bảo hiển thị */
+
+.route-directions-container {
+    margin-top: 15px !important;
+    padding: 16px !important;
+    background-color: #fff !important;
+    border-radius: 8px !important;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15) !important;
+    display: block !important;
+    width: 100% !important;
+}
+
+.directions-title {
+    margin: 0 0 16px 0 !important;
+    font-size: 16px !important;
+    font-weight: 500 !important;
+    color: #333 !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid #eee !important;
+}
+
+.journey-steps {
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.journey-step {
+    display: flex !important;
+    margin-bottom: 16px !important;
+    position: relative !important;
+}
+
+/* Đảm bảo phần này hiển thị đúng */
+.journey-step:not(:last-child):after {
+    content: '' !important;
+    position: absolute !important;
+    left: 18px !important;
+    top: 40px !important;
+    bottom: -8px !important;
+    width: 2px !important;
+    background-color: #ddd !important;
+    z-index: 0 !important;
+}
+
+.step-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background-color: #f5f5f5 !important;
+    margin-right: 16px !important;
+    z-index: 1 !important;
+}
+
+/* Cập nhật CSS cho phần route-directions-container */
+.route-directions-container {
+    margin-top: 15px;
+    padding: 16px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Thêm CSS cho journey-step để sửa lỗi hiển thị đường nối */
+.journey-step {
+    display: flex;
+    margin-bottom: 16px;
+    position: relative;
+    padding-left: 5px;
+}
+
+.journey-step:not(:last-child):after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 40px;
+    bottom: -8px;
+    width: 2px;
+    background-color: #ddd;
+    z-index: 0;
+}
+
+/* Đảm bảo step-icon hiển thị đúng */
+.step-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    /* Đảm bảo chiều rộng tối thiểu */
+    border-radius: 50%;
+    margin-right: 16px;
+    z-index: 1;
+}
+
+.journey-step-walk .step-icon {
+    background-color: #e3f2fd;
+}
+
+.journey-step-bus .step-icon {
+    background-color: #e8f5e9;
+}

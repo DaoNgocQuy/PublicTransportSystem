@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { authApi } from '../../configs/Apis';
-import { FaMapMarkerAlt, FaExchangeAlt, FaDotCircle, FaFlag, FaLandmark } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaExchangeAlt, FaDotCircle, FaFlag, FaLandmark, FaWalking, FaBus, FaClock, FaRoute } from 'react-icons/fa';
 import './RouteSearch.css';
-
+import { findRoutes, getRouteDetails, getRouteLegsDetails } from '../../services/routeService';
+import RouteItinerary from './RouteItinerary';
+import { useNavigate } from 'react-router-dom';
 const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }) => {
     const [origin, setOrigin] = useState('');
     const [destination, setDestination] = useState('');
@@ -18,9 +20,144 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
     const [landmarks, setLandmarks] = useState([]);
     const [mapSelectionActive, setMapSelectionActive] = useState(false);
     const [mapSelectionType, setMapSelectionType] = useState(null);
+
+    const [routeOptions, setRouteOptions] = useState([]);
+    const [selectedRouteOption, setSelectedRouteOption] = useState(null);
+    const [routePreferences, setRoutePreferences] = useState({
+        maxWalkingDistance: 1000,
+        maxTransfers: 2,
+        routePriority: 'LEAST_TIME'
+    });
+    const [loadingDetails, setLoadingDetails] = useState(false);
+    const [routeDetails, setRouteDetails] = useState(null);
+
+    const navigate = useNavigate();
+    const handleBusRouteClick = (routeId) => {
+        if (!routeId) return;
+        console.log('Bus route clicked with ID:', routeId);
+        onRouteFound && onRouteFound({ id: routeId });
+    };
+    // Thêm hàm xử lý lỗi đăng nhập
+    const handleAuthError = () => {
+        // Lưu trạng thái tìm kiếm hiện tại
+        sessionStorage.setItem('lastSearch', JSON.stringify({
+            origin,
+            destination
+        }));
+
+        // Hiển thị thông báo
+        alert('Vui lòng đăng nhập để sử dụng tính năng tìm kiếm tuyến');
+
+        // Sử dụng navigate thay vì history.push
+        navigate('/login');
+    };
     // Lấy danh sách tất cả các trạm và địa điểm nổi tiếng
+    const handleRouteOptionSelect = async (option) => {
+        if (selectedRouteOption !== option || !routeDetails) {
+            setSelectedRouteOption(option);
+            setLoadingDetails(true);
+            setRouteDetails(null); // Clear previous details
 
+            try {
+                // Get detailed information about the selected route option
+                const detailedOption = await getRouteLegsDetails(option);
+                console.log("Detailed route option received:", detailedOption);
+                if (detailedOption && detailedOption.legs) {
+                    console.log("Number of legs:", detailedOption.legs.length);
+                    detailedOption.legs.forEach((leg, index) => {
+                        console.log(`Leg ${index} details:`, leg);
+                    });
+                }
+                setRouteDetails(detailedOption);
 
+                // If we need to display the route on the map
+                const busLegs = option.legs?.filter(leg => leg.type === 'BUS') || [];
+                if (busLegs.length > 0 && busLegs[0].routeId && onRouteFound) {
+                    try {
+                        const routeDetail = await getRouteDetails(busLegs[0].routeId);
+                        if (routeDetail) {
+                            onRouteFound(routeDetail);
+                        }
+                    } catch (err) {
+                        console.error('Error loading route for map display:', err);
+                        // Continue showing details even if map route can't be loaded
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading route details:', err);
+                setError('Không thể tải thông tin chi tiết tuyến đường');
+            } finally {
+                setLoadingDetails(false);
+            }
+        }
+    };
+    const showRouteDirections = (routeDetails) => {
+        console.log("Route details for directions:", routeDetails);
+
+        if (!routeDetails || !routeDetails.legs || routeDetails.legs.length === 0) {
+            console.log("No legs data available");
+            return null;
+        }
+
+        return (
+            <div className="route-directions-container">
+                <h3 className="directions-title">Chi tiết cách di chuyển</h3>
+
+                <div className="journey-steps">
+                    {routeDetails.legs.map((leg, index) => {
+                        // Làm sạch dữ liệu và thêm giá trị mặc định
+                        const legType = leg.type?.toUpperCase() || 'UNKNOWN';
+                        const distance = leg.distance || 0;
+                        const duration = leg.duration || '?';
+                        const fromName = leg.from?.name || leg.boardStop?.name || 'Điểm xuất phát';
+                        const toName = leg.to?.name || leg.alightStop?.name || 'Điểm đến';
+
+                        return (
+                            <div key={index} className={`journey-step journey-step-${legType.toLowerCase()}`}>
+                                <div className="step-icon">
+                                    {legType === 'WALK' ?
+                                        <FaWalking className="walk-icon" /> :
+                                        <FaBus className="bus-icon" />}
+                                </div>
+
+                                <div className="step-details">
+                                    {legType === 'WALK' ? (
+                                        <>
+                                            <div className="step-title">
+                                                <span className="step-type">Đi bộ</span>
+                                                <span className="step-distance">{distance}m</span>
+                                                <span className="step-time">{duration} phút</span>
+                                            </div>
+                                            <div className="step-instruction">
+                                                Từ {fromName} đến {toName}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="step-title">
+                                                <span className="step-type">
+                                                    <span className="bus-number" style={{ backgroundColor: leg.routeColor || '#4CAF50' }}>
+                                                        {leg.routeNumber || leg.routeId || ''}
+                                                    </span>
+                                                    {leg.routeName || ''}
+                                                </span>
+                                                <span className="step-time">{duration} phút</span>
+                                            </div>
+                                            <div className="step-instruction">
+                                                <div>Lên xe tại: {fromName}</div>
+                                                <div>Xuống xe tại: {toName}</div>
+                                                {leg.stops && <div className="stop-count">{typeof leg.stops === 'number' ? leg.stops : (Array.isArray(leg.stops) ? leg.stops.length : 0)} điểm dừng</div>}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
     useEffect(() => {
         const fetchStopsAndLandmarks = async () => {
             try {
@@ -177,19 +314,33 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
 
     // Xử lý chọn trạm từ gợi ý
     const selectOrigin = (item) => {
-        // Lưu lại cả đối tượng để có thể truy cập ID khi tìm kiếm
+        console.log('Selected origin item:', item);
+
+        // Make sure we preserve all properties and explicitly set the display name
         setOrigin({
             ...item,
-            displayName: item.stop_name
+            displayName: item.stop_name,
+            // Ensure these critical properties are always set
+            latitude: item.latitude,
+            longitude: item.longitude,
+            suggestionType: item.suggestionType ||
+                (item.landmark_id ? 'LANDMARK' : 'BUS_STOP')
         });
         setShowOriginSuggestions(false);
     };
 
     const selectDestination = (item) => {
-        // Lưu lại cả đối tượng để có thể truy cập ID khi tìm kiếm
+        console.log('Selected destination item:', item);
+
+        // Make sure we preserve all properties and explicitly set the display name
         setDestination({
             ...item,
-            displayName: item.stop_name
+            displayName: item.stop_name,
+            // Ensure these critical properties are always set
+            latitude: item.latitude,
+            longitude: item.longitude,
+            suggestionType: item.suggestionType ||
+                (item.landmark_id ? 'LANDMARK' : 'BUS_STOP')
         });
         setShowDestSuggestions(false);
     };
@@ -208,69 +359,136 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
             return;
         }
 
-        if (origin === destination) {
-            setError('Điểm đi và điểm đến không được trùng nhau');
+        const userStr = sessionStorage.getItem('user');
+        if (!userStr) {
+            handleAuthError();
             return;
         }
 
         setLoading(true);
         setError(null);
+        setRouteOptions([]);
+        setSearchResults([]);
 
         try {
-            // Xác định loại và ID của điểm đi/đến
-            let params = {};
+            console.log('Searching with origin:', origin);
+            console.log('Searching with destination:', destination);
 
-            if (typeof origin === 'object') {
-                if (origin.suggestionType === 'LANDMARK') {
-                    params.fromLandmarkId = origin.landmark_id;
-                    params.fromLat = origin.latitude;
-                    params.fromLng = origin.longitude;
+            if (typeof origin !== 'object' || typeof destination !== 'object') {
+                setError('Vui lòng chọn địa điểm từ danh sách gợi ý hoặc trên bản đồ');
+                setLoading(false);
+                return;
+            }
+
+            // Format input data to ensure all required properties are present
+            console.log('Original origin data:', origin);
+            console.log('Original destination data:', destination);
+
+            const cleanOrigin = formatLocationForSearch(origin);
+            const cleanDestination = formatLocationForSearch(destination);
+
+            console.log('Clean origin data:', cleanOrigin);
+            console.log('Clean destination data:', cleanDestination);
+
+            // Validate coordinates before proceeding
+            if (!cleanOrigin.latitude || !cleanOrigin.longitude ||
+                !cleanDestination.latitude || !cleanDestination.longitude) {
+                setError('Địa điểm không có tọa độ hợp lệ. Vui lòng chọn lại địa điểm.');
+                setLoading(false);
+                return;
+            }
+            try {
+                // Use the updated service with clean data
+                const result = await findRoutes(cleanOrigin, cleanDestination, routePreferences);
+                console.log('Route finding result:', result);
+
+                if (result.error) {
+                    setError(result.error);
+                    return;
+                }
+
+                if (result && Array.isArray(result.options) && result.options.length > 0) {
+                    setRouteOptions(result.options);
+                    setSelectedRouteOption(result.options[0]);
+
+                    // Thêm code để hiển thị tuyến đường trên bản đồ nếu cần
+                    const firstRoute = result.options[0];
+                    if (firstRoute && firstRoute.legs) {
+                        const busLegs = firstRoute.legs.filter(leg => leg.type === 'BUS');
+                        if (busLegs.length > 0 && busLegs[0].routeId) {
+                            // Gọi API để lấy chi tiết tuyến đường để hiển thị
+                            const routeDetail = await getRouteDetails(busLegs[0].routeId);
+                            if (routeDetail && onRouteFound) {
+                                onRouteFound(routeDetail);
+                            }
+                        }
+                    }
                 } else {
-                    params.fromStopId = origin.id;
+                    setError('Không tìm thấy tuyến đường phù hợp giữa hai điểm đã chọn.');
                 }
-            } else {
-                params.fromQuery = origin;
-            }
+            } catch (err) {
+                console.error('Error with route search:', err);
 
-            if (typeof destination === 'object') {
-                if (destination.suggestionType === 'LANDMARK') {
-                    params.toLandmarkId = destination.landmark_id;
-                    params.toLat = destination.latitude;
-                    params.toLng = destination.longitude;
-                } else {
-                    params.toStopId = destination.id;
+                if (err.message === 'AUTH_REQUIRED') {
+                    handleAuthError();
+                    return;
                 }
-            } else {
-                params.toQuery = destination;
+
+                setError('Không thể tìm kiếm tuyến. Vui lòng thử lại sau.');
             }
-
-            // Gọi API với tham số đúng định dạng
-            const response = await authApi.get('/api/routes/search', { params });
-
-            console.log('Search response:', response.data);
-
-            if (Array.isArray(response.data)) {
-                setSearchResults(response.data);
-                setActiveRouteCount(Math.min(response.data.length, 3)); // Giới hạn tối đa 3 tuyến
-
-                // Nếu có kết quả và có hàm callback
-                if (response.data.length > 0 && onRouteFound) {
-                    onRouteFound(response.data[0]);
-                }
-            } else {
-                setSearchResults([]);
-                setActiveRouteCount(0);
-            }
-        } catch (err) {
-            console.error('Error searching routes:', err);
-            // Hiển thị thông báo lỗi chi tiết hơn
-            const errorMessage = err.response?.data?.message || 'Không thể tìm kiếm tuyến. Vui lòng thử lại sau.';
-            setError(errorMessage);
+        } catch (generalErr) {
+            console.error('General search error:', generalErr);
+            setError('Đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.');
         } finally {
             setLoading(false);
         }
     };
+    const formatLocationForSearch = (location) => {
+        console.log('Formatting location data:', location);
 
+        if (!location) return null;
+
+        // Make sure to handle both direct properties and nested properties
+        return {
+            id: location.id || null,
+            stop_name: location.stop_name || location.displayName || 'Vị trí đã chọn',
+            latitude: location.latitude ? parseFloat(location.latitude) : null,
+            longitude: location.longitude ? parseFloat(location.longitude) : null,
+            suggestionType: location.suggestionType ||
+                (location.displayIcon && location.displayIcon.type && location.displayIcon.type.name === 'FaLandmark' ? 'LANDMARK' : 'BUS_STOP'),
+            landmark_id: location.landmark_id ||
+                (location.landmarkData && location.landmarkData.id ? location.landmarkData.id : null)
+        };
+    };
+    const buildLegacySearchParams = (origin, destination) => {
+        const params = {};
+
+        if (typeof origin === 'object') {
+            if (origin.suggestionType === 'LANDMARK') {
+                params.fromLandmarkId = origin.landmark_id;
+                params.fromLat = origin.latitude;
+                params.fromLng = origin.longitude;
+            } else {
+                params.fromStopId = origin.id;
+            }
+        } else {
+            params.fromQuery = origin;
+        }
+
+        if (typeof destination === 'object') {
+            if (destination.suggestionType === 'LANDMARK') {
+                params.toLandmarkId = destination.landmark_id;
+                params.toLat = destination.latitude;
+                params.toLng = destination.longitude;
+            } else {
+                params.toStopId = destination.id;
+            }
+        } else {
+            params.toQuery = destination;
+        }
+
+        return params;
+    };
     return (
         <div className="route-search">
             <div className="search-container">
@@ -328,8 +546,8 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                                         value={typeof destination === 'object' ? destination.displayName || destination.stop_name : destination}
                                         onChange={handleDestinationChange}
                                         onFocus={() => {
-                                            setShowOriginSuggestions(true);  // Sai: đây là cho origin, không phải destination
-                                            setMapSelectionType('origin');    // Sai: đây phải là 'destination'
+                                            setShowDestSuggestions(true);
+                                            setMapSelectionType('destination');
                                             setMapSelectionActive(true);
                                             onMapSelectionChange && onMapSelectionChange('destination');
                                         }}
@@ -378,7 +596,79 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 </div>
 
                 {error && <div className="error-message">{error}</div>}
+                {routeOptions.length > 0 && (
+                    <>
+                        <div className="route-options-container">
+                            <h3 className="routes-found-title">
+                                Tìm thấy {routeOptions.length} phương án di chuyển
+                                <span className="search-radius-info"> (trong phạm vi 1000m từ điểm đi và điểm đến)</span>
+                            </h3>
+                            <div className="route-options-list">
+                                {routeOptions.map((option, index) => (
+                                    <div
+                                        key={index}
+                                        className={`route-option-item ${selectedRouteOption === option ? 'active' : ''}`}
+                                        onClick={() => handleRouteOptionSelect(option)}
+                                    >
+                                        <div className="option-summary">
+                                            <div className="option-time">
+                                                <FaClock />
+                                                <span>{Math.floor(option.totalTime / 60)}h{option.totalTime % 60}p</span>
+                                            </div>
+                                            <div className="option-distance">
+                                                <FaRoute />
+                                                <span>{(option.totalDistance / 1000).toFixed(1)}km</span>
+                                            </div>
+                                            <div className="option-walking">
+                                                <FaWalking />
+                                                <span>{(option.walkingDistance).toFixed(0)}m</span>
+                                            </div>
+                                        </div>
 
+                                        <div className="option-route-numbers">
+                                            {option.routes.map((route, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="bus-icon-small"
+                                                    style={{ backgroundColor: route.color || '#4CAF50' }}
+                                                >
+                                                    {route.number}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="option-transfers">
+                                            {option.transfers === 0
+                                                ? 'Không chuyển tuyến'
+                                                : `${option.transfers} lần chuyển tuyến`}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Show loading indicator when fetching details */}
+                        {loadingDetails && (
+                            <div className="loading-details">
+                                <div className="spinner"></div>
+                                <span>Đang tải chi tiết...</span>
+                            </div>
+                        )}
+
+                        {/* Show route details only when a route is selected and details are loaded */}
+                        {!loadingDetails && selectedRouteOption && routeDetails && (
+                            <>
+                                <RouteItinerary
+                                    routeOption={routeDetails}
+                                    onSelectRoute={handleBusRouteClick}
+                                />
+                                {showRouteDirections(routeDetails)}
+                            </>
+                        )}
+
+                        {/* Remove the duplicate RouteItinerary that appears regardless of selection */}
+                    </>
+                )}
                 {searchResults.length > 0 && (
                     <div className="route-options">
                         <div className="route-count-header">

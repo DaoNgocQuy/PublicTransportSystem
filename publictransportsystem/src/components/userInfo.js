@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Tab, Tabs, Spinner, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 import { authApi } from '../configs/Apis';
 import { FaEnvelope, FaPhone, FaCalendar, FaClock } from 'react-icons/fa';
 import './userInfo.css';
@@ -10,6 +11,7 @@ const Userinfo = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // State cho form chỉnh sửa thông tin
   const [formData, setFormData] = useState({
@@ -29,6 +31,11 @@ const Userinfo = () => {
   // State cho hiển thị ảnh xem trước
   const [previewImage, setPreviewImage] = useState(null);
 
+  // State cho tab tuyến yêu thích
+  const [favorites, setFavorites] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
+  const [favoriteError, setFavoriteError] = useState(null);
+
   // State cho các thao tác đang xử lý
   const [updating, setUpdating] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
@@ -40,6 +47,7 @@ const Userinfo = () => {
   // Lấy thông tin người dùng khi component mount
   useEffect(() => {
     fetchUserInfo();
+    fetchFavorites();
   }, []);
 
   // Hàm lấy thông tin người dùng từ API
@@ -217,6 +225,50 @@ const Userinfo = () => {
     } finally {
       setChangingPassword(false);
     }
+  };
+
+  // Xử lý lấy danh sách tuyến yêu thích
+  const fetchFavorites = async () => {
+    try {
+      setLoadingFavorites(true);
+      setFavoriteError(null);
+      
+      // Gọi API lấy danh sách tuyến yêu thích
+      const response = await authApi.get('/api/favorites');
+      setFavorites(response.data);
+      
+    } catch (err) {
+      console.error('Lỗi khi lấy danh sách tuyến yêu thích:', err);
+      setFavoriteError('Không thể tải danh sách tuyến yêu thích');
+      toast.error('Không thể tải danh sách tuyến yêu thích');
+    } finally {
+      setLoadingFavorites(false);
+    }
+  };
+
+  // Xử lý xóa tuyến yêu thích
+  const handleRemoveFavorite = async (routeId) => {
+    try {
+      await authApi.delete(`/api/favorites/${routeId}`);
+      
+      // Cập nhật lại danh sách tuyến yêu thích
+      setFavorites(favorites.filter(fav => fav.route_id !== routeId));
+      
+      toast.success('Đã xóa khỏi danh sách yêu thích');
+    } catch (err) {
+      console.error('Lỗi khi xóa khỏi danh sách yêu thích:', err);
+      toast.error('Không thể xóa khỏi danh sách yêu thích');
+    }
+  };
+
+  const handleViewRoute = (routeId) => {
+    console.log("Viewing route with ID:", routeId);
+    
+    // Lưu ID tuyến vào sessionStorage
+    sessionStorage.setItem('selectedRouteId', routeId);
+    
+    // Chuyển về trang chủ
+    navigate('/');
   };
 
   if (loading) {
@@ -449,6 +501,69 @@ const Userinfo = () => {
                       </Button>
                     </div>
                   </Form>
+                </Tab>
+
+                <Tab eventKey="favorites" title="Tuyến yêu thích">
+                  {favoriteError && (
+                    <Alert variant={favoriteError ? 'danger' : 'success'} dismissible onClose={() => setFavoriteError(null)}>
+                      {favoriteError}
+                    </Alert>
+                  )}
+
+                  {loadingFavorites ? (
+                    <div className="text-center py-4">
+                      <Spinner animation="border" variant="dark" />
+                      <p className="mt-2">Đang tải danh sách tuyến yêu thích...</p>
+                    </div>
+                  ) : favorites.length === 0 ? (
+                    <div className="text-center py-4">
+                      <div className="mb-3">
+                        <i className="far fa-heart" style={{ fontSize: '48px', color: '#ccc' }}></i>
+                      </div>
+                      <p className="text-muted">Bạn chưa có tuyến yêu thích nào</p>
+                      <p className="small">Thêm tuyến yêu thích bằng cách nhấn vào biểu tượng trái tim trong danh sách tuyến</p>
+                    </div>
+                  ) : (
+                    <div className="favorites-list">
+                      {favorites.map((favorite) => (
+                        <Card key={favorite.id} className="favorite-item mb-3">
+                          <Card.Body>
+                            <div className="d-flex justify-content-between align-items-center">
+                              <div>
+                                <h5 className="route-name" style={{ color: '#212529', fontWeight: '600' }}>
+                                  {favorite.route_name}
+                                </h5>
+                                <p className="route-path text-muted mb-1">
+                                  {favorite.start_location} - {favorite.end_location}
+                                </p>
+                                <div className="operation-time small">
+                                  <i className="far fa-clock me-1"></i>
+                                  {favorite.operation_start_time} - {favorite.operation_end_time}
+                                </div>
+                              </div>
+                              <div>
+                                <Button 
+                                  variant="light" 
+                                  size="sm" 
+                                  className="me-2"
+                                  onClick={() => handleViewRoute(favorite.route_id)}
+                                >
+                                  <i className="fas fa-map-marker-alt me-1"></i> Xem
+                                </Button>
+                                <Button 
+                                  variant="outline-danger" 
+                                  size="sm"
+                                  onClick={() => handleRemoveFavorite(favorite.route_id)}
+                                >
+                                  <i className="far fa-trash-alt"></i>
+                                </Button>
+                              </div>
+                            </div>
+                          </Card.Body>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
                 </Tab>
               </Tabs>
             </Card.Body>

@@ -139,7 +139,7 @@ public class SpringSecurityConfigs {
             dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
             dataSource.setUrl("jdbc:mysql://localhost:3306/pts");
             dataSource.setUsername("root");
-            dataSource.setPassword("123456");
+            dataSource.setPassword("huyduong2004");
             return dataSource;
         }
 

@@ -292,3 +292,71 @@
 .requirement-unmet {
   color: #6c757d;
 }
+
+/* Style cho tab tuyến yêu thích - thêm vào cuối file */
+.favorites-list {
+  margin-top: 10px;
+}
+
+.favorite-item {
+  transition: all 0.2s ease-in-out;
+  border: none;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  border-radius: 8px;
+}
+
+.favorite-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+.favorite-item .route-name {
+  margin-bottom: 5px;
+}
+
+.favorite-item .route-path {
+  font-size: 0.9rem;
+}
+
+.favorite-item .operation-time {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.favorite-item .btn {
+  border-radius: 6px;
+  padding: 0.375rem 0.75rem;
+  font-weight: 500;
+}
+
+.favorite-item .btn-light {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+}
+
+.favorite-item .btn-light:hover {
+  background-color: #e9ecef;
+}
+
+.favorite-item .btn-outline-danger {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.favorite-item .btn-outline-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
+
+/* Responsive for mobile */
+@media (max-width: 576px) {
+  .favorite-item .d-flex {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  
+  .favorite-item .d-flex > div:last-child {
+    margin-top: 15px;
+    align-self: flex-end;
+  }
+}

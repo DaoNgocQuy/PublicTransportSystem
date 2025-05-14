@@ -32,7 +32,11 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
     const [routeDetails, setRouteDetails] = useState(null);
 
     const navigate = useNavigate();
-
+    const handleBusRouteClick = (routeId) => {
+        if (!routeId) return;
+        console.log('Bus route clicked with ID:', routeId);
+        onRouteFound && onRouteFound({ id: routeId });
+    };
     // Thêm hàm xử lý lỗi đăng nhập
     const handleAuthError = () => {
         // Lưu trạng thái tìm kiếm hiện tại
@@ -597,6 +601,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                         <div className="route-options-container">
                             <h3 className="routes-found-title">
                                 Tìm thấy {routeOptions.length} phương án di chuyển
+                                <span className="search-radius-info"> (trong phạm vi 1000m từ điểm đi và điểm đến)</span>
                             </h3>
                             <div className="route-options-list">
                                 {routeOptions.map((option, index) => (
@@ -655,7 +660,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                             <>
                                 <RouteItinerary
                                     routeOption={routeDetails}
-                                    onSelectRoute={(routeId) => onRouteFound && onRouteFound({ id: routeId })}
+                                    onSelectRoute={handleBusRouteClick}
                                 />
                                 {showRouteDirections(routeDetails)}
                             </>

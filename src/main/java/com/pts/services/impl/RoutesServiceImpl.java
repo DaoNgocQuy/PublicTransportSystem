@@ -11,7 +11,9 @@ import com.pts.services.RouteService;
 import com.pts.services.StopService;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class RoutesServiceImpl implements RouteService {
@@ -101,9 +103,11 @@ public class RoutesServiceImpl implements RouteService {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
+            double effectiveMaxDistance = Math.min(maxWalkDistance, 1000);
+
             // 1. Tìm trạm gần điểm đi và điểm đến
-            List<Map<String, Object>> fromStops = stopService.findNearbyStopsFormatted(fromLat, fromLng, maxWalkDistance);
-            List<Map<String, Object>> toStops = stopService.findNearbyStopsFormatted(toLat, toLng, maxWalkDistance);
+            List<Map<String, Object>> fromStops = stopService.findNearbyStopsFormatted(fromLat, fromLng, effectiveMaxDistance);
+            List<Map<String, Object>> toStops = stopService.findNearbyStopsFormatted(toLat, toLng, effectiveMaxDistance);
             // 2. Tìm các tuyến đi qua cả từ điểm đi đến điểm đến
             List<Routes> directRoutes = findDirectRoutes(fromStops, toStops);
 
@@ -139,18 +143,29 @@ public class RoutesServiceImpl implements RouteService {
     private List<Routes> findDirectRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
         List<Routes> directRoutes = new ArrayList<>();
 
-        // Chuyển đổi danh sách Map thành danh sách ID của trạm
-        List<Integer> fromStopIds = extractStopIds(fromStops);
-        List<Integer> toStopIds = extractStopIds(toStops);
-
-        // Lấy tất cả các tuyến
-        List<Routes> allRoutes = getAllRoutes();
-
-        // Tìm các tuyến đi qua cả điểm đầu và điểm cuối
-        for (Routes route : allRoutes) {
-            if (routeContainsStops(route, fromStopIds, toStopIds)) {
-                directRoutes.add(route);
+        // Lấy routeIds từ các trạm gần điểm đi
+        Set<Integer> fromRouteIds = new HashSet<>();
+        for (Map<String, Object> stop : fromStops) {
+            if (stop.containsKey("routeId")) {
+                fromRouteIds.add((Integer) stop.get("routeId"));
             }
+        }
+
+        // Lấy routeIds từ các trạm gần điểm đến
+        Set<Integer> toRouteIds = new HashSet<>();
+        for (Map<String, Object> stop : toStops) {
+            if (stop.containsKey("routeId")) {
+                toRouteIds.add((Integer) stop.get("routeId"));
+            }
+        }
+
+        // Tìm giao của hai tập hợp routeIds
+        fromRouteIds.retainAll(toRouteIds);
+
+        // Lấy thông tin chi tiết của các tuyến
+        for (Integer routeId : fromRouteIds) {
+            Optional<Routes> routeOpt = routesRepository.findById(routeId);
+            routeOpt.ifPresent(directRoutes::add);
         }
 
         return directRoutes;
@@ -242,13 +257,22 @@ public class RoutesServiceImpl implements RouteService {
             option.put("name", "Tuyến " + route.getName());
             option.put("routeId", route.getId());
             option.put("totalTime", calculateEstimatedTime(route, fromStops, toStops));
-            option.put("totalDistance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng));
-            option.put("walkingDistance", calculateWalkingDistance(fromStops, toStops));
+            option.put("totalDistance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // Convert to meters
+            option.put("walkingDistance", calculateWalkingDistance(fromStops, toStops, fromLat, fromLng, toLat, toLng));
             option.put("transfers", 0);
 
             // Thông tin về hành trình
             List<Map<String, Object>> legs = createLegs(route, fromStops, toStops, fromLat, fromLng, toLat, toLng);
             option.put("legs", legs);
+
+            // Thêm thông tin routes để hiển thị
+            List<Map<String, Object>> routes = new ArrayList<>();
+            Map<String, Object> routeInfo = new HashMap<>();
+            routeInfo.put("number", route.getId().toString());
+            routeInfo.put("name", route.getName());
+            routeInfo.put("color", route.getRouteColor() != null ? route.getRouteColor() : "#4CAF50");
+            routes.add(routeInfo);
+            option.put("routes", routes);
 
             result.add(option);
         }
@@ -319,22 +343,72 @@ public class RoutesServiceImpl implements RouteService {
 
 // Tính toán thời gian ước tính
     private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
-        // Triển khai tính toán thời gian ước tính
-        // Đây là một tính toán đơn giản
-        return 30 + (int) (Math.random() * 60); // 30-90 phút
+        // Tìm trạm thuộc tuyến này ở cả hai điểm
+        Map<String, Object> fromStop = findStopOnRoute(fromStops, route.getId());
+        Map<String, Object> toStop = findStopOnRoute(toStops, route.getId());
+
+        if (fromStop == null || toStop == null) {
+            return 30; // Giá trị mặc định
+        }
+
+        // Nếu có thông tin stop_order, dùng nó để tính thời gian
+        Integer fromOrder = (Integer) fromStop.getOrDefault("stopOrder", 0);
+        Integer toOrder = (Integer) toStop.getOrDefault("stopOrder", 0);
+
+        // Tính số trạm dừng giữa hai điểm
+        int stopsBetween = Math.abs(toOrder - fromOrder);
+
+        // Ước tính thời gian: 2 phút/trạm + 5 phút cơ bản
+        return stopsBetween * 2 + 5;
     }
 
+    private Map<String, Object> findStopOnRoute(List<Map<String, Object>> stops, Integer routeId) {
+        for (Map<String, Object> stop : stops) {
+            if (stop.containsKey("routeId") && routeId.equals(stop.get("routeId"))) {
+                return stop;
+            }
+        }
+        return null;
+    }
 // Tính toán khoảng cách ước tính
+
     private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
         // Tính khoảng cách giữa hai điểm (km) - công thức Haversine
         return calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
     }
 
 // Tính toán khoảng cách đi bộ
-    private double calculateWalkingDistance(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
-        // Triển khai tính toán khoảng cách đi bộ
-        // Đây là một giá trị giả định
-        return 250 + Math.random() * 750; // 250-1000m
+    // Định nghĩa đúng cần đủ 6 tham số
+    private double calculateWalkingDistance(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
+            double fromLat, double fromLng, double toLat, double toLng) {
+
+        // Tính khoảng cách từ điểm đi đến trạm gần nhất
+        Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
+        double distanceToFirstStop = 0;
+
+        if (nearestFromStop != null) {
+            Double stopLat = getDoubleValue(nearestFromStop, "latitude", "lat");
+            Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
+
+            if (stopLat != null && stopLng != null) {
+                distanceToFirstStop = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // Chuyển km -> m
+            }
+        }
+
+        // Tính khoảng cách từ trạm gần nhất đến điểm đến
+        Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
+        double distanceFromLastStop = 0;
+
+        if (nearestToStop != null) {
+            Double stopLat = getDoubleValue(nearestToStop, "latitude", "lat");
+            Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
+
+            if (stopLat != null && stopLng != null) {
+                distanceFromLastStop = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // Chuyển km -> m
+            }
+        }
+
+        return distanceToFirstStop + distanceFromLastStop;
     }
 
 // Tạo các chặng đường đi
@@ -343,15 +417,31 @@ public class RoutesServiceImpl implements RouteService {
 
         List<Map<String, Object>> legs = new ArrayList<>();
 
+        // Lấy thông tin trạm gần nhất từ điểm đầu
+        Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
+
+        // Tính khoảng cách và thời gian đi bộ thực tế từ điểm đi đến trạm
+        double walkToStopDistance = 0;
+        int walkToStopDuration = 0;
+
+        if (nearestFromStop != null) {
+            Double stopLat = getDoubleValue(nearestFromStop, "latitude", "lat");
+            Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
+
+            if (stopLat != null && stopLng != null) {
+                // Tính khoảng cách thực tế
+                walkToStopDistance = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // m
+                // Tính thời gian đi bộ (giả sử tốc độ trung bình 80m/phút)
+                walkToStopDuration = (int) Math.ceil(walkToStopDistance / 80);
+            }
+        }
+
         // Chặng đi từ vị trí người dùng đến trạm đầu
         Map<String, Object> firstLeg = new HashMap<>();
         firstLeg.put("type", "WALK");
-        firstLeg.put("distance", 250 + Math.random() * 250); // 250-500m
-        firstLeg.put("duration", 3 + (int) (Math.random() * 7)); // 3-10 phút
+        firstLeg.put("distance", walkToStopDistance); // Khoảng cách thực tế
+        firstLeg.put("duration", walkToStopDuration); // Thời gian thực tế
         firstLeg.put("from", Map.of("lat", fromLat, "lng", fromLng, "name", "Vị trí của bạn"));
-
-        // Lấy thông tin trạm gần nhất từ điểm đầu
-        Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
         firstLeg.put("to", nearestFromStop);
         legs.add(firstLeg);
 
@@ -359,6 +449,7 @@ public class RoutesServiceImpl implements RouteService {
         Map<String, Object> busLeg = new HashMap<>();
         busLeg.put("type", "BUS");
         busLeg.put("routeId", route.getId());
+        busLeg.put("routeNumber", route.getId().toString()); // Thêm routeNumber
         busLeg.put("routeName", route.getName());
         busLeg.put("routeColor", route.getRouteColor() != null ? route.getRouteColor() : "#4CAF50");
         busLeg.put("distance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // m
@@ -370,11 +461,27 @@ public class RoutesServiceImpl implements RouteService {
         busLeg.put("to", nearestToStop);
         legs.add(busLeg);
 
+        // Tính khoảng cách và thời gian đi bộ thực tế từ trạm đến điểm đến
+        double walkFromStopDistance = 0;
+        int walkFromStopDuration = 0;
+
+        if (nearestToStop != null) {
+            Double stopLat = getDoubleValue(nearestToStop, "latitude", "lat");
+            Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
+
+            if (stopLat != null && stopLng != null) {
+                // Tính khoảng cách thực tế
+                walkFromStopDistance = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // m
+                // Tính thời gian đi bộ (giả sử tốc độ trung bình 80m/phút)
+                walkFromStopDuration = (int) Math.ceil(walkFromStopDistance / 80);
+            }
+        }
+
         // Chặng đi từ trạm cuối đến vị trí đích
         Map<String, Object> lastLeg = new HashMap<>();
         lastLeg.put("type", "WALK");
-        lastLeg.put("distance", 250 + Math.random() * 250); // 250-500m
-        lastLeg.put("duration", 3 + (int) (Math.random() * 7)); // 3-10 phút
+        lastLeg.put("distance", walkFromStopDistance); // Khoảng cách thực tế
+        lastLeg.put("duration", walkFromStopDuration); // Thời gian thực tế
         lastLeg.put("from", nearestToStop);
         lastLeg.put("to", Map.of("lat", toLat, "lng", toLng, "name", "Điểm đến của bạn"));
         legs.add(lastLeg);

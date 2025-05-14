@@ -256,4 +256,32 @@ public class NotificationRepositoryImpl implements NotificationRepository {
             return null;
         }
     }
+
+    @Override
+    public List<Map<String, Object>> getUsersSubscribedToRoute(Integer routeId) {
+        Session session = sessionFactory.getObject().getCurrentSession();
+
+        String sql = "SELECT ns.user_id, u.email, u.full_name, ns.notify_schedule_changes, ns.notify_delays "
+                + "FROM notification_settings ns "
+                + "JOIN users u ON ns.user_id = u.id "
+                + "WHERE ns.route_id = :routeId";
+        
+        Query query = session.createNativeQuery(sql);
+        query.setParameter("routeId", routeId);
+        
+        List<Object[]> results = query.getResultList();
+        List<Map<String, Object>> subscribers = new ArrayList<>();
+        
+        for (Object[] row : results) {
+            Map<String, Object> subscriber = new HashMap<>();
+            subscriber.put("user_id", row[0]);
+            subscriber.put("email", row[1]);
+            subscriber.put("full_name", row[2]);
+            subscriber.put("notify_schedule_changes", row[3]);
+            subscriber.put("notify_delays", row[4]);
+            subscribers.add(subscriber);
+        }
+        
+        return subscribers;
+    }
 }

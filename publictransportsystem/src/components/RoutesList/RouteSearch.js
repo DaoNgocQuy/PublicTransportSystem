@@ -17,7 +17,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
     const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
     const [showDestSuggestions, setShowDestSuggestions] = useState(false);
     const [activeRouteCount, setActiveRouteCount] = useState(1); // Tuyến hoạt động (mặc định là 1)
-    const [landmarks, setLandmarks] = useState([]);
+    const [setLandmarks] = useState([]);
     const [mapSelectionActive, setMapSelectionActive] = useState(false);
     const [mapSelectionType, setMapSelectionType] = useState(null);
 

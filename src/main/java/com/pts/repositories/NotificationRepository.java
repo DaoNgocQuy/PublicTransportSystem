@@ -14,4 +14,5 @@ public interface NotificationRepository {
     boolean deleteNotificationSetting(Integer userId, Integer routeId);
     NotificationSettings findNotificationSettingByUserAndRoute(Integer userId, Integer routeId);
     NotificationSettings saveNotificationSettingWithPOJO(NotificationSettings setting);
+    List<Map<String, Object>> getUsersSubscribedToRoute(Integer routeId);
 }

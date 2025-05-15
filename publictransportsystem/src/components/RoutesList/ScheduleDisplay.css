@@ -1,0 +1,43 @@
+/* Schedule container with scroll */
+.schedule-container {
+    padding: 0;
+    max-height: 400px;
+    /* Fixed height in pixels for more consistent scrolling */
+    height: 400px;
+    /* Force the container to take this height */
+    overflow-y: scroll;
+    /* Force scrollbar to always be visible */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Smooth scrolling on iOS */
+    border: 1px solid #e0e0e0;
+    /* Add border to make scrollable area visible */
+}
+
+.time-grid {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+}
+
+.time-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-bottom: 0;
+}
+
+.time-cell {
+    flex: 1 1 16.666%;
+    padding: 10px 0;
+    text-align: center;
+    font-size: 14px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.time-cell:hover {
+    background-color: #f0f0f0;
+}

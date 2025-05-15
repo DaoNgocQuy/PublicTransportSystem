@@ -62,7 +62,139 @@ const SetViewToFirstStop = ({ busStops, selectedRoute, tripDirection, focusFirst
 
     return null;
 };
+// Thêm component này ngay sau component RoutePath
 
+const WalkingPath = React.memo(({ originLocation, destinationLocation, busStops, tripDirection }) => {
+    const [walkingPaths, setWalkingPaths] = useState([]);
+    const map = useMap();
+    const pathCache = useRef({});
+
+    useEffect(() => {
+        if (!busStops || busStops.length === 0) return;
+
+        const fetchWalkingPaths = async () => {
+            const paths = [];
+
+            // Xác định trạm đầu và trạm cuối dựa vào hướng đi
+            const firstStop = tripDirection === 'outbound' ? busStops[0] : busStops[busStops.length - 1];
+            const lastStop = tripDirection === 'outbound' ? busStops[busStops.length - 1] : busStops[0];
+
+            // Nếu có vị trí xuất phát, vẽ đường đi từ điểm xuất phát đến trạm đầu
+            if (originLocation && firstStop) {
+                const cacheKey = `origin-${firstStop.id}`;
+                let coordinates;
+
+                if (pathCache.current[cacheKey]) {
+                    coordinates = pathCache.current[cacheKey];
+                } else {
+                    try {
+                        const startPoint = `${originLocation.coords[1]},${originLocation.coords[0]}`;
+                        const endPoint = `${firstStop.longitude},${firstStop.latitude}`;
+
+                        const response = await fetch(
+                            `https://router.project-osrm.org/route/v1/foot/${originLocation.coords[1]},${originLocation.coords[0]};${firstStop.longitude},${firstStop.latitude}?overview=full&geometries=geojson`
+                        );
+
+                        const data = await response.json();
+
+                        if (data.routes && data.routes.length > 0) {
+                            coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                        } else {
+                            coordinates = [
+                                [originLocation.coords[0], originLocation.coords[1]],
+                                [firstStop.latitude, firstStop.longitude]
+                            ];
+                        }
+
+                        pathCache.current[cacheKey] = coordinates;
+                    } catch (error) {
+                        console.error("Lỗi khi tìm đường đi bộ:", error);
+                        coordinates = [
+                            [originLocation.coords[0], originLocation.coords[1]],
+                            [firstStop.latitude, firstStop.longitude]
+                        ];
+                    }
+                }
+
+                paths.push({
+                    id: 'origin-to-first-stop',
+                    positions: coordinates,
+                    type: 'origin'
+                });
+            }
+
+            // Nếu có vị trí đích, vẽ đường đi từ trạm cuối đến điểm đích
+            if (destinationLocation && lastStop) {
+                const cacheKey = `${lastStop.id}-destination`;
+                let coordinates;
+
+                if (pathCache.current[cacheKey]) {
+                    coordinates = pathCache.current[cacheKey];
+                } else {
+                    try {
+                        const startPoint = `${lastStop.longitude},${lastStop.latitude}`;
+                        const endPoint = `${destinationLocation.coords[1]},${destinationLocation.coords[0]}`;
+
+                        const response = await fetch(
+                            `https://router.project-osrm.org/route/v1/foot/${lastStop.longitude},${lastStop.latitude};${destinationLocation.coords[1]},${destinationLocation.coords[0]}?overview=full&geometries=geojson`
+                        );
+
+                        const data = await response.json();
+
+                        if (data.routes && data.routes.length > 0) {
+                            coordinates = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                        }
+                        else {
+                            coordinates = [
+                                [lastStop.latitude, lastStop.longitude],
+                                [destinationLocation.coords[0], destinationLocation.coords[1]]
+                            ];
+                        }
+
+                        pathCache.current[cacheKey] = coordinates;
+                    } catch (error) {
+                        console.error("Lỗi khi tìm đường đi bộ:", error);
+                        coordinates = [
+                            [lastStop.latitude, lastStop.longitude],
+                            [destinationLocation.coords[0], destinationLocation.coords[1]]
+                        ];
+                    }
+                }
+
+                paths.push({
+                    id: 'last-stop-to-destination',
+                    positions: coordinates,
+                    type: 'destination'
+                });
+            }
+
+            setWalkingPaths(paths);
+        };
+
+        fetchWalkingPaths();
+    }, [originLocation, destinationLocation, busStops, tripDirection, map]);
+
+    if (walkingPaths.length === 0) {
+        return <div style={{ display: 'none' }} />;
+    }
+
+    return (
+        <>
+            {walkingPaths.map(path => (
+                <Polyline
+                    key={path.id}
+                    positions={path.positions}
+                    color={path.type === 'origin' ? '#4CAF50' : '#FF5722'}
+                    weight={4}
+                    opacity={0.8}
+                    dashArray="6, 8"
+                    lineJoin="round"
+                    lineCap="round"
+                />
+            ))}
+        </>
+    );
+});
 const RoutePath = React.memo(({ busStops, tripDirection }) => {
     const [routeSegments, setRouteSegments] = useState([]);
     const map = useMap();
@@ -100,6 +232,7 @@ const RoutePath = React.memo(({ busStops, tripDirection }) => {
                 const startPoint = `${start.longitude},${start.latitude}`;
                 const endPoint = `${end.longitude},${end.latitude}`;
 
+                // Sử dụng "driving" thay vì "foot" cho xe buýt
                 const response = await fetch(
                     `https://router.project-osrm.org/route/v1/driving/${startPoint};${endPoint}?overview=full&geometries=geojson`
                 );
@@ -153,27 +286,15 @@ const RoutePath = React.memo(({ busStops, tripDirection }) => {
             // Lưu kết quả và cập nhật state
             setRouteSegments(segments);
             isLoadingRef.current = false;
-
-            // Điều chỉnh view bản đồ chỉ khi cần thiết
-            if (segments.length > 0 && map) {
-                const allCoordinates = segments.flatMap(segment => segment.positions);
-                if (allCoordinates.length > 0) {
-                    map.fitBounds(allCoordinates, {
-                        padding: [50, 50],
-                        maxZoom: 15
-                    });
-                }
-            }
         };
 
         fetchAllSegments();
     }, [routeKey, busStops, tripDirection, map]);
 
-    // Không bao giờ trả về null để đảm bảo component không bị unmount/remount
+    // Thay đổi màu và style để thể hiện đường xe buýt khác với đường đi bộ
     const pathColor = tripDirection === 'outbound' ? '#4CAF50' : '#1976D2';
 
     if (routeSegments.length === 0) {
-        // Trả về một element trống thay vì null để giữ component trong DOM
         return <div style={{ display: 'none' }} />;
     }
 
@@ -184,10 +305,11 @@ const RoutePath = React.memo(({ busStops, tripDirection }) => {
                     key={segment.id}
                     positions={segment.positions}
                     color={pathColor}
-                    weight={5}
+                    weight={5}          // Độ dày lớn hơn đường đi bộ
                     opacity={0.8}
                     lineJoin="round"
                     lineCap="round"
+                // Không có dashArray cho đường xe buýt = đường liền
                 />
             ))}
         </>
@@ -195,15 +317,10 @@ const RoutePath = React.memo(({ busStops, tripDirection }) => {
 }, (prevProps, nextProps) => {
     // Custom comparison function để tránh re-render không cần thiết
     if (!prevProps.busStops || !nextProps.busStops) return false;
-
     if (prevProps.tripDirection !== nextProps.tripDirection) return false;
-
     if (prevProps.busStops.length !== nextProps.busStops.length) return false;
-
-    // Chỉ so sánh ID của các trạm để đơn giản hóa
     const prevIds = prevProps.busStops.map(stop => stop.id).join('-');
     const nextIds = nextProps.busStops.map(stop => stop.id).join('-');
-
     return prevIds === nextIds;
 });
 // Optimized Map events handler
@@ -262,7 +379,7 @@ const LocateControl = ({ userLocation }) => {
 const DEFAULT_LOCATION = [10.7769, 106.7009];
 const MIN_ZOOM_SHOW_STOPS = 17;
 
-const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection, focusedStopId, landmarks = [], selectionMode = 'destination', onLocationSelect }) => {
+const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection, focusedStopId, landmarks = [], selectionMode = 'destination', onLocationSelect, activeTab }) => {
     const [userLocation, setUserLocation] = useState(null);
     const [map, setMap] = useState(null);
     const [accuracy, setAccuracy] = useState(0);
@@ -349,12 +466,10 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
 
     // Move the icon creation inside component
     const busStopIcon = useMemo(() => L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
+        iconUrl: require('../../assets/icons/busstop.png'),
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
     }), []);
 
     // Set selected stop when focusedStopId changes
@@ -368,6 +483,13 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
         }
     }, [focusedStopId, busStops]);
 
+    useEffect(() => {
+        // Reset điểm đi/đến khi chuyển từ tab tìm đường sang tab tra cứu
+        if (activeTab !== 'search') {
+            setOriginLocation(null);
+            setDestinationLocation(null);
+        }
+    }, [activeTab]);
     // Handle route or direction changes
     useEffect(() => {
         if (selectedRoute) {
@@ -544,40 +666,40 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, tripDirection
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
-            <div className="map-instructions">
-                Nhấp đúp để chọn {selectionMode === 'origin' ? 'điểm đi' : 'điểm đến'} trên bản đồ
-            </div>
 
-            <DoubleClickHandler />
 
-            {originLocation && (
+            {/* Chỉ hiển thị DoubleClickHandler khi đang ở tab tìm đường */}
+            {activeTab === 'search' && <DoubleClickHandler />}
+
+
+
+            {/* Chỉ hiển thị các điểm đi/đến khi đang ở tab tìm đường */}
+            {activeTab === 'search' && originLocation && (
                 <Marker
                     position={originLocation.coords}
                     icon={originMarkerIcon}
-                >
-                    <Popup>
-                        <div>
-                            <strong>Điểm đi đã chọn</strong>
-                            <p>Nhấn đúp để chọn vị trí khác</p>
-                        </div>
-                    </Popup>
-                </Marker>
+                />
             )}
 
-            {/* Hiển thị marker cho điểm đến nếu có */}
-            {destinationLocation && (
+
+            {/* Chỉ hiển thị điểm đến khi đang ở tab tìm đường */}
+            {activeTab === 'search' && destinationLocation && (
                 <Marker
                     position={destinationLocation.coords}
                     icon={destinationMarkerIcon}
-                >
-                    <Popup>
-                        <div>
-                            <strong>Điểm đến đã chọn</strong>
-                            <p>Nhấn đúp để chọn vị trí khác</p>
-                        </div>
-                    </Popup>
-                </Marker>
+                />
             )}
+            {/* Chỉ hiển thị đường đi bộ khi đang ở tab tìm đường */}
+            {activeTab === 'search' && busStops.length > 1 &&
+                originLocation && destinationLocation && (
+                    <WalkingPath
+                        originLocation={originLocation}
+                        destinationLocation={destinationLocation}
+                        busStops={busStops}
+                        tripDirection={tripDirection}
+                    />
+                )}
+
             {selectedRoute && busStops.length > 1 && (
                 <RoutePath
                     busStops={busStops}

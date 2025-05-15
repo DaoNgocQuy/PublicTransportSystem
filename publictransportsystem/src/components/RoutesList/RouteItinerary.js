@@ -1,11 +1,12 @@
 import React from 'react';
-import { FaWalking, FaBus, FaArrowRight, FaExchangeAlt, FaClock, FaRoute } from 'react-icons/fa';
+import { FaWalking, FaBus, FaArrowRight, FaLongArrowAltRight } from 'react-icons/fa';
 import './RouteItinerary.css';
 
 const RouteItinerary = ({ routeOption, onSelectRoute }) => {
     if (!routeOption) return null;
 
     const formatDuration = (minutes) => {
+        if (!minutes && minutes !== 0) return "? phút";
         if (minutes < 60) {
             return `${minutes} phút`;
         }
@@ -15,87 +16,87 @@ const RouteItinerary = ({ routeOption, onSelectRoute }) => {
     };
 
     const formatDistance = (meters) => {
+        if (!meters && meters !== 0) return "";
         if (meters < 1000) {
-            return `${meters} mét`;
+            return `${meters} m`;
         }
         return `${(meters / 1000).toFixed(1)} km`;
     };
 
+    // Find bus legs
+    const busLegs = routeOption.legs ? routeOption.legs.filter(leg => leg.type === 'BUS') : [];
+    const firstBusLeg = busLegs.length > 0 ? busLegs[0] : null;
+
     return (
-        <div className="route-itinerary">
-            <div className="itinerary-header">
-                <div className="itinerary-summary">
-                    <div className="total-time">
-                        <FaClock className="summary-icon" />
-                        <span>{formatDuration(routeOption.totalTime)}</span>
+        <div className="route-itinerary busmap-style">
+            <div className="route-option-header">
+                <div className="route-option-number">
+                    {firstBusLeg && (
+                        <div
+                            className="route-number-badge"
+                            style={{ backgroundColor: firstBusLeg.routeColor || '#4CAF50' }}
+                        >
+                            {firstBusLeg.routeNumber || '?'}
+                        </div>
+                    )}
+                    <div className="route-time-info">
+                        {routeOption.totalTime || '?'} phút
                     </div>
-                    <div className="total-distance">
-                        <FaRoute className="summary-icon" />
-                        <span>{formatDistance(routeOption.totalDistance)}</span>
+                </div>
+                <div className="route-travel-info">
+                    <div className="walk-distance">
+                        <FaWalking className="travel-icon" /> {formatDistance(routeOption.walkingDistance || 0)}
                     </div>
-                    <div className="walking-distance">
-                        <FaWalking className="summary-icon" />
-                        <span>{formatDistance(routeOption.walkingDistance)}</span>
-                    </div>
-                    <div className="transfers-count">
-                        <FaExchangeAlt className="summary-icon" />
-                        <span>{routeOption.transfers || 0} lần chuyển tuyến</span>
+                    <FaLongArrowAltRight className="arrow-icon" />
+                    <div className="bus-distance">
+                        <FaBus className="travel-icon" /> {formatDistance(routeOption.busDistance ||
+                            (routeOption.totalDistance - routeOption.walkingDistance) || 0)}
                     </div>
                 </div>
             </div>
 
-            <div className="itinerary-steps">
-                {routeOption.legs && routeOption.legs.map((leg, index) => (
-                    <div key={index} className="itinerary-leg">
-                        {leg.type === 'WALK' ? (
-                            <div className="walk-leg">
-                                <div className="leg-icon walk-icon">
+            {routeOption.legs && routeOption.legs.map((leg, index) => (
+                <div key={index} className="route-segment">
+                    {leg.type === 'WALK' ? (
+                        <div className="walk-segment">
+                            <div className="segment-icon-container">
+                                <div className="segment-icon walk">
                                     <FaWalking />
                                 </div>
-                                <div className="leg-details">
-                                    <div className="leg-name">Đi bộ</div>
-                                    <div className="leg-stats">
-                                        <span>{formatDistance(leg.distance)}</span>
-                                        <span> • </span>
-                                        <span>{formatDuration(leg.duration)}</span>
+                            </div>
+                            <div className="segment-details">
+                                <div className="segment-distance">{formatDistance(leg.distance)} · {formatDuration(leg.duration)}</div>
+                                {leg.boardStop || leg.alightStop || leg.from || leg.to ? (
+                                    <div className="segment-instruction">
+                                        Đi bộ {leg.from && leg.to ?
+                                            <>từ <strong>{leg.from.name || 'Điểm xuất phát'}</strong> đến <strong>{leg.to.name || 'Điểm đến'}</strong></> :
+                                            ''}
                                     </div>
-                                    {leg.from && leg.to && (
-                                        <div className="leg-endpoints">
-                                            <div>Từ: {leg.from.name}</div>
-                                            <div>Đến: {leg.to.name}</div>
-                                        </div>
-                                    )}
+                                ) : null}
+                            </div>
+                        </div>
+                    ) : leg.type === 'BUS' ? (
+                        <div className="bus-segment" onClick={() => onSelectRoute && onSelectRoute(leg.routeId)}>
+                            <div className="segment-icon-container">
+                                <div
+                                    className="segment-icon bus"
+                                    style={{ backgroundColor: leg.routeColor || '#4CAF50' }}
+                                >
+                                    {leg.routeNumber}
                                 </div>
                             </div>
-                        ) : leg.type === 'BUS' ? (
-                            <div className="bus-leg" onClick={() => onSelectRoute && onSelectRoute(leg.routeId)}>
-                                <div className="leg-icon bus-icon" style={{ backgroundColor: leg.routeColor || '#4CAF50' }}>
-                                    <FaBus />
-                                </div>
-                                <div className="leg-details">
-                                    <div className="leg-route-number" style={{ color: leg.routeColor || '#4CAF50' }}>
-                                        Tuyến {leg.routeNumber}
-                                    </div>
-                                    <div className="leg-route-name">{leg.routeName}</div>
-                                    <div className="leg-stats">
-                                        <span>{formatDuration(leg.duration)}</span>
-                                        <span> • </span>
-                                        <span>{leg.stops} trạm</span>
-                                    </div>
-                                    <div className="leg-endpoints">
-                                        <div>Lên xe tại: {leg.boardStop && leg.boardStop.name}</div>
-                                        <div>Xuống xe tại: {leg.alightStop && leg.alightStop.name}</div>
-                                    </div>
+                            <div className="segment-details">
+                                <div className="segment-distance">{formatDistance(leg.distance)} · {formatDuration(leg.duration)}</div>
+                                <div className="segment-instruction">
+                                    Đón xe tại trạm: <strong>{leg.boardStop?.name || 'Trạm không xác định'}</strong>
                                 </div>
                             </div>
-                        ) : null}
+                        </div>
+                    ) : null}
 
-                        {index < routeOption.legs.length - 1 && (
-                            <div className="leg-connector"></div>
-                        )}
-                    </div>
-                ))}
-            </div>
+                    {index < routeOption.legs.length - 1 && <div className="segment-connector"></div>}
+                </div>
+            ))}
         </div>
     );
 };

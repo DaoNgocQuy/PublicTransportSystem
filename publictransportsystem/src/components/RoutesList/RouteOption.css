@@ -1,0 +1,86 @@
+/* BusMap style */
+.route-option-busmap {
+    background-color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.route-option-busmap:hover {
+    background-color: #f9f9f9;
+}
+
+.route-option-busmap.selected {
+    background-color: #f5f5f5;
+    border-left: 3px solid #e53935;
+}
+
+.route-option-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.route-number-badge {
+    background-color: #e53935;
+    color: white;
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    padding: 0 6px;
+    font-weight: bold;
+}
+
+.route-time {
+    font-weight: bold;
+    font-size: 15px;
+    color: #333;
+}
+
+.route-distances {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #555;
+}
+
+.walk-distance,
+.bus-distance {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.distance-icon {
+    font-size: 14px;
+    color: #666;
+}
+
+.arrow-icon {
+    margin: 0 8px;
+    color: #aaa;
+    font-size: 12px;
+}
+
+.boarding-info {
+    color: #333;
+    font-size: 14px;
+    margin-top: 8px;
+}
+
+.boarding-info strong {
+    color: #0066cc;
+}
+
+.walking-info {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+}

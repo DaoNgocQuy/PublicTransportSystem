@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import MapLeaflet from './Map/MapLeaflet';
-import RouteSearch from './RoutesList/RouteSearch'; 
+import RouteSearch from './RoutesList/RouteSearch';
 import { UserContext } from '../configs/MyContexts';
 import cookie from 'react-cookies';
+import RouteDetail from './RoutesList/RouteDetail';
 import { authApi } from '../configs/Apis';
 import { toast } from 'react-toastify';
 import busIcon from '../assets/icons/bus.png';
@@ -19,13 +20,12 @@ const Home = () => {
     const [routeStops, setRouteStops] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    // State mới cho yêu thích và thông báo
     const [favoriteRoutes, setFavoriteRoutes] = useState([]);
     const [notificationEnabled, setNotificationEnabled] = useState({});
     const navigate = useNavigate();
     const user = useContext(UserContext);
-    const [activeTab, setActiveTab] = useState('lookup'); // 'lookup' hoặc 'search'
-    const [tripDirection, setTripDirection] = useState('outbound'); // 'outbound' hoặc 'return'
+    const [activeTab, setActiveTab] = useState('lookup');
+    const [tripDirection, setTripDirection] = useState('outbound');
     const [focusedStopId, setFocusedStopId] = useState(null);
     const [allBusStops, setAllBusStops] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -42,8 +42,8 @@ const Home = () => {
         console.log("Thay đổi loại chọn trên bản đồ:", type);
         setMapSelectionType(type);  // Đây là state đã khai báo ở Home.js
     };
+
     useEffect(() => {
-        // Kiểm tra đăng nhập bằng Context hoặc cookie/localStorage
         const token = cookie.load('token');
         const isLoggedIn = user || token || sessionStorage.getItem('isLoggedIn') === 'true';
         if (!isLoggedIn) {
@@ -52,7 +52,6 @@ const Home = () => {
         }
 
         fetchRoutes();
-        // Gọi 2 hàm mới
         fetchFavorites();
         fetchNotificationSettings();
         fetchLandmarks();
@@ -285,6 +284,7 @@ const Home = () => {
         }
     };
 
+
     // useEffect và handleRouteSelect
     useEffect(() => {
         if (!selectedRoute) return;
@@ -357,22 +357,30 @@ const Home = () => {
             <div className="app-container">
                 <div className="sidebar">
                     {/* Only show tabs when no route is selected */}
-                    {!selectedRoute && (
-                        <div className="tabs">
-                            <button
-                                className={`tab ${activeTab === 'lookup' ? 'active' : ''}`}
-                                onClick={() => switchTab('lookup')}
-                            >
-                                TRA CỨU
-                            </button>
-                            <button
-                                className={`tab ${activeTab === 'search' ? 'active' : ''}`}
-                                onClick={() => switchTab('search')}
-                            >
-                                TÌM ĐƯỜNG
-                            </button>
-                        </div>
-                    )}
+                    <div className="tabs">
+                        <button
+                            className={`tab ${activeTab === 'lookup' ? 'active' : ''}`}
+                            onClick={() => {
+                                switchTab('lookup');
+                                // Nếu đang ở tab tìm đường và chọn tab tra cứu, reset selectedRoute
+                                if (activeTab === 'search') {
+                                    setSelectedRoute(null);
+                                }
+                            }}
+                        >
+                            TRA CỨU
+                        </button>
+                        <button
+                            className={`tab ${activeTab === 'search' ? 'active' : ''}`}
+                            onClick={() => {
+                                switchTab('search');
+                                // Khi chuyển từ tab tra cứu sang tab tìm đường, reset selectedRoute
+                                setSelectedRoute(null);
+                            }}
+                        >
+                            TÌM ĐƯỜNG
+                        </button>
+                    </div>
 
                     {activeTab === 'lookup' ? (
                         <div className="routes-list">
@@ -390,72 +398,18 @@ const Home = () => {
                             {loading && !selectedRoute && <p className="loading-text">Đang tải...</p>}
 
                             {selectedRoute ? (
-                                <div className="route-details-panel">
-                                    <div className="route-header">
-                                        <button
-                                            className="back-button"
-                                            onClick={() => setSelectedRoute(null)}
-                                        >
-                                            ← Quay lại
-                                        </button>
-                                        <h3 className="selected-route-name" style={{ color: selectedRoute.color || '#4CAF50' }}>
-                                            {selectedRoute.name}
-                                        </h3>
-
-                                        <div className="route-actions">
-                                            <button
-                                                className={`favorite-btn ${favoriteRoutes.includes(selectedRoute.id) ? 'favorite' : ''}`}
-                                                onClick={(e) => toggleFavorite(e, selectedRoute.id)}
-                                                title={favoriteRoutes.includes(selectedRoute.id) ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
-                                            >
-                                                <i className={favoriteRoutes.includes(selectedRoute.id) ? "fas fa-heart" : "far fa-heart"}></i>
-                                            </button>
-
-                                            <button
-                                                className={`notification-btn ${notificationEnabled[selectedRoute.id] ? 'enabled' : ''}`}
-                                                onClick={(e) => toggleNotification(e, selectedRoute.id)}
-                                                title={notificationEnabled[selectedRoute.id] ? "Tắt thông báo" : "Bật thông báo"}
-                                            >
-                                                <i className={notificationEnabled[selectedRoute.id] ? "fas fa-bell" : "far fa-bell"}></i>
-                                            </button>
-                                        </div>
-
-                                        {loading && <p className="loading-text">Đang tải...</p>}
-                                    </div>
-
-                                    {/* Add direction selector */}
-                                    <div className="direction-selector">
-                                        <button
-                                            className={`direction-btn ${tripDirection === 'outbound' ? 'active' : ''}`}
-                                            onClick={() => switchDirection('outbound')}
-                                        >
-                                            Chiều đi
-                                        </button>
-                                        <button
-                                            className={`direction-btn ${tripDirection === 'return' ? 'active' : ''}`}
-                                            onClick={() => switchDirection('return')}
-                                        >
-                                            Chiều về
-                                        </button>
-                                    </div>
-
-                                    {/* List stops for this route */}
-                                    <ul className="route-stops">
-                                        {routeStops.map(stop => (
-                                            <li
-                                                key={stop.id}
-                                                className={`stop-item ${focusedStopId === stop.id ? 'focused' : ''}`}
-                                                onClick={() => handleStopClick(stop.id)}
-                                            >
-                                                <div className="stop-marker"></div>
-                                                <div className="stop-info">
-                                                    <h4>{stop.name}</h4>
-                                                    <p>{stop.address}</p>
-                                                </div>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
+                                <RouteDetail
+                                    route={selectedRoute}
+                                    onBack={() => setSelectedRoute(null)}
+                                    favoriteRoutes={favoriteRoutes}
+                                    notificationEnabled={notificationEnabled}
+                                    toggleFavorite={toggleFavorite}
+                                    toggleNotification={toggleNotification}
+                                    tripDirection={tripDirection}
+                                    switchDirection={switchDirection}
+                                    focusedStopId={focusedStopId}
+                                    handleStopClick={handleStopClick}
+                                />
                             ) : (
                                 <>
                                     <ul className="routes">
@@ -528,6 +482,7 @@ const Home = () => {
                         landmarks={landmarks}
                         onLocationSelect={handleMapLocationSelect}
                         selectionMode={mapSelectionType}
+                        activeTab={activeTab}
                     />
 
                     {loading && selectedRoute && (

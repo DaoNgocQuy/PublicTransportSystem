@@ -5,6 +5,7 @@ import './RouteSearch.css';
 import { findRoutes, getRouteDetails, getRouteLegsDetails } from '../../services/routeService';
 import RouteItinerary from './RouteItinerary';
 import { useNavigate } from 'react-router-dom';
+import RouteOption from './RouteOption';
 const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }) => {
     const [origin, setOrigin] = useState('');
     const [destination, setDestination] = useState('');
@@ -17,7 +18,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
     const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
     const [showDestSuggestions, setShowDestSuggestions] = useState(false);
     const [activeRouteCount, setActiveRouteCount] = useState(1); // Tuyến hoạt động (mặc định là 1)
-    const [setLandmarks] = useState([]);
+    const [landmark, setLandmarks] = useState([]);
     const [mapSelectionActive, setMapSelectionActive] = useState(false);
     const [mapSelectionType, setMapSelectionType] = useState(null);
 
@@ -596,79 +597,14 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 </div>
 
                 {error && <div className="error-message">{error}</div>}
-                {routeOptions.length > 0 && (
-                    <>
-                        <div className="route-options-container">
-                            <h3 className="routes-found-title">
-                                Tìm thấy {routeOptions.length} phương án di chuyển
-                                <span className="search-radius-info"> (trong phạm vi 1000m từ điểm đi và điểm đến)</span>
-                            </h3>
-                            <div className="route-options-list">
-                                {routeOptions.map((option, index) => (
-                                    <div
-                                        key={index}
-                                        className={`route-option-item ${selectedRouteOption === option ? 'active' : ''}`}
-                                        onClick={() => handleRouteOptionSelect(option)}
-                                    >
-                                        <div className="option-summary">
-                                            <div className="option-time">
-                                                <FaClock />
-                                                <span>{Math.floor(option.totalTime / 60)}h{option.totalTime % 60}p</span>
-                                            </div>
-                                            <div className="option-distance">
-                                                <FaRoute />
-                                                <span>{(option.totalDistance / 1000).toFixed(1)}km</span>
-                                            </div>
-                                            <div className="option-walking">
-                                                <FaWalking />
-                                                <span>{(option.walkingDistance).toFixed(0)}m</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="option-route-numbers">
-                                            {option.routes.map((route, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    className="bus-icon-small"
-                                                    style={{ backgroundColor: route.color || '#4CAF50' }}
-                                                >
-                                                    {route.number}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="option-transfers">
-                                            {option.transfers === 0
-                                                ? 'Không chuyển tuyến'
-                                                : `${option.transfers} lần chuyển tuyến`}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Show loading indicator when fetching details */}
-                        {loadingDetails && (
-                            <div className="loading-details">
-                                <div className="spinner"></div>
-                                <span>Đang tải chi tiết...</span>
-                            </div>
-                        )}
-
-                        {/* Show route details only when a route is selected and details are loaded */}
-                        {!loadingDetails && selectedRouteOption && routeDetails && (
-                            <>
-                                <RouteItinerary
-                                    routeOption={routeDetails}
-                                    onSelectRoute={handleBusRouteClick}
-                                />
-                                {showRouteDirections(routeDetails)}
-                            </>
-                        )}
-
-                        {/* Remove the duplicate RouteItinerary that appears regardless of selection */}
-                    </>
-                )}
+                {routeOptions.map((option, index) => (
+                    <RouteOption
+                        key={index}
+                        option={option}
+                        isSelected={selectedRouteOption === option}
+                        onClick={() => handleRouteOptionSelect(option)}
+                    />
+                ))}
                 {searchResults.length > 0 && (
                     <div className="route-options">
                         <div className="route-count-header">

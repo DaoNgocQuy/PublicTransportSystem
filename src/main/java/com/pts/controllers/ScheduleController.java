@@ -3,6 +3,11 @@ package com.pts.controllers;
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
 import com.pts.pojo.Routes;
+import com.pts.repositories.NotificationRepository;
+import com.pts.services.EmailService;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Map;
 import com.pts.services.ScheduleService;
 import com.pts.services.VehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +33,12 @@ public class ScheduleController {
     
     @Autowired
     private RouteService routeService;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private EmailService emailService;
 
     @GetMapping
     public String listSchedules(Model model) {
@@ -114,6 +125,20 @@ public class ScheduleController {
                             @RequestParam("arrivalTime") String arrivalTime,
                             Model model) {
         try {
+            System.out.println("Cập nhật lịch trình ID: " + id);
+            
+            // Lấy thông tin lịch trình cũ
+            Optional<Schedules> oldScheduleOpt = scheduleService.getScheduleById(id);
+            
+            if (!oldScheduleOpt.isPresent()) {
+                throw new RuntimeException("Không tìm thấy lịch trình ID: " + id);
+            }
+            
+            Schedules oldSchedule = oldScheduleOpt.get();
+            System.out.println("Lịch trình cũ - ID: " + oldSchedule.getId() + 
+                            ", Route: " + (oldSchedule.getRouteId() != null ? oldSchedule.getRouteId().getId() : "null") +
+                            ", Departure: " + (oldSchedule.getDepartureTime() != null ? oldSchedule.getDepartureTime() : "null"));
+            
             // Tạo đối tượng Route và Vehicles từ ID
             Routes route = new Routes();
             route.setId(routeId);
@@ -122,9 +147,10 @@ public class ScheduleController {
             vehicle.setId(vehicleId);
             
             // Tạo đối tượng Schedule mới với thông tin cập nhật
-            Schedules scheduleDetails = new Schedules();
-            scheduleDetails.setRouteId(route);
-            scheduleDetails.setVehicleId(vehicle);
+            Schedules newSchedule = new Schedules();
+            newSchedule.setId(id); // Thiết lập ID
+            newSchedule.setRouteId(route);
+            newSchedule.setVehicleId(vehicle);
             
             // Chuyển đổi string time thành Date
             try {
@@ -132,16 +158,37 @@ public class ScheduleController {
                 java.util.Date depDate = sdf.parse(departureTime);
                 java.util.Date arrDate = sdf.parse(arrivalTime);
                 
-                scheduleDetails.setDepartureTime(depDate);
-                scheduleDetails.setArrivalTime(arrDate);
+                System.out.println("Cập nhật - Departure: " + departureTime + " -> " + depDate);
+                System.out.println("Cập nhật - Arrival: " + arrivalTime + " -> " + arrDate);
+                
+                newSchedule.setDepartureTime(depDate);
+                newSchedule.setArrivalTime(arrDate);
             } catch (ParseException e) {
                 throw new RuntimeException("Invalid time format", e);
             }
             
-            // Gọi service với đúng tham số
-            scheduleService.updateSchedule(id, scheduleDetails);
+            // Cập nhật lịch trình
+            scheduleService.updateSchedule(id, newSchedule);
+            System.out.println("Đã cập nhật lịch trình trong cơ sở dữ liệu");
+            
+            // Nếu có thay đổi về giờ chạy, gửi thông báo
+            if (hasScheduleTimeChanged(oldSchedule, newSchedule)) {
+                System.out.println("Phát hiện thay đổi lịch trình, bắt đầu gửi thông báo");
+                // Lấy thông tin đầy đủ của tuyến
+                Optional<Routes> fullRouteOpt = routeService.getRouteById(routeId);
+                if (fullRouteOpt.isPresent()) {
+                    Routes fullRoute = fullRouteOpt.get();
+                    sendScheduleChangeEmails(fullRoute, oldSchedule, newSchedule);
+                } else {
+                    System.out.println("Không tìm thấy thông tin đầy đủ của tuyến ID: " + routeId);
+                }
+            } else {
+                System.out.println("Không phát hiện thay đổi lịch trình, không gửi thông báo");
+            }
+            
             return "redirect:/schedules";
         } catch (Exception e) {
+            System.err.println("Lỗi khi cập nhật lịch trình: " + e.getMessage());
             e.printStackTrace();
             model.addAttribute("error", e.getMessage());
             model.addAttribute("schedule", scheduleService.getScheduleById(id).orElse(new Schedules()));
@@ -207,5 +254,166 @@ public class ScheduleController {
             model.addAttribute("routes", routeService.getAllRoutes());
             return "schedules/listSchedule";
         }
+    }
+
+    private boolean hasScheduleTimeChanged(Schedules oldSchedule, Schedules newSchedule) {
+        try {
+            // Log thông tin để kiểm tra
+            System.out.println("Kiểm tra thay đổi lịch trình:");
+            System.out.println("Old departure: " + (oldSchedule.getDepartureTime() != null ? oldSchedule.getDepartureTime().toString() : "null"));
+            System.out.println("New departure: " + (newSchedule.getDepartureTime() != null ? newSchedule.getDepartureTime().toString() : "null"));
+            System.out.println("Old arrival: " + (oldSchedule.getArrivalTime() != null ? oldSchedule.getArrivalTime().toString() : "null"));
+            System.out.println("New arrival: " + (newSchedule.getArrivalTime() != null ? newSchedule.getArrivalTime().toString() : "null"));
+            
+            // Kiểm tra thay đổi giờ khởi hành
+            boolean departureChanged = false;
+            if (oldSchedule.getDepartureTime() == null && newSchedule.getDepartureTime() != null) {
+                departureChanged = true;
+            } else if (oldSchedule.getDepartureTime() != null && newSchedule.getDepartureTime() == null) {
+                departureChanged = true;
+            } else if (oldSchedule.getDepartureTime() != null && newSchedule.getDepartureTime() != null) {
+                // So sánh thời gian không xét đến ngày tháng năm
+                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("HH:mm");
+                String oldTime = format.format(oldSchedule.getDepartureTime());
+                String newTime = format.format(newSchedule.getDepartureTime());
+                departureChanged = !oldTime.equals(newTime);
+            }
+            
+            // Kiểm tra thay đổi giờ đến
+            boolean arrivalChanged = false;
+            if (oldSchedule.getArrivalTime() == null && newSchedule.getArrivalTime() != null) {
+                arrivalChanged = true;
+            } else if (oldSchedule.getArrivalTime() != null && newSchedule.getArrivalTime() == null) {
+                arrivalChanged = true;
+            } else if (oldSchedule.getArrivalTime() != null && newSchedule.getArrivalTime() != null) {
+                // So sánh thời gian không xét đến ngày tháng năm
+                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("HH:mm");
+                String oldTime = format.format(oldSchedule.getArrivalTime());
+                String newTime = format.format(newSchedule.getArrivalTime());
+                arrivalChanged = !oldTime.equals(newTime);
+            }
+            
+            boolean changed = departureChanged || arrivalChanged;
+            System.out.println("Phát hiện thay đổi: " + changed + " (departure: " + departureChanged + ", arrival: " + arrivalChanged + ")");
+            
+            return changed;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi kiểm tra thay đổi lịch trình: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private void sendScheduleChangeEmails(Routes route, Schedules oldSchedule, Schedules newSchedule) {
+        try {
+            System.out.println("Bắt đầu gửi email thông báo thay đổi lịch trình cho tuyến " + route.getId());
+            
+            // Lấy danh sách người dùng đăng ký nhận thông báo
+            List<Map<String, Object>> subscribers = notificationRepository.getUsersSubscribedToRoute(route.getId());
+            
+            System.out.println("Số người đăng ký nhận thông báo: " + subscribers.size());
+            
+            if (subscribers.isEmpty()) {
+                System.out.println("Không có người đăng ký nhận thông báo cho tuyến " + route.getId());
+                return;
+            }
+            
+            SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+            String oldDeparture = oldSchedule.getDepartureTime() != null ? 
+                                timeFormat.format(oldSchedule.getDepartureTime()) : "N/A";
+            String oldArrival = oldSchedule.getArrivalTime() != null ? 
+                                timeFormat.format(oldSchedule.getArrivalTime()) : "N/A";
+            String newDeparture = newSchedule.getDepartureTime() != null ? 
+                                timeFormat.format(newSchedule.getDepartureTime()) : "N/A";
+            String newArrival = newSchedule.getArrivalTime() != null ? 
+                                timeFormat.format(newSchedule.getArrivalTime()) : "N/A";
+            
+            String subject = "Thông báo thay đổi lịch trình tuyến " + route.getName();
+            
+            for (Map<String, Object> subscriber : subscribers) {
+                String email = (String) subscriber.get("email");
+                String fullName = (String) subscriber.get("full_name");
+                Boolean notifyScheduleChanges = (Boolean) subscriber.get("notify_schedule_changes");
+                
+                System.out.println("Người dùng: " + fullName + " (" + email + "), nhận thông báo: " + notifyScheduleChanges);
+                
+                // Chỉ gửi cho người dùng đăng ký nhận thông báo và có email
+                if (email != null && !email.isEmpty() && Boolean.TRUE.equals(notifyScheduleChanges)) {
+                    // Tạo nội dung email
+                    String content = createScheduleChangeEmail(
+                        fullName != null && !fullName.isEmpty() ? fullName : "Quý khách",
+                        route,
+                        oldDeparture, oldArrival,
+                        newDeparture, newArrival
+                    );
+                    
+                    // Gửi email
+                    System.out.println("Đang gửi email đến: " + email);
+                    try {
+                        emailService.sendEmail(email, subject, content);
+                        System.out.println("Đã gửi email thông báo thay đổi lịch trình cho: " + email);
+                    } catch (Exception e) {
+                        System.err.println("Lỗi khi gửi email đến " + email + ": " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.out.println("Không gửi email cho người dùng này vì họ không đăng ký nhận thông báo hoặc không có email");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi khi gửi email thông báo thay đổi lịch trình: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // Tạo nội dung email thông báo thay đổi lịch trình
+    private String createScheduleChangeEmail(String fullName, Routes route, 
+        String oldDeparture, String oldArrival, String newDeparture, String newArrival) {
+        
+        StringBuilder html = new StringBuilder();
+        
+        html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>");
+        html.append("<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>");
+        html.append("<div style='background-color: #4CAF50; color: white; padding: 20px; text-align: center;'>");
+        html.append("<h1>Thông báo thay đổi lịch trình tuyến</h1>");
+        html.append("</div>");
+        
+        html.append("<div style='padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd;'>");
+        html.append("<p>Xin chào " + fullName + ",</p>");
+        html.append("<p>Lịch trình của tuyến <strong>" + route.getName() + "</strong> đã được cập nhật.</p>");
+        
+        html.append("<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>");
+        html.append("<tr style='background-color: #f2f2f2;'>");
+        html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Thời gian</th>");
+        html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Trước khi thay đổi</th>");
+        html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Sau khi thay đổi</th>");
+        html.append("</tr>");
+        
+        html.append("<tr>");
+        html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Giờ khởi hành</td>");
+        html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldDeparture + "</td>");
+        html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newDeparture + "</td>");
+        html.append("</tr>");
+        
+        html.append("<tr>");
+        html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Giờ đến</td>");
+        html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldArrival + "</td>");
+        html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newArrival + "</td>");
+        html.append("</tr>");
+        
+        html.append("</table>");
+        
+        html.append("<p>Vui lòng lưu ý thông tin mới khi sử dụng tuyến này.</p>");
+        html.append("<p>Trân trọng,<br>Hệ thống Vận tải Công cộng</p>");
+        html.append("</div>");
+        
+        html.append("<div style='text-align: center; padding: 10px; color: #777; font-size: 12px;'>");
+        html.append("<p>© 2025 Hệ thống Vận tải Công cộng<br>");
+        html.append("Đây là email tự động, vui lòng không trả lời.</p>");
+        html.append("</div>");
+        
+        html.append("</div></body></html>");
+        
+        return html.toString();
     }
 }

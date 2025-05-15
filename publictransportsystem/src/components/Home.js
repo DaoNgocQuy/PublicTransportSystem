@@ -7,7 +7,10 @@ import cookie from 'react-cookies';
 import RouteDetail from './RoutesList/RouteDetail';
 import { authApi } from '../configs/Apis';
 import { toast } from 'react-toastify';
+import busIcon from '../assets/icons/bus.png';
+import metroIcon from '../assets/icons/metro.png';
 import './Home.css';
+
 
 const Home = () => {
     const [landmarks, setLandmarks] = useState([]);
@@ -77,6 +80,71 @@ const Home = () => {
         };
 
         fetchAllStops();
+    }, []);
+
+    useEffect(() => {
+    // Kiểm tra xem có tuyến được chọn từ trang Userinfo không
+    const selectedRouteId = sessionStorage.getItem('selectedRouteId');
+    
+    if (selectedRouteId && selectedRouteId !== 'processed') {
+        console.log("Found selectedRouteId:", selectedRouteId);
+        
+        // Đánh dấu đã xử lý để tránh xử lý lặp lại
+        sessionStorage.setItem('selectedRouteId', 'processed');
+        
+        // Tìm tuyến đã chọn trong danh sách routes
+        const routeId = parseInt(selectedRouteId);
+        const foundRoute = routes.find(route => route.id === routeId);
+        
+        if (foundRoute) {
+        console.log("Found route in cached data:", foundRoute);
+        setSelectedRoute(foundRoute);
+        setTripDirection('outbound');
+        } else {
+        console.log("Route not found in cached data, fetching from API");
+        // Lấy thông tin từ API
+        const fetchSelectedRoute = async () => {
+            try {
+            setLoading(true);
+            const response = await authApi.get(`/api/routes/${routeId}`);
+            console.log("API response for route:", response.data);
+            
+            if (response.data) {
+                setSelectedRoute(response.data);
+                setTripDirection('outbound');
+                // Sau khi lấy thông tin tuyến, cần lấy thông tin các điểm dừng
+                try {
+                const stopsResponse = await authApi.get(`/api/stops/route/${routeId}?direction=outbound`);
+                if (Array.isArray(stopsResponse.data)) {
+                    setRouteStops(stopsResponse.data);
+                }
+                } catch (error) {
+                console.error("Error fetching stops for selected route:", error);
+                }
+            }
+            } catch (error) {
+            console.error("Error fetching selected route:", error);
+            toast.error("Không thể tải thông tin tuyến");
+            // Xóa để có thể thử lại
+            sessionStorage.removeItem('selectedRouteId');
+            } finally {
+            setLoading(false);
+            }
+        };
+        
+        // Gọi hàm fetch
+        fetchSelectedRoute();
+        }
+    }
+    }, [routes]); // Thêm routes vào dependencies
+
+    useEffect(() => {
+        return () => {
+            // Khi component unmount, xóa selectedRouteId nếu đã được đánh dấu là processed
+            if (sessionStorage.getItem('selectedRouteId') === 'processed') {
+            sessionStorage.removeItem('selectedRouteId');
+            }
+        };
     }, []);
 
     const fetchRoutes = async () => {
@@ -352,7 +420,11 @@ const Home = () => {
                                                 onClick={() => handleRouteSelect(route)}
                                             >
                                                 <div className="route-icon">
-                                                    {route.icon && <img src={route.icon} alt="icon" />}
+                                                    {route.name && route.name.toLowerCase().includes('metro') ? (
+                                                        <img src={metroIcon} alt="metro" />
+                                                    ) : (
+                                                        <img src={busIcon} alt="bus" />
+                                                    )}
                                                 </div>
                                                 <div className="route-info">
                                                     <h3 className="route-name" style={{ color: route.color || '#4CAF50' }}>

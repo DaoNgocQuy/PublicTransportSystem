@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("/api/routes")
@@ -215,9 +216,66 @@ public class ApiRouteController {
 
         Map<String, Object> option = new HashMap<>();
         option.put("id", optionId);
-        option.put("totalTime", calculateEstimatedTime(route, fromStops, toStops));
-        option.put("totalDistance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng));
-        option.put("walkingDistance", calculateWalkingDistance(fromStops, toStops, fromLat, fromLng, toLat, toLng));
+
+        // Tính thời gian xe buýt
+        int busTime = calculateEstimatedTime(route, fromStops, toStops);
+
+        // Lấy trạm gần nhất từ điểm đi và điểm đến để tính khoảng cách xe buýt và thời gian đi bộ
+        Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
+        Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
+
+        // Tính thời gian đi bộ từ điểm đầu đến trạm
+        double walkToStopDistance = 0;
+        int walkToStopDuration = 0;
+        if (nearestFromStop != null) {
+            Double stopLat = getDoubleValue(nearestFromStop, "latitude", "lat");
+            Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
+
+            if (stopLat != null && stopLng != null) {
+                walkToStopDistance = calculateWalkingDistanceWithRouting(fromLat, fromLng, stopLat, stopLng);
+                walkToStopDuration = (int) Math.ceil(walkToStopDistance / 80); // tốc độ đi bộ 80m/phút
+            }
+        }
+
+        // Tính thời gian đi bộ từ trạm đến điểm cuối
+        double walkFromStopDistance = 0;
+        int walkFromStopDuration = 0;
+        if (nearestToStop != null) {
+            Double stopLat = getDoubleValue(nearestToStop, "latitude", "lat");
+            Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
+
+            if (stopLat != null && stopLng != null) {
+                walkFromStopDistance = calculateWalkingDistanceWithRouting(stopLat, stopLng, toLat, toLng);
+                walkFromStopDuration = (int) Math.ceil(walkFromStopDistance / 80);
+            }
+        }
+
+        // Tính tổng thời gian = thời gian đi xe buýt + thời gian đi bộ
+        int totalTime = busTime + walkToStopDuration + walkFromStopDuration;
+        option.put("totalTime", totalTime);
+
+        // Tính khoảng cách đi bộ tổng cộng
+        double walkingDistance = walkToStopDistance + walkFromStopDistance;
+
+        // Tính khoảng cách xe buýt theo đường bộ
+        double busDistance = 0;
+        if (nearestFromStop != null && nearestToStop != null) {
+            Double fromStopLat = getDoubleValue(nearestFromStop, "latitude", "lat");
+            Double fromStopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
+            Double toStopLat = getDoubleValue(nearestToStop, "latitude", "lat");
+            Double toStopLng = getDoubleValue(nearestToStop, "longitude", "lng");
+
+            if (fromStopLat != null && fromStopLng != null && toStopLat != null && toStopLng != null) {
+                busDistance = calculateHaversineDistance(fromStopLat, fromStopLng, toStopLat, toStopLng) * 1.2 * 1000; // m
+            }
+        }
+
+        // Tính tổng khoảng cách
+        double totalDistance = walkingDistance + busDistance;
+
+        option.put("totalDistance", totalDistance);
+        option.put("walkingDistance", walkingDistance);
+        option.put("busDistance", busDistance);
         option.put("transfers", 0); // Giả định không có chuyển tuyến
 
         // Thông tin tuyến
@@ -384,23 +442,112 @@ public class ApiRouteController {
     }
 
 // Tính toán thời gian ước tính
+    // filepath: c:\PTS\PublicTransportSystem\src\main\java\com\pts\controllers\ApiRouteController.java
     private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
-        // Triển khai tính toán thời gian ước tính
-        // Đây là một tính toán đơn giản
-        return 30 + (int) (Math.random() * 60); // 30-90 phút
+        // Tìm trạm gần nhất thuộc tuyến này ở cả hai điểm
+        Map<String, Object> fromStop = null;
+        Map<String, Object> toStop = null;
+
+        for (Map<String, Object> stop : fromStops) {
+            if (stop.containsKey("routeId") && route.getId().equals(stop.get("routeId"))) {
+                fromStop = stop;
+                break;
+            }
+        }
+
+        for (Map<String, Object> stop : toStops) {
+            if (stop.containsKey("routeId") && route.getId().equals(stop.get("routeId"))) {
+                toStop = stop;
+                break;
+            }
+        }
+
+        if (fromStop == null || toStop == null) {
+            // Nếu không tìm thấy dữ liệu cụ thể, dùng một giá trị ước tính hợp lý
+            // Giả sử tốc độ trung bình xe buýt là 20km/h = 333m/phút
+            double estimatedDistance = calculateEstimatedDistance(route,
+                    (Double) fromStop.getOrDefault("lat", 0.0),
+                    (Double) fromStop.getOrDefault("lng", 0.0),
+                    (Double) toStop.getOrDefault("lat", 0.0),
+                    (Double) toStop.getOrDefault("lng", 0.0)) * 1000; // m
+
+            int travelTime = (int) Math.ceil(estimatedDistance / 333); // phút
+
+            // Thêm thời gian dừng: giả sử mỗi trạm dừng 45 giây và trung bình 5 trạm giữa 2 điểm
+            int stoppingTime = 5 * 45 / 60; // phút
+
+            return travelTime + stoppingTime;
+        }
+
+        // Nếu có dữ liệu về thứ tự trạm
+        Integer fromOrder = (Integer) fromStop.getOrDefault("stopOrder", 0);
+        Integer toOrder = (Integer) toStop.getOrDefault("stopOrder", 0);
+
+        // Tính số trạm dừng giữa hai điểm
+        int stopsBetween = Math.abs(toOrder - fromOrder);
+
+        // Ước tính thời gian: 2 phút/trạm + 5 phút cơ bản
+        return stopsBetween * 2 + 5;
+    }
+// Tính toán khoảng cách ước tính
+
+    private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
+        // Nếu có thông tin về trạm dừng trên tuyến
+        if (route != null && route.getTotalStops() != null && route.getTotalStops() > 0) {
+            // Có thể sử dụng hệ số điều chỉnh để ước tính đường đi thực tế
+            // Thông thường, khoảng cách thực tế sẽ lớn hơn đường thẳng 20-40%
+            double directDistance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
+            return directDistance * 1.3; // Hệ số 1.3 ước tính đường đi thực tế
+        } else {
+            // Nếu không có thông tin chi tiết, sử dụng khoảng cách trực tiếp
+            return calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
+        }
     }
 
-// Tính toán khoảng cách ước tính
-    private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
-        // Tính khoảng cách giữa hai điểm (km) - công thức Haversine
-        return calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
+    private double calculateWalkingDistanceWithRouting(double fromLat, double fromLng, double toLat, double toLng) {
+        try {
+            // Option 1: Sử dụng Google Maps Directions API
+            String apiKey = "YOUR_GOOGLE_MAPS_API_KEY"; // Cần thay thế bằng API key thật
+            String url = String.format(
+                    "https://maps.googleapis.com/maps/api/directions/json?origin=%f,%f&destination=%f,%f&mode=walking&key=%s",
+                    fromLat, fromLng, toLat, toLng, apiKey);
+
+            // Sử dụng RestTemplate để gọi API
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+
+            Map<String, Object> result = response.getBody();
+            List<Map<String, Object>> routes = (List<Map<String, Object>>) result.get("routes");
+
+            if (routes != null && !routes.isEmpty()) {
+                Map<String, Object> route = routes.get(0);
+                List<Map<String, Object>> legs = (List<Map<String, Object>>) route.get("legs");
+
+                if (legs != null && !legs.isEmpty()) {
+                    Map<String, Object> leg = legs.get(0);
+                    Map<String, Object> distance = (Map<String, Object>) leg.get("distance");
+
+                    if (distance != null && distance.containsKey("value")) {
+                        return (Double.valueOf(distance.get("value").toString()));
+                    }
+                }
+            }
+
+            // Nếu không thành công với API, sử dụng phương pháp dự phòng
+            return calculateHaversineDistance(fromLat, fromLng, toLat, toLng) * 1.3 * 1000;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Phương pháp dự phòng nếu API gặp lỗi
+            return calculateHaversineDistance(fromLat, fromLng, toLat, toLng) * 1.3 * 1000;
+        }
     }
 
 // Tính toán khoảng cách đi bộ
     private double calculateWalkingDistance(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
-        // Tính khoảng cách từ điểm đi đến trạm gần nhất
+        // Tìm trạm gần nhất từ điểm đi
         Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
         double distanceToFirstStop = 0;
 
@@ -409,11 +556,13 @@ public class ApiRouteController {
             Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                distanceToFirstStop = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // Chuyển km -> m
+                // Áp dụng hệ số điều chỉnh để ước tính đường đi thực tế (thường đường đi thực tế dài hơn đường thẳng)
+                double straightLineDistance = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng);
+                distanceToFirstStop = straightLineDistance * 1.3 * 1000; // Hệ số 1.3 và chuyển km -> m
             }
         }
 
-        // Tính khoảng cách từ trạm gần nhất đến điểm đến
+        // Tìm trạm gần nhất từ điểm đến
         Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
         double distanceFromLastStop = 0;
 
@@ -422,7 +571,9 @@ public class ApiRouteController {
             Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                distanceFromLastStop = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // Chuyển km -> m
+                // Áp dụng hệ số điều chỉnh tương tự
+                double straightLineDistance = calculateHaversineDistance(stopLat, stopLng, toLat, toLng);
+                distanceFromLastStop = straightLineDistance * 1.3 * 1000; // Hệ số 1.3 và chuyển km -> m
             }
         }
 
@@ -447,8 +598,9 @@ public class ApiRouteController {
             Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                // Tính khoảng cách thực tế
-                walkToStopDistance = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // m
+                // Tính khoảng cách đường bộ thực tế sử dụng API định tuyến
+                walkToStopDistance = calculateWalkingDistanceWithRouting(fromLat, fromLng, stopLat, stopLng);
+
                 // Tính thời gian đi bộ (giả sử tốc độ trung bình 80m/phút)
                 walkToStopDuration = (int) Math.ceil(walkToStopDistance / 80);
             }
@@ -463,6 +615,9 @@ public class ApiRouteController {
         firstLeg.put("to", nearestFromStop);
         legs.add(firstLeg);
 
+        // Lấy thông tin trạm gần nhất từ điểm cuối
+        Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
+
         // Chặng đi bằng phương tiện công cộng
         Map<String, Object> busLeg = new HashMap<>();
         busLeg.put("type", "BUS");
@@ -473,10 +628,9 @@ public class ApiRouteController {
         busLeg.put("distance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // m
         busLeg.put("duration", calculateEstimatedTime(route, fromStops, toStops));
         busLeg.put("from", nearestFromStop);
+        busLeg.put("to", nearestToStop); // Thêm điểm đến cho busLeg
 
-        // Lấy thông tin trạm gần nhất từ điểm cuối
-        Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
-        busLeg.put("to", nearestToStop);
+        // THÊM DÒNG NÀY: Thêm chặng đi xe buýt vào danh sách legs
         legs.add(busLeg);
 
         // Tính khoảng cách và thời gian đi bộ thực tế từ trạm đến điểm đến
@@ -488,9 +642,10 @@ public class ApiRouteController {
             Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                // Tính khoảng cách thực tế
-                walkFromStopDistance = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // m
-                // Tính thời gian đi bộ (giả sử tốc độ trung bình 80m/phút)
+                // Tính khoảng cách đường bộ thực tế
+                walkFromStopDistance = calculateWalkingDistanceWithRouting(stopLat, stopLng, toLat, toLng);
+
+                // Tính thời gian đi bộ
                 walkFromStopDuration = (int) Math.ceil(walkFromStopDistance / 80);
             }
         }
@@ -547,16 +702,25 @@ public class ApiRouteController {
 // Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
         // Bán kính trái đất trong km
-        final int R = 6371;
+        final double R = 6371.0;
 
         // Chuyển đổi độ sang radian
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
+        double lat1Rad = Math.toRadians(lat1);
+        double lon1Rad = Math.toRadians(lon1);
+        double lat2Rad = Math.toRadians(lat2);
+        double lon2Rad = Math.toRadians(lon2);
+
+        // Hiệu giữa tọa độ
+        double dLat = lat2Rad - lat1Rad;
+        double dLon = lon2Rad - lon1Rad;
 
         // Công thức Haversine
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                + Math.cos(lat1Rad) * Math.cos(lat2Rad)
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        // Đảm bảo a không vượt quá 1 do lỗi làm tròn
+        a = Math.min(a, 1.0);
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 

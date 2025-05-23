@@ -56,26 +56,50 @@ const Login = () => {
       const response = await authApi.post("auth/login", formData);
 
       const user = response.data;
-      user.token = btoa(`${user.id}:${user.username}:${new Date().getTime()}`);
+      
+      // Sử dụng token trả về từ server thay vì tạo mới
+      if (!user.token) {
+        console.warn("Server không trả về token JWT, sẽ dùng token tạm thời");
+        user.token = btoa(`${user.id}:${user.username}:${new Date().getTime()}`);
+      }
 
+      // Lưu thông tin user vào sessionStorage
       sessionStorage.setItem("user", JSON.stringify(user));
       sessionStorage.setItem("isLoggedIn", "true");
 
+      // Dispatch action login
       dispatch({
         type: "login",
         payload: user
       });
 
-      toast.success("Đăng nhập thành công!");
+      // Hiển thị thông báo thành công
+      toast.success("Đăng nhập thành công! Chào mừng " + user.fullName)
 
+      // Chuyển hướng sau khi hiển thị thông báo
       setTimeout(() => {
         navigate('/');
-      }, 1500);
+      }, 2000);
     } catch (error) {
-      toast.error(
-        error.response?.data?.error ||
-        "Đăng nhập thất bại. Vui lòng kiểm tra tên đăng nhập và mật khẩu."
-      );
+      console.error("Lỗi đăng nhập:", error);
+      
+      // Hiển thị thông báo lỗi chi tiết hơn
+      if (error.response) {
+        const errorMessage = error.response.data?.error || "Đăng nhập thất bại. Vui lòng kiểm tra tên đăng nhập và mật khẩu.";
+        toast.error(errorMessage);
+        
+        if (error.response.status === 401) {
+          toast.warning("Tài khoản hoặc mật khẩu không chính xác!");
+        } else if (error.response.status === 403) {
+          toast.error("Tài khoản của bạn không có quyền truy cập!");
+        } else if (error.response.status === 500) {
+          toast.error("Lỗi hệ thống, vui lòng thử lại sau!");
+        }
+      } else if (error.request) {
+        toast.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng!");
+      } else {
+        toast.error("Đã xảy ra lỗi. Vui lòng thử lại sau!");
+      }
     } finally {
       setLoading(false);
     }
@@ -119,57 +143,67 @@ const Login = () => {
   };
 
   const handleResetPassword = async (e) => {
-    e.preventDefault();
-
-    if (!resetToken) {
-      toast.error("Mã xác nhận không hợp lệ");
-      return;
-    }
-
-    if (!newPassword || !confirmPassword) {
-      toast.error("Vui lòng nhập mật khẩu mới và xác nhận mật khẩu");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error("Mật khẩu mới và xác nhận mật khẩu không khớp");
-      return;
-    }
-
-    // Kiểm tra độ phức tạp của mật khẩu
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(newPassword)) {
-      toast.error(
-        "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&)"
-      );
-      return;
-    }
-
-    setResetLoading(true);
-
-    try {
+      e.preventDefault();
+      
+      if (!resetToken || !newPassword || !confirmPassword) {
+          toast.error("Vui lòng nhập đầy đủ thông tin!");
+          return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+          toast.error("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+          return;
+      }
+      
+      setResetLoading(true);
+      
       const formData = new FormData();
       formData.append("token", resetToken);
       formData.append("newPassword", newPassword);
-
-      const response = await authApi.post(endpoints.resetPassword, formData);
-
-      toast.success(response.data.message);
-
-      // Reset form và chuyển về màn hình đăng nhập
-      setResetToken("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setView('login');
-
-    } catch (error) {
-      toast.error(
-        error.response?.data?.error ||
-        "Không thể đặt lại mật khẩu. Vui lòng thử lại sau."
-      );
-    } finally {
-      setResetLoading(false);
-    }
+      
+      try {
+          const response = await authApi.post(endpoints.resetPassword, formData);
+          
+          toast.success("Đặt lại mật khẩu thành công!");
+          
+          // Kiểm tra xem response có chứa thông tin user và token không
+          if (response.data.token) {
+              // Nếu có, lưu thông tin và đăng nhập tự động
+              const user = {
+                  id: response.data.id,
+                  username: response.data.username,
+                  email: response.data.email,
+                  fullName: response.data.fullName,
+                  phone: response.data.phone,
+                  avatarUrl: response.data.avatarUrl,
+                  token: response.data.token
+              };
+              
+              sessionStorage.setItem("user", JSON.stringify(user));
+              sessionStorage.setItem("isLoggedIn", "true");
+              
+              dispatch({
+                  type: "login",
+                  payload: user
+              });
+              
+              setTimeout(() => {
+                  navigate('/');
+              }, 1500);
+          } else {
+              // Nếu không, chuyển về màn hình đăng nhập
+              setTimeout(() => {
+                  setView('login');
+              }, 1500);
+          }
+      } catch (error) {
+          toast.error(
+              error.response?.data?.error ||
+              "Đặt lại mật khẩu thất bại. Vui lòng thử lại."
+          );
+      } finally {
+          setResetLoading(false);
+      }
   };
 
   const renderLoginView = () => (

@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import { authApi, endpoints } from "../configs/Apis";
+import { UserDispatchContext } from "../configs/MyContexts";
 
 const Register = () => {
   const [userData, setUserData] = useState({
@@ -16,6 +17,7 @@ const Register = () => {
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useContext(UserDispatchContext);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,6 +77,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate fields
     if (!validateForm()) {
       return;
     }
@@ -86,35 +89,26 @@ const Register = () => {
     formData.append("password", userData.password);
     formData.append("email", userData.email);
     formData.append("fullName", userData.fullName);
-    
-    if (userData.phone) {
-      formData.append("phone", userData.phone);
-    }
-    
-    if (avatar) {
-      formData.append("avatar", avatar);
-    }
+    if (userData.phone) formData.append("phone", userData.phone);
+    if (avatar) formData.append("avatar", avatar);
     
     try {
-      console.log("Sending registration request to:", authApi.defaults.baseURL + endpoints.register);
-      const response = await authApi.post(endpoints.register, formData);
-      console.log("Registration response:", response.data);
+      // Sử dụng authApi thay vì axios
+      const response = await authApi.post(endpoints.register, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       
-      toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
+      toast.success("Đăng ký thành công!");
       
       setTimeout(() => {
         navigate('/login');
-      }, 2000);
+      }, 1500);
+      
     } catch (error) {
-      console.error("Registration error:", error);
-      
-      if (error.response && error.response.data) {
-        const errorMessage = error.response.data.error || "Đăng ký thất bại, vui lòng thử lại!";
-        toast.error(errorMessage);
-      } else {
-        toast.error("Đăng ký thất bại, vui lòng thử lại!");
-      }
-      
+      console.error("Đăng ký lỗi:", error);
+      const errorMsg = error.response?.data?.error || "Đăng ký thất bại. Vui lòng thử lại.";
+      toast.error(errorMsg);
+    } finally {
       setLoading(false);
     }
   };

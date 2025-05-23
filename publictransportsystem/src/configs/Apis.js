@@ -52,30 +52,30 @@ authApi.interceptors.request.use(config => {
 }, error => {
     return Promise.reject(error);
 });
-authApi.interceptors.response.use(
-    response => {
-        // Kiểm tra nếu response là HTML thay vì JSON
-        const contentType = response.headers['content-type'];
-        if (contentType && contentType.includes('text/html') && typeof response.data === 'string') {
-            // Phát hiện trang HTML (có thể là trang đăng nhập)
-            console.error('Received HTML response instead of JSON');
-            // Chuyển hướng đến trang đăng nhập
-            sessionStorage.removeItem('user'); // Xóa thông tin user hết hạn
-            window.location.href = '/login';
-            return Promise.reject(new Error('AUTH_REQUIRED'));
+
+authApi.interceptors.request.use(config => {
+    try {
+        // Lấy từ sessionStorage
+        const userStr = sessionStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            if (user && user.token) {
+                console.log("Gửi JWT token trong request");
+                config.headers.Authorization = `Bearer ${user.token}`;
+            } else {
+                console.log("Không tìm thấy JWT token trong user object");
+            }
+        } else {
+            console.log("Không tìm thấy user trong sessionStorage");
         }
-        return response;
-    },
-    error => {
-        // Xử lý lỗi HTTP
-        if (error.response && error.response.status === 401) {
-            console.error('Authentication error (401)');
-            sessionStorage.removeItem('user');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
+    } catch (error) {
+        console.error('Lỗi khi xử lý thông tin user:', error);
     }
-);
+    return config;
+}, error => {
+    return Promise.reject(error);
+});
+
 export default axios.create({
     baseURL: BASE_URL
 });

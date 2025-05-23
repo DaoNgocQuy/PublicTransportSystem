@@ -81,15 +81,15 @@ const AppContent = () => {
 
       <ToastContainer
         position="top-right"
-        autoClose={3000}
+        autoClose={1000}  
         hideProgressBar={false}
         newestOnTop
         closeOnClick
         rtl={false}
-        pauseOnFocusLoss={false} 
+        pauseOnFocusLoss={false}
         draggable
-        pauseOnHover={false}     
-        limit={3}               
+        pauseOnHover={false}
+        limit={5} 
       />
 
     </>

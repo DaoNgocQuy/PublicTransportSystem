@@ -2,6 +2,8 @@ package com.pts.configs;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import com.pts.filters.JwtFilter;
+
 import java.util.List;
 import java.util.Properties;
 
@@ -21,6 +23,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -54,6 +57,11 @@ public class SpringSecurityConfigs {
     }
 
     @Bean
+    public JwtFilter jwtFilter() {
+        return new JwtFilter();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // Tạo MVC matcher
         MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(mvcHandlerMappingIntrospector());
@@ -67,7 +75,8 @@ public class SpringSecurityConfigs {
                 .requestMatchers(new AntPathRequestMatcher("/js/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
-                    .requestMatchers(new AntPathRequestMatcher("/api/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/secure/**")).authenticated()
                 .anyRequest().hasRole("ADMIN"))
                 .formLogin(form -> form
                 .loginPage("/login")
@@ -77,7 +86,9 @@ public class SpringSecurityConfigs {
                 .logout(logout -> logout
                 .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .logoutSuccessUrl("/login?logout=true")
-                .permitAll());
+                .permitAll())
+                // Thêm JWT filter vào chuỗi filter
+                .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -102,7 +113,7 @@ public class SpringSecurityConfigs {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
-        config.setAllowedHeaders(List.of("*"));  
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization", "Content-Disposition"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
@@ -119,13 +130,13 @@ public class SpringSecurityConfigs {
         mailSender.setPort(587);
         mailSender.setUsername("dnmhuy@gmail.com");
         mailSender.setPassword("pxgw ysby omvn rkqq");
-        
+
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.debug", "true");
-        
+
         return mailSender;
     }
 

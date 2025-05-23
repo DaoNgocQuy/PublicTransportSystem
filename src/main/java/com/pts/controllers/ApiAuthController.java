@@ -4,6 +4,8 @@ import com.pts.pojo.Users;
 import com.pts.repositories.UserRepository;
 import com.pts.services.CloudinaryService;
 import com.pts.services.UserService;
+import com.pts.utils.JwtUtils;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,110 +63,68 @@ public class ApiAuthController {
             @RequestParam(required = false) MultipartFile avatar) {
         
         try {
-            // Kiểm tra username trước khi tạo user
-            System.out.println("Checking if username exists: " + username);
+            // Kiểm tra username đã tồn tại chưa
             if (userService.existsByUsername(username)) {
-                System.out.println("Username already exists: " + username);
-                return ResponseEntity.badRequest().body(Map.of("error", "Tên đăng nhập đã tồn tại"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Tên đăng nhập đã được sử dụng"));
             }
-            
-            // Kiểm tra email
+
+            // Kiểm tra email đã tồn tại chưa
             if (userService.existsByEmail(email)) {
-                System.out.println("Email already exists: " + email);
-                return ResponseEntity.badRequest().body(Map.of("error", "Email đã tồn tại"));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Email đã được sử dụng"));
             }
-            
-            // Kiểm tra phone
-            if (phone != null && !phone.isEmpty() && userService.existsByPhone(phone)) {
-                System.out.println("Phone already exists: " + phone);
-                return ResponseEntity.badRequest().body(Map.of("error", "Số điện thoại đã tồn tại"));
-            }
-            
-            // Kiểm tra mật khẩu
-            if (password.length() < 8) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Mật khẩu phải có ít nhất 8 ký tự"));
-            }
-            
-            // Kiểm tra mật khẩu có chứa ký tự đặc biệt, chữ hoa, chữ thường và số
-            boolean hasDigit = false;
-            boolean hasLower = false;
-            boolean hasUpper = false;
-            boolean hasSpecial = false;
-            String specialChars = "@$!%*?&";
-            
-            for (char c : password.toCharArray()) {
-                if (Character.isDigit(c)) {
-                    hasDigit = true;
-                } else if (Character.isLowerCase(c)) {
-                    hasLower = true;
-                } else if (Character.isUpperCase(c)) {
-                    hasUpper = true;
-                } else if (specialChars.contains(String.valueOf(c))) {
-                    hasSpecial = true;
-                }
-            }
-            
-            if (!hasDigit || !hasLower || !hasUpper || !hasSpecial) {
-                return ResponseEntity.badRequest().body(Map.of("error", 
-                    "Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt (@$!%*?&)"));
-            }
-            
-            // Upload avatar nếu có
+
+            // Xử lý upload avatar (nếu có)
             String avatarUrl = null;
             if (avatar != null && !avatar.isEmpty()) {
-                System.out.println("Uploading avatar for user: " + username);
-                avatarUrl = cloudinaryService.uploadImage(avatar);
-                System.out.println("Avatar URL: " + avatarUrl);
-            }
-            
-            // Tạo đối tượng Users
-            Users user = new Users();
-            user.setUsername(username);
-            user.setPassword(passwordEncoder.encode(password));
-            user.setEmail(email);
-            user.setFullName(fullName);
-            user.setPhone(phone);
-            user.setRole("USER");
-            user.setIsActive(true);
-            user.setCreatedAt(new Date());
-            user.setAvatarUrl(avatarUrl);
-            
-            System.out.println("Saving user to database: " + username);
-            
-            try {
-                // Lưu user vào DB
-                Users savedUser = userService.registerUser(user);
-
-                if (savedUser == null || savedUser.getId() == null) {
-                    System.err.println("User was returned but without ID");
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", "Lỗi khi lưu người dùng"));
+                try {
+                    avatarUrl = cloudinaryService.uploadImage(avatar);
+                } catch (Exception e) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("error", "Lỗi khi tải lên ảnh đại diện: " + e.getMessage()));
                 }
-                
-                System.out.println("User successfully registered with ID: " + savedUser.getId());
-                
-                // Trả về thông tin user (không bao gồm password)
-                Map<String, Object> response = new HashMap<>();
-                response.put("id", savedUser.getId());
-                response.put("username", savedUser.getUsername());
-                response.put("email", savedUser.getEmail());
-                response.put("fullName", savedUser.getFullName());
-                response.put("phone", savedUser.getPhone());
-                response.put("role", savedUser.getRole());
-                response.put("avatarUrl", savedUser.getAvatarUrl());
-                response.put("createdAt", savedUser.getCreatedAt());
-                
-                return ResponseEntity.status(HttpStatus.CREATED).body(response);
-            } catch (RuntimeException e) {
-                // Bắt lỗi từ UserService
-                System.err.println("Error when registering user: " + e.getMessage());
-                return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
             }
+
+            // Tạo user mới
+            Users newUser = new Users();
+            newUser.setUsername(username);
+            newUser.setPassword(passwordEncoder.encode(password));
+            newUser.setEmail(email);
+            newUser.setFullName(fullName);
+            newUser.setPhone(phone);
+            newUser.setAvatarUrl(avatarUrl);
+            newUser.setRole("ROLE_USER");
+            newUser.setCreatedAt(new Date());
+            newUser.setLastLogin(new Date());
+
+            // Lưu user mới
+            Users savedUser = userService.registerUser(newUser);
             
+            // Tạo JWT token cho user mới đăng ký
+            String jwtToken = "";
+            try {
+                jwtToken = JwtUtils.generateToken(username);
+            } catch (Exception e) {
+                // Vẫn đăng ký thành công, nhưng không tạo được token
+                e.printStackTrace();
+            }
+
+            // Trả về thông tin user đã tạo (không bao gồm password)
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", savedUser.getId());
+            response.put("username", savedUser.getUsername());
+            response.put("email", savedUser.getEmail());
+            response.put("fullName", savedUser.getFullName());
+            response.put("phone", savedUser.getPhone());
+            response.put("avatarUrl", savedUser.getAvatarUrl());
+            response.put("role", savedUser.getRole());
+            response.put("token", jwtToken);  // Thêm JWT token vào response
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Error in register endpoint: " + e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Đăng ký thất bại: " + e.getMessage()));
         }
     }
     
@@ -180,7 +140,17 @@ public class ApiAuthController {
                 user.setLastLogin(new Date());
                 userService.updateLastLogin(user.getId());
                 
-                // Trả về thông tin user (không bao gồm password)
+                // Tạo JWT token
+                String jwtToken = "";
+                try {
+                    jwtToken = JwtUtils.generateToken(username);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of("error", "Không thể tạo JWT token"));
+                }
+                
+                // Trả về thông tin user (không bao gồm password) và JWT token
                 Map<String, Object> response = new HashMap<>();
                 response.put("id", user.getId());
                 response.put("username", user.getUsername());
@@ -190,6 +160,7 @@ public class ApiAuthController {
                 response.put("role", user.getRole());
                 response.put("avatarUrl", user.getAvatarUrl());
                 response.put("lastLogin", user.getLastLogin());
+                response.put("token", jwtToken); // Thêm JWT token vào response
                 
                 return ResponseEntity.ok(response);
             } else {

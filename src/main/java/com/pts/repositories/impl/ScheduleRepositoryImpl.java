@@ -149,8 +149,7 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
 
             if (keyHolder.getKey() != null) {
                 schedule.setId(keyHolder.getKey().intValue());
-            }
-        } else {
+            }        } else {
             // Cập nhật
 
             String sql = "UPDATE schedules SET vehicle_id = ?, route_id = ?, departure_time = ?, arrival_time = ? "
@@ -163,6 +162,12 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
                     schedule.getDepartureTime() != null ? new java.sql.Time(schedule.getDepartureTime().getTime()) : null,
                     schedule.getArrivalTime() != null ? new java.sql.Time(schedule.getArrivalTime().getTime()) : null,
                     schedule.getId());
+        }
+        
+        // Trả về đối tượng đầy đủ sau khi lưu bằng cách gọi findById
+        Optional<Schedules> updatedSchedule = findById(schedule.getId());
+        if (updatedSchedule.isPresent()) {
+            return updatedSchedule.get();
         }
         return schedule;
     }

@@ -1,20 +1,21 @@
 package com.pts.controllers;
 
 import com.pts.pojo.Users;
+import com.pts.repositories.UserRepository;
 import com.pts.services.NotificationService;
+import com.pts.utils.JwtUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 @RestController
@@ -25,12 +26,12 @@ public class ApiNotificationSettingsController {
     private NotificationService notificationService;
     
     @Autowired
-    private ApiHelper apiHelper;
+    private UserRepository userRepository;
 
     @PostMapping
     public ResponseEntity<?> saveSettings(@RequestBody Map<String, Object> payload, HttpServletRequest request) {
         try {
-            Integer userId = apiHelper.getUserIdFromToken(request);
+            Integer userId = getUserIdFromRequest(request);
             
             if (userId == null) {
                 Map<String, String> errorResponse = new HashMap<>();
@@ -67,7 +68,7 @@ public class ApiNotificationSettingsController {
     @DeleteMapping("/{routeId}")
     public ResponseEntity<?> deleteSettings(@PathVariable Integer routeId, HttpServletRequest request) {
         try {
-            Integer userId = apiHelper.getUserIdFromToken(request);
+            Integer userId = getUserIdFromRequest(request);
             
             if (userId == null) {
                 Map<String, String> errorResponse = new HashMap<>();
@@ -94,7 +95,7 @@ public class ApiNotificationSettingsController {
     @GetMapping
     public ResponseEntity<?> getUserSettings(HttpServletRequest request) {
         try {
-            Integer userId = apiHelper.getUserIdFromToken(request);
+            Integer userId = getUserIdFromRequest(request);
             
             if (userId == null) {
                 Map<String, String> errorResponse = new HashMap<>();
@@ -110,5 +111,26 @@ public class ApiNotificationSettingsController {
             errorResponse.put("error", "Không thể lấy cài đặt thông báo");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+    
+    // Phương thức private lấy userId từ JWT token
+    private Integer getUserIdFromRequest(HttpServletRequest request) {
+        try {
+            String header = request.getHeader("Authorization");
+            if (header != null && header.startsWith("Bearer ")) {
+                String token = header.substring(7);
+                String username = JwtUtils.validateTokenAndGetUsername(token);
+                
+                if (username != null) {
+                    Optional<Users> userOpt = userRepository.findByUsername(username);
+                    if (userOpt.isPresent()) {
+                        return userOpt.get().getId();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

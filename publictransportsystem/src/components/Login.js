@@ -85,15 +85,17 @@ const Login = () => {
       
       // Hiển thị thông báo lỗi chi tiết hơn
       if (error.response) {
-        const errorMessage = error.response.data?.error || "Đăng nhập thất bại. Vui lòng kiểm tra tên đăng nhập và mật khẩu.";
-        toast.error(errorMessage);
-        
+        // Chọn thông báo dựa vào status code
         if (error.response.status === 401) {
-          toast.warning("Tài khoản hoặc mật khẩu không chính xác!");
+          toast.error("Tài khoản hoặc mật khẩu không chính xác!");
         } else if (error.response.status === 403) {
           toast.error("Tài khoản của bạn không có quyền truy cập!");
         } else if (error.response.status === 500) {
           toast.error("Lỗi hệ thống, vui lòng thử lại sau!");
+        } else {
+          // Nếu không phải các lỗi trên, hiển thị message từ server hoặc thông báo chung
+          const errorMessage = error.response.data?.error || "Đăng nhập thất bại. Vui lòng thử lại.";
+          toast.error(errorMessage);
         }
       } else if (error.request) {
         toast.error("Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng!");

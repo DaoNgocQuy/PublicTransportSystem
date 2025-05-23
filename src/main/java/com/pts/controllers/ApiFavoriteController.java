@@ -1,21 +1,21 @@
 package com.pts.controllers;
 
-import com.pts.pojo.Favorites;
 import com.pts.pojo.Users;
 import com.pts.services.FavoriteService;
+import com.pts.utils.JwtUtils;
+import com.pts.repositories.UserRepository;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 @RestController
@@ -26,12 +26,13 @@ public class ApiFavoriteController {
     private FavoriteService favoriteService;
 
     @Autowired
-    private ApiHelper apiHelper;
+    private UserRepository userRepository;
     
     @GetMapping
     public ResponseEntity<?> getUserFavorites(HttpServletRequest request) {
         try {
-            Integer userId = apiHelper.getUserIdFromToken(request);
+            // Lấy username từ JWT token
+            Integer userId = getUserIdFromRequest(request);
             
             if (userId == null) {
                 Map<String, String> errorResponse = new HashMap<>();
@@ -52,8 +53,8 @@ public class ApiFavoriteController {
     @PostMapping
     public ResponseEntity<?> addFavorite(@RequestBody Map<String, Integer> payload, HttpServletRequest request) {
         try {
-            // Lấy userId từ token
-            Integer userId = apiHelper.getUserIdFromToken(request);
+            // Lấy userId từ JWT token
+            Integer userId = getUserIdFromRequest(request);
             
             if (userId == null) {
                 Map<String, String> errorResponse = new HashMap<>();
@@ -87,7 +88,7 @@ public class ApiFavoriteController {
     @DeleteMapping("/{routeId}")
     public ResponseEntity<?> removeFavorite(@PathVariable Integer routeId, HttpServletRequest request) {
         try {
-            Integer userId = apiHelper.getUserIdFromToken(request);
+            Integer userId = getUserIdFromRequest(request);
             
             if (userId == null) {
                 Map<String, String> errorResponse = new HashMap<>();
@@ -111,5 +112,26 @@ public class ApiFavoriteController {
             errorResponse.put("error", "Không thể xóa khỏi danh sách yêu thích");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
+    }
+    
+    // Phương thức private lấy userId từ JWT token thông qua username
+    private Integer getUserIdFromRequest(HttpServletRequest request) {
+        try {
+            String header = request.getHeader("Authorization");
+            if (header != null && header.startsWith("Bearer ")) {
+                String token = header.substring(7);
+                String username = JwtUtils.validateTokenAndGetUsername(token);
+                
+                if (username != null) {
+                    Optional<Users> userOpt = userRepository.findByUsername(username);
+                    if (userOpt.isPresent()) {
+                        return userOpt.get().getId();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

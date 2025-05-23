@@ -56,18 +56,23 @@ public class ScheduleServiceImpl implements ScheduleService {
     public Schedules createSchedule(Schedules schedule) {
         validateSchedule(schedule);
         return scheduleRepository.save(schedule);
-    }
-
-    @Override
+    }    @Override
     @Transactional
     public Schedules updateSchedule(Integer id, Schedules scheduleDetails) {
         Schedules schedule = scheduleRepository.findById(id)
                 .orElseThrow(() -> new ScheduleException("Schedule not found with id: " + id));
 
+        // Lưu thông tin createdAt trước khi cập nhật
+        Date createdAt = schedule.getCreatedAt();
+
+        // Cập nhật các trường thông tin
         schedule.setVehicleId(scheduleDetails.getVehicleId());
         schedule.setRouteId(scheduleDetails.getRouteId());
         schedule.setDepartureTime(scheduleDetails.getDepartureTime());
         schedule.setArrivalTime(scheduleDetails.getArrivalTime());
+        
+        // Giữ lại thông tin createdAt
+        schedule.setCreatedAt(createdAt);
 
         validateSchedule(schedule);
 

@@ -1,7 +1,11 @@
 package com.pts.services.impl;
 
+import com.pts.pojo.Routes;
 import com.pts.pojo.Stops;
+import com.pts.pojo.RouteStop;
 import com.pts.repositories.StopRepository;
+import com.pts.repositories.RoutesRepository;
+import com.pts.repositories.RouteStopRepository;
 import com.pts.services.StopService;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,6 +24,12 @@ public class StopServiceImpl implements StopService {
     @Autowired
     private StopRepository stopRepository;
 
+    @Autowired
+    private RoutesRepository routesRepository;
+
+    @Autowired
+    private RouteStopRepository routeStopRepository;
+
     @Override
     public List<Stops> getAllStops() {
         return stopRepository.findAll();
@@ -33,7 +43,6 @@ public class StopServiceImpl implements StopService {
     @Override
     public Stops saveStop(Stops stop) {
         // Thiết lập giá trị mặc định nếu chưa có
-
         if (stop.getIsAccessible() == null) {
             stop.setIsAccessible(true);
         }
@@ -67,21 +76,22 @@ public class StopServiceImpl implements StopService {
     }
 
     @Override
+    public List<Stops> findStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
+        return stopRepository.findByRouteIdAndDirection(routeId, direction);
+    }
+
+    @Override
     public List<Stops> searchStops(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return getAllStops();
         }
         return stopRepository.searchStops(keyword);
     }
-    // Thêm vào StopServiceImpl.java
 
     @Override
     public List<Stops> findNearbyStops(double lat, double lng, double radiusMeters) {
         // Giới hạn bán kính tìm kiếm là 1000m
         double effectiveRadius = Math.min(radiusMeters, 1000);
-
-        // Chuyển đổi bán kính từ mét sang độ (xấp xỉ)
-        double radiusDegrees = effectiveRadius / 111000.0; // 1 độ ~ 111km tại xích đạo
 
         // Lấy tất cả trạm từ repository
         List<Stops> allStops = stopRepository.findAll();
@@ -108,9 +118,6 @@ public class StopServiceImpl implements StopService {
         // Giới hạn bán kính tối đa là 1000m
         double effectiveRadius = Math.min(radiusMeters, 1000);
 
-        // Chuyển đổi bán kính từ mét sang độ (xấp xỉ)
-        double radiusDegrees = effectiveRadius / 111000.0; // 1 độ ~ 111km tại xích đạo
-
         List<Stops> nearbyStops = findNearbyStops(lat, lng, effectiveRadius);
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -126,11 +133,28 @@ public class StopServiceImpl implements StopService {
             double distance = calculateHaversineDistance(lat, lng, stop.getLatitude(), stop.getLongitude()) * 1000; // Chuyển km -> m
             stopMap.put("distance", Math.round(distance)); // Làm tròn khoảng cách
 
-            // Thêm thông tin về tuyến nếu có
-            if (stop.getRouteId() != null) {
-                stopMap.put("routeId", stop.getRouteId().getId());
-                stopMap.put("routeName", stop.getRouteId().getName());
-                stopMap.put("routeColor", stop.getRouteId().getRouteColor());
+            // Lấy danh sách các tuyến đi qua điểm dừng này thông qua bảng route_stops
+            List<RouteStop> routeStops = routeStopRepository.findByStopId(stop.getId());
+            if (!routeStops.isEmpty()) {
+                List<Map<String, Object>> routeInfos = new ArrayList<>();
+
+                for (RouteStop rs : routeStops) {
+                    Routes route = rs.getRoute();
+                    Map<String, Object> routeMap = new HashMap<>();
+                    routeMap.put("id", route.getId());
+                    routeMap.put("name", route.getName());
+                    routeMap.put("color", route.getRouteColor());
+                    routeMap.put("stopOrder", rs.getStopOrder());
+
+                    // Thêm thông tin chiều
+                    if (rs.getDirection() != null) {
+                        routeMap.put("direction", rs.getDirection());
+                    }
+
+                    routeInfos.add(routeMap);
+                }
+
+                stopMap.put("routes", routeInfos);
             }
 
             result.add(stopMap);
@@ -142,55 +166,6 @@ public class StopServiceImpl implements StopService {
         return result;
     }
 
-    private List<Stops> findNearbyStopsInternal(double lat, double lng, double radius) {
-        // Thực hiện tìm kiếm trạm gần trong radius (mét)
-        // Phần này có thể cần thêm vào StopRepository nếu chưa có
-
-        // Đây là phiên bản đơn giản: lấy tất cả trạm và lọc theo khoảng cách
-        List<Stops> allStops = getAllStops();
-        List<Stops> nearbyStops = new ArrayList<>();
-
-        for (Stops stop : allStops) {
-            if (stop.getLatitude() != null && stop.getLongitude() != null) {
-                double distance = calculateHaversineDistance(
-                        lat, lng,
-                        stop.getLatitude(), stop.getLongitude()
-                ) * 1000; // Chuyển từ km sang m
-
-                if (distance <= radius) {
-                    nearbyStops.add(stop);
-                }
-            }
-        }
-
-        return nearbyStops;
-    }
-
-// Định dạng danh sách các trạm
-    private List<Map<String, Object>> formatStopsList(List<Stops> stops) {
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (Stops stop : stops) {
-            Map<String, Object> stopInfo = new HashMap<>();
-
-            stopInfo.put("id", stop.getId());
-            stopInfo.put("name", stop.getStopName());
-            stopInfo.put("latitude", stop.getLatitude());
-            stopInfo.put("longitude", stop.getLongitude());
-            stopInfo.put("address", stop.getAddress());
-
-            if (stop.getRouteId() != null) {
-                stopInfo.put("routeId", stop.getRouteId().getId());
-                stopInfo.put("routeName", stop.getRouteId().getName());
-            }
-
-            result.add(stopInfo);
-        }
-
-        return result;
-    }
-
-// Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
         // Bán kính trái đất trong km
         final int R = 6371;

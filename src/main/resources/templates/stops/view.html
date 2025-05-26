@@ -3,134 +3,444 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Chi tiết trạm dừng</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    </head>
-    <body>
-        <div class="container mt-4">
-            <div class="mb-3">
-                <a th:href="@{/stops}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Quay lại danh sách
-                </a>
+        <title>Chi tiết tuyến</title>
+    <th:block th:replace="base :: bootstrap"></th:block>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .route-header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .badge-route {
+            background-color: white;
+            color: #333;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: 500;
+        }
+        .action-btn {
+            margin-right: 5px;
+        }
+        #map {
+            height: 400px;
+        }
+        .direction-tabs {
+            margin-bottom: 20px;
+        }
+        .direction-tabs .nav-link {
+            font-weight: bold;
+        }
+        .direction-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container my-4">
+        <div th:replace="base :: header"></div>
+
+        <!-- Nút quay lại -->
+        <div class="mb-3">
+            <button class="btn btn-secondary" onclick="window.history.back()">
+                <i class="bi bi-arrow-left"></i> Quay lại
+            </button>
+        </div>
+
+        <!-- Header tuyến đường -->
+        <div class="route-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0" th:text="${route.name}">Tuyến 1</h2>
+                <span class="badge-route">Tuyến buýt</span>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Thông tin cơ bản -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h3>Thông tin tuyến</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <tr>
+                                <th>ID tuyến:</th>
+                                <td th:text="${route.id}">1</td>
+                            </tr>
+                            <tr>
+                                <th>Tên tuyến:</th>
+                                <td th:text="${route.name}">Tuyến 1</td>
+                            </tr>
+                            <tr>
+                                <th>Điểm bắt đầu:</th>
+                                <td th:text="${route.startLocation}">Điểm đầu</td>
+                            </tr>
+                            <tr>
+                                <th>Điểm kết thúc:</th>
+                                <td th:text="${route.endLocation}">Điểm cuối</td>
+                            </tr>
+                            <tr th:if="${route.operationStartTime != null && route.operationEndTime != null}">
+                                <th>Giờ hoạt động:</th>
+                                <td>
+                                    <span th:text="${#dates.format(route.operationStartTime, 'HH:mm')}">06:00</span> - 
+                                    <span th:text="${#dates.format(route.operationEndTime, 'HH:mm')}">22:00</span>
+                                </td>
+                            </tr>
+                            <tr th:if="${route.frequencyMinutes != null}">
+                                <th>Tần suất:</th>
+                                <td>
+                                    <span th:text="${route.frequencyMinutes}">10</span> phút/chuyến
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="card mb-4">
-                        <div class="card-header bg-primary text-white">
-                            <h3 class="mb-0" th:text="${stop.stopName}">Tên trạm dừng</h3>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th style="width: 30%">ID:</th>
-                                    <td th:text="${stop.id}">1</td>
-                                </tr>
-                                <tr>
-                                    <th>Tuyến đường:</th>
-                                    <td>
-                                        <a th:if="${stop.routeId != null}" 
-                                           th:href="@{/routes/view/{id}(id=${stop.routeId.id})}" 
-                                           th:text="${stop.routeId.name}">
-                                            Tuyến 1
-                                        </a>
-                                        <span th:unless="${stop.routeId != null}">Chưa gán tuyến</span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Địa chỉ:</th>
-                                    <td th:text="${stop.address ?: 'Không có'}">Địa chỉ</td>
-                                </tr>
-                                <tr>
-                                    <th>Tọa độ:</th>
-                                    <td>
-                                        <span th:if="${stop.latitude != null && stop.longitude != null}" 
-                                              th:text="${stop.latitude + ', ' + stop.longitude}">
-                                            10.1234, 106.5678
-                                        </span>
-                                        <span th:unless="${stop.latitude != null && stop.longitude != null}">
-                                            Chưa có tọa độ
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Thứ tự trên tuyến:</th>
-                                    <td th:text="${stop.stopOrder ?: 'Không xác định'}">1</td>
-                                </tr>
-                                <tr>
-                                    <th>Tiếp cận được:</th>
-                                    <td>
-                                        <span th:if="${stop.isAccessible == true}" class="badge bg-success">
-                                            <i class="bi bi-wheelchair"></i> Có
-                                        </span>
-                                        <span th:unless="${stop.isAccessible == true}" class="badge bg-secondary">
-                                            <i class="bi bi-wheelchair"></i> Không
-                                        </span>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <div class="d-flex gap-2 mt-4">
-                                <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-warning">
-                                    <i class="bi bi-pencil"></i> Chỉnh sửa
-                                </a>
-                                <a th:href="@{/stops/delete/{id}(id=${stop.id})}" 
-                                   onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này?');"
-                                   class="btn btn-danger">
-                                    <i class="bi bi-trash"></i> Xóa
-                                </a>
-                            </div>
+            <!-- Thao tác -->
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h3>Thao tác</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a th:href="@{/routes/edit/{id}(id=${route.id})}" class="btn btn-warning">
+                                <i class="bi bi-pencil"></i> Sửa tuyến
+                            </a>
+                            <a th:href="@{/stops/create(routeId=${route.id}, direction=${currentDirection})}" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Thêm trạm dừng
+                            </a>
+                            <a th:href="@{/schedules/add(routeId=${route.id})}" class="btn btn-info">
+                                <i class="bi bi-calendar-plus"></i> Thêm lịch trình
+                            </a>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header bg-info text-white">
-                            <h3 class="mb-0">Vị trí trên bản đồ</h3>
+            <!-- Bản đồ -->
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h3>Bản đồ tuyến đường</h3>
+                    </div>
+                    <div class="card-body">
+                        <div id="map"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs cho chiều đi/về -->
+            <div class="col-md-12">
+                <div class="direction-tabs">
+                    <ul class="nav nav-tabs" id="directionTabs" role="tablist">
+                        <li class="nav-item" role="presentation" th:if="${hasInbound}">
+                            <a class="nav-link" th:classappend="${currentDirection == 1 ? 'active' : ''}" 
+                               th:href="@{/routes/view/{id}(id=${route.id}, direction=1)}" role="tab">
+                                <i class="bi bi-arrow-right"></i> Chiều đi
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation" th:if="${hasOutbound}">
+                            <a class="nav-link" th:classappend="${currentDirection == 2 ? 'active' : ''}" 
+                               th:href="@{/routes/view/{id}(id=${route.id}, direction=2)}" role="tab">
+                                <i class="bi bi-arrow-left"></i> Chiều về
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation" th:if="${!hasInbound && !hasOutbound}">
+                            <span class="nav-link active">Tuyến đường</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Danh sách trạm dừng -->
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">
+                            <span th:if="${currentDirection == 1}">Trạm dừng (Chiều đi)</span>
+                            <span th:if="${currentDirection == 2}">Trạm dừng (Chiều về)</span>
+                            <span th:if="${currentDirection == null}">Trạm dừng</span>
+                        </h3>
+                        <a th:href="@{/stops/create(routeId=${route.id}, direction=${currentDirection})}" class="btn btn-light btn-sm">
+                            <i class="bi bi-plus-circle"></i> Thêm trạm
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${stops == null || stops.isEmpty()}" class="alert alert-info">
+                            Tuyến này chưa có trạm dừng nào cho chiều này.
                         </div>
-                        <div class="card-body p-0">
-                            <div id="map" style="height: 400px;"></div>
+
+                        <div th:unless="${stops == null || stops.isEmpty()}" class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Thứ tự</th>
+                                        <th>Tên trạm</th>
+                                        <th>Địa chỉ</th>
+                                        <th>Tiếp cận</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="stop : ${stops}">
+                                        <td th:text="${stop.stopOrder}">1</td>
+                                        <td th:text="${stop.stopName}">Tên trạm</td>
+                                        <td th:text="${stop.address ?: '-'}">Địa chỉ</td>
+                                        <td>
+                                            <span th:if="${stop.isAccessible}" class="badge bg-success">Có</span>
+                                            <span th:unless="${stop.isAccessible}" class="badge bg-secondary">Không</span>
+                                        </td>
+                                        <td>
+                                            <a th:href="@{/stops/view/{id}(id=${stop.id})}" class="btn btn-sm btn-info action-btn">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-sm btn-warning action-btn">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a th:href="@{/routes/{routeId}/stops/{stopId}/remove(routeId=${route.id}, stopId=${stop.id}, direction=${currentDirection})}"
+                                               onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này khỏi tuyến?');"
+                                               class="btn btn-sm btn-danger action-btn">
+                                                <i class="bi bi-x-circle"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lịch trình -->
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">Lịch trình</h3>
+                        <a th:href="@{/schedules/add(routeId=${route.id})}" class="btn btn-light btn-sm">
+                            <i class="bi bi-plus-circle"></i> Thêm lịch trình
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${schedules == null || schedules.isEmpty()}" class="alert alert-info">
+                            Tuyến này chưa có lịch trình nào.
+                        </div>
+
+                        <div th:unless="${schedules == null || schedules.isEmpty()}" class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Giờ bắt đầu</th>
+                                        <th>Giờ kết thúc</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="schedule : ${schedules}">
+                                        <td th:text="${schedule.departureTime != null ? #dates.format(schedule.departureTime, 'HH:mm') : 'Chưa xác định'}">06:00</td>
+                                        <td th:text="${schedule.arrivalTime != null ? #dates.format(schedule.arrivalTime, 'HH:mm') : 'Chưa xác định'}">22:00</td>
+                                        <td>
+                                            <a th:href="@{/schedules/edit/{id}(id=${schedule.id})}" class="btn btn-sm btn-warning action-btn">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <a th:href="@{/schedules/delete/{id}(id=${schedule.id})}"
+                                               onclick="return confirm('Bạn có chắc chắn muốn xóa lịch trình này?');"
+                                               class="btn btn-sm btn-danger action-btn">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script th:inline="javascript">
-                                       // Lấy dữ liệu từ Thymeleaf
-                                       var lat = /*[[${stop.latitude}]]*/ null;
-                                       var lng = /*[[${stop.longitude}]]*/ null;
-                                       var stopName = /*[[${stop.stopName}]]*/ 'Trạm dừng';
+        <div th:replace="base :: footer"></div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Thêm plugin Polyline.encoded -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.6.0/leaflet.polylineDecorator.min.js"></script>
+    <script>
+                                                   // Giải mã polyline (được sử dụng bởi OSRM)
+                                                   // Nguồn: https://github.com/jieter/Leaflet.encoded
+                                                   L.Polyline.fromEncoded = function (encoded, options) {
+                                                       var polyline = L.polyline([], options);
+                                                       polyline.setLatLngs(L.PolylineUtil.decode(encoded));
+                                                       return polyline;
+                                                   };
 
-                                       // Khởi tạo bản đồ
-                                       var map = L.map('map');
+                                                   L.PolylineUtil = {
+                                                       // Giải mã chuỗi polyline thành mảng tọa độ [lat, lng]
+                                                       decode: function (str, precision) {
+                                                           var index = 0,
+                                                                   lat = 0,
+                                                                   lng = 0,
+                                                                   coordinates = [],
+                                                                   shift = 0,
+                                                                   result = 0,
+                                                                   byte = null,
+                                                                   latitude_change,
+                                                                   longitude_change,
+                                                                   factor = Math.pow(10, precision || 5);
 
-                                       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                           maxZoom: 19,
-                                           attribution: '© OpenStreetMap contributors'
-                                       }).addTo(map);
+                                                           // Đọc lat và lng cho đến khi hết chuỗi str
+                                                           while (index < str.length) {
+                                                               // Reset shift, result, và byte
+                                                               byte = null;
+                                                               shift = 0;
+                                                               result = 0;
 
-                                       // Hiển thị marker nếu có tọa độ
-                                       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                                           lat = parseFloat(lat);
-                                           lng = parseFloat(lng);
+                                                               do {
+                                                                   byte = str.charCodeAt(index++) - 63;
+                                                                   result |= (byte & 0x1f) << shift;
+                                                                   shift += 5;
+                                                               } while (byte >= 0x20);
 
-                                           L.marker([lat, lng])
-                                                   .addTo(map)
-                                                   .bindPopup(stopName)
-                                                   .openPopup();
+                                                               latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
 
-                                           map.setView([lat, lng], 16);
-                                       } else {
-                                           // Nếu không có tọa độ, hiển thị thông báo trên bản đồ
-                                           map.setView([10.8231, 106.6297], 13);
-                                           document.getElementById('map').innerHTML = '<div class="d-flex align-items-center justify-content-center h-100 bg-light"><p class="text-muted">Không có tọa độ để hiển thị</p></div>';
-                                       }
-        </script>
-    </body>
+                                                               shift = result = 0;
+
+                                                               do {
+                                                                   byte = str.charCodeAt(index++) - 63;
+                                                                   result |= (byte & 0x1f) << shift;
+                                                                   shift += 5;
+                                                               } while (byte >= 0x20);
+
+                                                               longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+
+                                                               lat += latitude_change;
+                                                               lng += longitude_change;
+
+                                                               coordinates.push([lat / factor, lng / factor]);
+                                                           }
+
+                                                           return coordinates;
+                                                       }
+                                                   };
+    </script>
+
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        var map = L.map('map').setView([10.77, 106.69], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var coordinates = /*[[${coordinates}]]*/ [];
+        var currentDirection = /*[[${currentDirection}]]*/ 1;
+
+        // Thêm marker cho mỗi trạm với icons khác nhau cho điểm đầu, giữa và cuối
+        if (coordinates.length > 0) {
+            var markers = [];
+
+            coordinates.forEach(function (coord, index) {
+                var markerIcon = L.divIcon({
+                    html: '<i class="bi bi-circle-fill" style="color: ' +
+                            (index === 0 ? 'green' : (index === coordinates.length - 1 ? 'red' : 'blue')) +
+                            '; font-size: 12px;"></i>',
+                    className: 'marker-station'
+                });
+
+                var marker = L.marker([coord[0], coord[1]], {icon: markerIcon})
+                        .addTo(map);
+
+                // Thêm thông tin chiều vào popup
+                var popupContent = (index === 0 ? "Điểm đầu" :
+                        (index === coordinates.length - 1 ? "Điểm cuối" :
+                                "Trạm " + index));
+
+                if (currentDirection === 1) {
+                    popupContent += " (Chiều đi)";
+                } else if (currentDirection === 2) {
+                    popupContent += " (Chiều về)";
+                }
+
+                marker.bindPopup(popupContent);
+                markers.push(marker);
+            });
+
+            // Tạo polyline đơn giản kết nối các điểm
+            var simplePolyline = L.polyline(coordinates, {
+                color: currentDirection === 1 ? 'blue' : 'green',
+                weight: 2,
+                dashArray: '5,10',
+                opacity: 0.6
+            }).addTo(map);
+
+            // Nếu có ít nhất 2 điểm, sử dụng OSRM để vẽ đường đi theo đường phố
+            if (coordinates.length >= 2) {
+                // Tạo URL cho API OSRM
+                var waypointsStr = coordinates.map(function (coord) {
+                    return coord[1] + ',' + coord[0]; // OSRM yêu cầu định dạng [lon, lat]
+                }).join(';');
+
+                var url = 'https://router.project-osrm.org/route/v1/driving/' + waypointsStr +
+                        '?overview=full&geometries=polyline';
+
+                // Gọi API OSRM
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (data) {
+                        console.log("OSRM API response:", data);
+
+                        if (data.code === 'Ok') {
+                            // Giải mã tọa độ polyline từ phản hồi
+                            var encoded = data.routes[0].geometry;
+                            var routeCoords = L.PolylineUtil.decode(encoded);
+
+                            // Vẽ tuyến đường
+                            var routePolyline = L.polyline(routeCoords, {
+                                color: currentDirection === 1 ? 'blue' : 'green',
+                                weight: 4,
+                                opacity: 0.8
+                            }).addTo(map);
+
+                            // Xoá polyline đơn giản
+                            map.removeLayer(simplePolyline);
+
+                            // Fit bản đồ vào tất cả điểm
+                            var group = new L.featureGroup(markers.concat([routePolyline]));
+                            map.fitBounds(group.getBounds(), {padding: [30, 30]});
+                        } else {
+                            console.error('Lỗi từ OSRM API:', data.code);
+                            fitMapToMarkers();
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Lỗi khi gọi OSRM API:', error);
+                        console.log('Phản hồi từ máy chủ:', xhr.responseText);
+                        fitMapToMarkers();
+                    }
+                });
+            } else {
+                fitMapToMarkers();
+            }
+
+            function fitMapToMarkers() {
+                // Helper function để fit map vào các marker
+                var group = new L.featureGroup(markers);
+                map.fitBounds(group.getBounds(), {padding: [30, 30]});
+            }
+        } else {
+            // Không có tọa độ, hiển thị khu vực HCM mặc định
+            document.getElementById('map').innerHTML =
+                    '<div class="d-flex align-items-center justify-content-center h-100 bg-light">' +
+                    '<p class="text-muted">Không có tọa độ nào cho tuyến đường này</p></div>';
+        }
+        /*]]>*/
+    </script>
+</body>
 </html>

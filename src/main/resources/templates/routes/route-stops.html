@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Các điểm dừng của tuyến</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    <style>
+        .stop-list {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+
+        .stop-item {
+            margin-bottom: 8px;
+            padding: 10px 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: grab;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stop-item:active {
+            cursor: grabbing;
+        }
+
+        .stop-handle {
+            cursor: grab;
+            margin-right: 10px;
+            color: #aaa;
+        }
+
+        .stop-actions {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Các điểm dừng của tuyến: <span th:text="${route.name}"></span></h2>
+                <p>
+                    <strong>Bắt đầu:</strong> <span th:text="${route.startLocation}"></span> |
+                    <strong>Kết thúc:</strong> <span th:text="${route.endLocation}"></span> |
+                    <strong>Tổng số điểm dừng:</strong> <span th:text="${routeStops.size()}"></span>
+                </p>
+
+                <div class="alert alert-success" th:if="${successMessage}" th:text="${successMessage}"></div>
+                <div class="alert alert-danger" th:if="${errorMessage}" th:text="${errorMessage}"></div>
+
+                <div class="mb-3">
+                    <a th:href="@{/route-stops/add(routeId=${route.id})}" class="btn btn-primary">Thêm điểm dừng mới</a>
+                    <a th:href="@{/routes/view/{id}(id=${route.id})}" class="btn btn-secondary ml-2">Quay lại chi tiết
+                        tuyến</a>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Danh sách điểm dừng (Kéo để sắp xếp lại)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="stop-list" id="sortable-stops">
+                            <div th:each="stop, stat : ${routeStops}" class="stop-item" th:data-id="${stop.id}"
+                                th:data-order="${stop.stopOrder}">
+                                <div>
+                                    <span class="stop-handle">
+                                        <i class="fa fa-bars"></i> ⋮
+                                    </span>
+                                    <strong th:text="${stat.count + '. ' + stop.stopId.stopName}"></strong>
+                                    <span th:if="${stop.stopId.address}"
+                                        th:text="${' - ' + stop.stopId.address}"></span>
+                                </div>
+                                <div class="stop-actions">
+                                    <a th:href="@{/route-stops/edit(id=${stop.id})}" class="btn btn-sm btn-info">
+                                        Sửa
+                                    </a>
+                                    <a th:href="@{/route-stops/remove(routeId=${route.id}, stopId=${stop.stopId.id})}"
+                                        class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Bạn chắc chắn muốn xóa điểm dừng này khỏi tuyến?')">
+                                        Xóa
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="text-center p-3" th:if="${routeStops.isEmpty()}">
+                                Chưa có điểm dừng nào trong tuyến này
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            // Khởi tạo Sortable.js
+            var el = document.getElementById('sortable-stops');
+            var sortable = Sortable.create(el, {
+                handle: '.stop-handle',
+                animation: 150,
+                onEnd: function (evt) {
+                    // Chuẩn bị dữ liệu để gửi đến server
+                    var stops = [];
+                    $('.stop-item').each(function (index) {
+                        stops.push({
+                            id: $(this).data('id'),
+                            order: index + 1
+                        });
+                    });
+
+                    // Gửi dữ liệu đến server
+                    $.ajax({
+                        url: '/route-stops/reorder',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(stops),
+                        success: function (response) {
+                            if (response.success) {
+                                // Có thể hiển thị thông báo thành công
+                                console.log('Sắp xếp thành công');
+                            } else {
+                                console.error('Lỗi: ' + response.message);
+                                alert('Có lỗi khi sắp xếp: ' + response.message);
+                            }
+                        },
+                        error: function (xhr) {
+                            console.error('Lỗi kết nối: ' + xhr.statusText);
+                            alert('Có lỗi kết nối khi sắp xếp điểm dừng');
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,61 +1,226 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <title>Chỉnh sửa tuyến</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chỉnh sửa tuyến</title>
     <th:block th:replace="base :: bootstrap"></th:block>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .route-header {
+            background-color: #ffc107;
+            color: #212529;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .tab-content {
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-top: 0;
+        }
+    </style>
 </head>
 <body>
-    <main class="container">
+    <div class="container my-4">
         <div th:replace="base :: header"></div>
 
-        <div class="row">
-            <div class="col-md-8 mx-auto">
-                <div class="card mt-4">
-                    <div class="card-header bg-dark text-white">
-                        <h3 class="card-title mb-0">Chỉnh sửa tuyến</h3>
-                    </div>
-                    <div class="card-body">
-                        <form th:action="@{/routes/edit/{id}(id=${route.id})}" method="post">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Tên tuyến</label>
-                                <input type="text" class="form-control" id="name" name="name" th:value="${route.name}" required>
-                            </div>
+        <!-- Nút quay lại -->
+        <div class="mb-3">
+            <a th:href="@{/routes/view/{id}(id=${route.id})}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Quay lại
+            </a>
+        </div>
 
-                            <div class="mb-3">
-                                <label for="startLocation" class="form-label">Điểm bắt đầu</label>
-                                <input type="text" class="form-control" id="startLocation" name="startLocation" th:value="${route.startLocation}" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="endLocation" class="form-label">Điểm kết thúc</label>
-                                <input type="text" class="form-control" id="endLocation" name="endLocation" th:value="${route.endLocation}" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="totalStops" class="form-label">Số trạm</label>
-                                <input type="number" class="form-control" id="totalStops" name="totalStops" th:value="${route.totalStops}" min="1" required>
-                            </div>
-
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="isWalkingRoute" name="isWalkingRoute" th:checked="${route.isWalkingRoute}">
-                                <label class="form-check-label" for="isWalkingRoute">Là tuyến đi bộ</label>
-                            </div>
-
-                            <div class="d-flex justify-content-between">
-                                <button type="submit" class="btn btn-dark">
-                                    <i class="bi bi-save"></i> Cập nhật
-                                </button>
-                                <a th:href="@{/routes}" class="btn btn-secondary">
-                                    <i class="bi bi-arrow-left"></i> Quay lại
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+        <!-- Header tuyến đường -->
+        <div class="route-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">Chỉnh sửa tuyến: <span th:text="${route.name}">Tuyến 1</span></h2>
+                <span class="badge bg-primary">Tuyến buýt</span>
             </div>
         </div>
 
+        <!-- Form chỉnh sửa -->
+        <form th:action="@{/routes/edit/{id}(id=${route.id})}" method="post" class="needs-validation" novalidate>
+            <ul class="nav nav-tabs" id="editTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                        Thông tin cơ bản
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="inbound-tab" data-bs-toggle="tab" data-bs-target="#inbound" type="button" role="tab">
+                        Chiều đi
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="outbound-tab" data-bs-toggle="tab" data-bs-target="#outbound" type="button" role="tab">
+                        Chiều về
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="editTabContent">
+                <!-- Thông tin cơ bản -->
+                <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="name" class="form-label">Tên tuyến</label>
+                                <input type="text" class="form-control" id="name" name="name" th:value="${route.name}" required>
+                                <div class="invalid-feedback">
+                                    Vui lòng nhập tên tuyến
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="routeType" class="form-label">Loại tuyến</label>
+                                <select class="form-select" id="routeType" name="routeType">
+                                    <option value="BUS" th:selected="${route.routeType == 'BUS'}">Buýt</option>
+                                    <option value="METRO" th:selected="${route.routeType == 'METRO'}">Metro</option>
+                                    <option value="TRAIN" th:selected="${route.routeType == 'TRAIN'}">Tàu hỏa</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="startLocation" class="form-label">Điểm bắt đầu</label>
+                                <input type="text" class="form-control" id="startLocation" name="startLocation" 
+                                       th:value="${route.startLocation}" required>
+                                <div class="invalid-feedback">
+                                    Vui lòng nhập điểm bắt đầu
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="endLocation" class="form-label">Điểm kết thúc</label>
+                                <input type="text" class="form-control" id="endLocation" name="endLocation" 
+                                       th:value="${route.endLocation}" required>
+                                <div class="invalid-feedback">
+                                    Vui lòng nhập điểm kết thúc
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="operationStartTime" class="form-label">Giờ bắt đầu hoạt động</label>
+                                <input type="time" class="form-control" id="operationStartTime" name="operationStartTime" 
+                                       th:value="${#dates.format(route.operationStartTime, 'HH:mm')}" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="operationEndTime" class="form-label">Giờ kết thúc hoạt động</label>
+                                <input type="time" class="form-control" id="operationEndTime" name="operationEndTime" 
+                                       th:value="${#dates.format(route.operationEndTime, 'HH:mm')}" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="frequencyMinutes" class="form-label">Tần suất (phút/chuyến)</label>
+                                <input type="number" class="form-control" id="frequencyMinutes" name="frequencyMinutes" 
+                                       th:value="${route.frequencyMinutes}" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">Trạng thái</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="ACTIVE" th:selected="${route.status == 'ACTIVE'}">Đang hoạt động</option>
+                                    <option value="INACTIVE" th:selected="${route.status == 'INACTIVE'}">Tạm ngưng</option>
+                                    <option value="PLANNED" th:selected="${route.status == 'PLANNED'}">Đang lên kế hoạch</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chiều đi -->
+                <div class="tab-pane fade" id="inbound" role="tabpanel">
+                    <h4 class="mb-3">Điểm dừng chiều đi</h4>
+                    <div class="alert alert-info">
+                        Điểm dừng chiều đi có thể được thêm sau khi lưu thông tin tuyến.
+                    </div>
+                    
+                    <div th:if="${not #lists.isEmpty(selectedStopsInbound)}" class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Thứ tự</th>
+                                    <th>Tên trạm</th>
+                                    <th>Địa chỉ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="stop : ${selectedStopsInbound}">
+                                    <td th:text="${stop.stopOrder}">1</td>
+                                    <td th:text="${stop.name}">Tên trạm</td>
+                                    <td th:text="${stop.address ?: '-'}">Địa chỉ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div th:if="${#lists.isEmpty(selectedStopsInbound)}" class="alert alert-warning">
+                        Chưa có điểm dừng nào cho chiều đi.
+                    </div>
+                </div>
+
+                <!-- Chiều về -->
+                <div class="tab-pane fade" id="outbound" role="tabpanel">
+                    <h4 class="mb-3">Điểm dừng chiều về</h4>
+                    <div class="alert alert-info">
+                        Điểm dừng chiều về có thể được thêm sau khi lưu thông tin tuyến.
+                    </div>
+                    
+                    <div th:if="${not #lists.isEmpty(selectedStopsOutbound)}" class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Thứ tự</th>
+                                    <th>Tên trạm</th>
+                                    <th>Địa chỉ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="stop : ${selectedStopsOutbound}">
+                                    <td th:text="${stop.stopOrder}">1</td>
+                                    <td th:text="${stop.name}">Tên trạm</td>
+                                    <td th:text="${stop.address ?: '-'}">Địa chỉ</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div th:if="${#lists.isEmpty(selectedStopsOutbound)}" class="alert alert-warning">
+                        Chưa có điểm dừng nào cho chiều về.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nút lưu và hủy -->
+            <div class="mt-4 d-flex justify-content-between">
+                <a th:href="@{/routes/view/{id}(id=${route.id})}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Hủy bỏ
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check2-circle"></i> Lưu thay đổi
+                </button>
+            </div>
+        </form>
+
         <div th:replace="base :: footer"></div>
-    </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        })()
+    </script>
 </body>
 </html>

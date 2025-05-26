@@ -1,12 +1,16 @@
 package com.pts.services.impl;
 
 import com.pts.pojo.Routes;
+import com.pts.pojo.Stops;
+import com.pts.pojo.RouteStop;
 import com.pts.repositories.RoutesRepository;
+import com.pts.repositories.RouteStopRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import com.pts.services.RouteService;
 import com.pts.services.StopService;
 import java.util.ArrayList;
@@ -20,8 +24,12 @@ public class RoutesServiceImpl implements RouteService {
 
     @Autowired
     private RoutesRepository routesRepository;
+
     @Autowired
     private StopService stopService;
+
+    @Autowired
+    private RouteStopRepository routeStopRepository;
 
     @Override
     public List<Routes> getAllRoutes() {
@@ -44,11 +52,23 @@ public class RoutesServiceImpl implements RouteService {
             route.setIsWalkingRoute(false);
         }
 
-        return routesRepository.save(route);
+        // Lưu route
+        Routes savedRoute = routesRepository.save(route);
+
+        // Cập nhật tổng số điểm dừng
+        if (savedRoute.getId() != null) {
+            routesRepository.updateTotalStops(savedRoute.getId());
+        }
+
+        return savedRoute;
     }
 
     @Override
     public void deleteRoute(Integer id) {
+        // Xóa các liên kết trong bảng route_stops trước
+        routeStopRepository.deleteByRouteId(id);
+
+        // Sau đó xóa tuyến
         routesRepository.deleteById(id);
     }
 
@@ -96,6 +116,45 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     @Override
+    public List<Routes> findRoutesByStops(List<Integer> stopIds) {
+        if (stopIds == null || stopIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Lấy tất cả các tuyến
+        List<Routes> allRoutes = getAllRoutes();
+
+        // Lọc các tuyến đi qua tất cả điểm dừng được chỉ định
+        return allRoutes.stream()
+                .filter(route -> {
+                    // Lấy tất cả các điểm dừng của tuyến này
+                    List<Stops> routeStops = routesRepository.findStopsByRouteId(route.getId());
+                    List<Integer> routeStopIds = routeStops.stream()
+                            .map(Stops::getId)
+                            .collect(Collectors.toList());
+
+                    // Kiểm tra xem tuyến có chứa tất cả các điểm dừng không
+                    return routeStopIds.containsAll(stopIds);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<Routes> findRoutesByStopAndDirection(Integer stopId, Integer direction) {
+        return routesRepository.findByStopIdAndDirection(stopId, direction);
+    }
+
+    @Override
+    public List<Stops> getStopsByRouteId(Integer routeId) {
+        return routesRepository.findStopsByRouteId(routeId);
+    }
+
+    @Override
+    public List<Stops> getStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
+        return routesRepository.findStopsByRouteIdAndDirection(routeId, direction);
+    }
+
+    @Override
     public List<Map<String, Object>> findRoutesWithStops(double fromLat, double fromLng,
             double toLat, double toLng, double maxWalkDistance,
             int maxTransfers, String routePriority) {
@@ -108,6 +167,7 @@ public class RoutesServiceImpl implements RouteService {
             // 1. Tìm trạm gần điểm đi và điểm đến
             List<Map<String, Object>> fromStops = stopService.findNearbyStopsFormatted(fromLat, fromLng, effectiveMaxDistance);
             List<Map<String, Object>> toStops = stopService.findNearbyStopsFormatted(toLat, toLng, effectiveMaxDistance);
+
             // 2. Tìm các tuyến đi qua cả từ điểm đi đến điểm đến
             List<Routes> directRoutes = findDirectRoutes(fromStops, toStops);
 
@@ -128,79 +188,49 @@ public class RoutesServiceImpl implements RouteService {
         return result;
     }
 
-    @Override
-    public List<Routes> findRoutesByStops(List<Integer> stopIds) {
-        if (stopIds == null || stopIds.isEmpty()) {
-            return new ArrayList<>();
-        }
-
-        // Triển khai tìm kiếm các tuyến đi qua các điểm dừng
-        // Có thể cần thêm vào RoutesRepository nếu chưa có
-        return new ArrayList<>(); // Trả về danh sách rỗng tạm thời
-    }
-
-// Tìm các tuyến đi trực tiếp (không cần chuyển tuyến)
+    // Tìm các tuyến đi trực tiếp (không cần chuyển tuyến)
     private List<Routes> findDirectRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
         List<Routes> directRoutes = new ArrayList<>();
+        Set<Integer> fromStopIds = extractStopIds(fromStops);
+        Set<Integer> toStopIds = extractStopIds(toStops);
 
-        // Lấy routeIds từ các trạm gần điểm đi
-        Set<Integer> fromRouteIds = new HashSet<>();
-        for (Map<String, Object> stop : fromStops) {
-            if (stop.containsKey("routeId")) {
-                fromRouteIds.add((Integer) stop.get("routeId"));
-            }
+        if (fromStopIds.isEmpty() || toStopIds.isEmpty()) {
+            return directRoutes;
         }
 
-        // Lấy routeIds từ các trạm gần điểm đến
-        Set<Integer> toRouteIds = new HashSet<>();
-        for (Map<String, Object> stop : toStops) {
-            if (stop.containsKey("routeId")) {
-                toRouteIds.add((Integer) stop.get("routeId"));
-            }
+        // Lấy tất cả các tuyến đi qua điểm dừng đầu tiên
+        Set<Routes> potentialRoutes = new HashSet<>();
+        for (Integer stopId : fromStopIds) {
+            List<Routes> routes = routesRepository.findByStopId(stopId);
+            potentialRoutes.addAll(routes);
         }
 
-        // Tìm giao của hai tập hợp routeIds
-        fromRouteIds.retainAll(toRouteIds);
+        // Kiểm tra xem những tuyến này có đi qua điểm dừng cuối cùng không
+        for (Routes route : potentialRoutes) {
+            List<Stops> routeStops = routesRepository.findStopsByRouteId(route.getId());
+            Set<Integer> routeStopIds = routeStops.stream()
+                    .map(Stops::getId)
+                    .collect(Collectors.toSet());
 
-        // Lấy thông tin chi tiết của các tuyến
-        for (Integer routeId : fromRouteIds) {
-            Optional<Routes> routeOpt = routesRepository.findById(routeId);
-            routeOpt.ifPresent(directRoutes::add);
+            boolean hasToStop = false;
+            for (Integer toId : toStopIds) {
+                if (routeStopIds.contains(toId)) {
+                    hasToStop = true;
+                    break;
+                }
+            }
+
+            if (hasToStop) {
+                directRoutes.add(route);
+            }
         }
 
         return directRoutes;
     }
 
-// Kiểm tra xem một tuyến có đi qua cả điểm đầu và điểm cuối không
-    private boolean routeContainsStops(Routes route, List<Integer> fromStopIds, List<Integer> toStopIds) {
-        // Lấy tất cả các ID trạm của tuyến này
-        // Đây là phần giả định, thực tế cần triển khai theo cấu trúc dữ liệu của bạn
-        List<Integer> routeStopIds = new ArrayList<>();
-
-        // Kiểm tra xem tuyến có chứa ít nhất một điểm đầu và một điểm cuối không
-        boolean containsFromStop = false;
-        boolean containsToStop = false;
-
-        for (Integer routeStopId : routeStopIds) {
-            if (fromStopIds.contains(routeStopId)) {
-                containsFromStop = true;
-            }
-
-            if (toStopIds.contains(routeStopId)) {
-                containsToStop = true;
-            }
-
-            if (containsFromStop && containsToStop) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-// Trích xuất ID của các trạm từ danh sách Map
-    private List<Integer> extractStopIds(List<Map<String, Object>> stops) {
-        List<Integer> stopIds = new ArrayList<>();
+    // Trích xuất ID của các trạm từ danh sách Map
+    private Set<Integer> extractStopIds(List<Map<String, Object>> stops) {
+        Set<Integer> stopIds = new HashSet<>();
 
         for (Map<String, Object> stop : stops) {
             if (stop.containsKey("id")) {
@@ -220,29 +250,76 @@ public class RoutesServiceImpl implements RouteService {
         return stopIds;
     }
 
-// Tìm các tuyến đường cần chuyển tuyến
+    // Tìm các tuyến đường cần chuyển tuyến
     private List<List<Routes>> findTransferRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops, int maxTransfers) {
         List<List<Routes>> transferRoutes = new ArrayList<>();
+        Set<Integer> fromStopIds = extractStopIds(fromStops);
+        Set<Integer> toStopIds = extractStopIds(toStops);
 
-        if (maxTransfers <= 0) {
+        if (maxTransfers <= 0 || fromStopIds.isEmpty() || toStopIds.isEmpty()) {
             return transferRoutes;
         }
 
-        // Triển khai thuật toán tìm đường đi với chuyển tuyến
-        // Đây là một bài toán phức tạp, bên dưới chỉ là ví dụ đơn giản
-        // Danh sách tạm thời để kiểm tra
-        List<Routes> transferRoute = new ArrayList<>();
-        transferRoute.add(getAllRoutes().isEmpty() ? null : getAllRoutes().get(0));
-        transferRoute.add(getAllRoutes().size() > 1 ? getAllRoutes().get(1) : null);
+        // Tìm tất cả các tuyến đi qua các điểm xuất phát
+        Set<Routes> startRoutes = new HashSet<>();
+        for (Integer stopId : fromStopIds) {
+            startRoutes.addAll(routesRepository.findByStopId(stopId));
+        }
 
-        if (transferRoute.get(0) != null && transferRoute.get(1) != null) {
-            transferRoutes.add(transferRoute);
+        // Tìm tất cả các tuyến đi qua các điểm đích
+        Set<Routes> endRoutes = new HashSet<>();
+        for (Integer stopId : toStopIds) {
+            endRoutes.addAll(routesRepository.findByStopId(stopId));
+        }
+
+        // Nếu có ít nhất 1 tuyến chung giữa điểm xuất phát và điểm đích, thì đó là tuyến trực tiếp
+        // và đã được xử lý trong findDirectRoutes, không cần xử lý ở đây nữa.
+        startRoutes.removeAll(endRoutes);
+
+        // Tìm các tuyến có điểm chuyển tiếp (maxTransfers = 1)
+        for (Routes startRoute : startRoutes) {
+            // Lấy danh sách tất cả các điểm dừng của tuyến xuất phát
+            List<Stops> startRouteStops = routesRepository.findStopsByRouteId(startRoute.getId());
+
+            // Với mỗi điểm dừng của tuyến xuất phát, kiểm tra xem có tuyến nào đi từ điểm này đến điểm đích không
+            for (Stops transferStop : startRouteStops) {
+                List<Routes> transferRoutesList = routesRepository.findByStopId(transferStop.getId());
+
+                for (Routes transferRoute : transferRoutesList) {
+                    // Loại bỏ tuyến xuất phát để tránh trùng lặp
+                    if (transferRoute.getId().equals(startRoute.getId())) {
+                        continue;
+                    }
+
+                    // Kiểm tra xem tuyến chuyển tiếp có đi qua điểm đích không
+                    List<Stops> transferRouteStops = routesRepository.findStopsByRouteId(transferRoute.getId());
+                    Set<Integer> transferRouteStopIds = transferRouteStops.stream()
+                            .map(Stops::getId)
+                            .collect(Collectors.toSet());
+
+                    boolean hasEndStop = false;
+                    for (Integer endStopId : toStopIds) {
+                        if (transferRouteStopIds.contains(endStopId)) {
+                            hasEndStop = true;
+                            break;
+                        }
+                    }
+
+                    if (hasEndStop) {
+                        // Tìm thấy một chuỗi tuyến hợp lệ với 1 lần chuyển tiếp
+                        List<Routes> routeSequence = new ArrayList<>();
+                        routeSequence.add(startRoute);
+                        routeSequence.add(transferRoute);
+                        transferRoutes.add(routeSequence);
+                    }
+                }
+            }
         }
 
         return transferRoutes;
     }
 
-// Định dạng kết quả để trả về
+    // Định dạng kết quả để trả về
     private List<Map<String, Object>> formatRoutesResult(List<Routes> directRoutes, List<List<Routes>> transferRoutes,
             List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng, String routePriority) {
@@ -318,7 +395,7 @@ public class RoutesServiceImpl implements RouteService {
         return sortRouteOptions(result, routePriority);
     }
 
-// Sắp xếp các lựa chọn tuyến đường theo ưu tiên
+    // Sắp xếp các lựa chọn tuyến đường theo ưu tiên
     private List<Map<String, Object>> sortRouteOptions(List<Map<String, Object>> options, String routePriority) {
         if (options == null || options.isEmpty()) {
             return options;
@@ -341,7 +418,7 @@ public class RoutesServiceImpl implements RouteService {
         return options;
     }
 
-// Tính toán thời gian ước tính
+    // Tính toán thời gian ước tính
     private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
         // Tìm trạm thuộc tuyến này ở cả hai điểm
         Map<String, Object> fromStop = findStopOnRoute(fromStops, route.getId());
@@ -363,22 +440,28 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     private Map<String, Object> findStopOnRoute(List<Map<String, Object>> stops, Integer routeId) {
+        // Cập nhật để tìm stop dựa vào các routes đi qua nó (từ cấu trúc mới của vị trí dừng)
         for (Map<String, Object> stop : stops) {
-            if (stop.containsKey("routeId") && routeId.equals(stop.get("routeId"))) {
-                return stop;
+            if (stop.containsKey("routes")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> routes = (List<Map<String, Object>>) stop.get("routes");
+                for (Map<String, Object> route : routes) {
+                    if (route.containsKey("id") && routeId.equals(route.get("id"))) {
+                        return stop;
+                    }
+                }
             }
         }
         return null;
     }
-// Tính toán khoảng cách ước tính
 
+    // Tính toán khoảng cách ước tính
     private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
         // Tính khoảng cách giữa hai điểm (km) - công thức Haversine
         return calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
     }
 
-// Tính toán khoảng cách đi bộ
-    // Định nghĩa đúng cần đủ 6 tham số
+    // Tính toán khoảng cách đi bộ
     private double calculateWalkingDistance(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
@@ -411,7 +494,7 @@ public class RoutesServiceImpl implements RouteService {
         return distanceToFirstStop + distanceFromLastStop;
     }
 
-// Tạo các chặng đường đi
+    // Tạo các chặng đường đi
     private List<Map<String, Object>> createLegs(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
@@ -489,7 +572,7 @@ public class RoutesServiceImpl implements RouteService {
         return legs;
     }
 
-// Tìm trạm gần nhất
+    // Tìm trạm gần nhất
     private Map<String, Object> findNearestStop(List<Map<String, Object>> stops, double lat, double lng) {
         if (stops == null || stops.isEmpty()) {
             return Map.of(
@@ -526,7 +609,7 @@ public class RoutesServiceImpl implements RouteService {
         return standardStop;
     }
 
-// Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
+    // Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
         // Bán kính trái đất trong km
         final int R = 6371;
@@ -546,7 +629,7 @@ public class RoutesServiceImpl implements RouteService {
         return R * c;
     }
 
-// Lấy giá trị double từ Map với các key thay thế
+    // Lấy giá trị double từ Map với các key thay thế
     private Double getDoubleValue(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             if (map.containsKey(key)) {

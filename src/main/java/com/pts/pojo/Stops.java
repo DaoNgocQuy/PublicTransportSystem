@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
@@ -54,6 +55,8 @@ public class Stops implements Serializable {
     private Float longitude;
     @Column(name = "stop_order")
     private Integer stopOrder;
+    @Transient
+    private Integer direction;
     @Size(max = 255)
     @Column(name = "address")
     private String address;
@@ -123,7 +126,6 @@ public class Stops implements Serializable {
         this.address = address;
     }
 
-
     public Boolean getIsAccessible() {
         return isAccessible;
     }
@@ -138,6 +140,14 @@ public class Stops implements Serializable {
 
     public void setRouteId(Routes routeId) {
         this.routeId = routeId;
+    }
+
+    public Integer getDirection() {
+        return direction;
+    }
+
+    public void setDirection(Integer direction) {
+        this.direction = direction;
     }
 
     @Override
@@ -164,5 +174,5 @@ public class Stops implements Serializable {
     public String toString() {
         return "com.pts.pojo.Stops[ id=" + id + " ]";
     }
-    
+
 }

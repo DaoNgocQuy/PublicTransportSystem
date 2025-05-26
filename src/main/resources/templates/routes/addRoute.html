@@ -3,47 +3,195 @@
     <head>
         <title>Thêm tuyến mới</title>
     <th:block th:replace="base :: bootstrap"></th:block>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        .select2-container--default .select2-selection--multiple {
+            min-height: 38px;
+            border: 1px solid #ced4da;
+        }
+        .direction-tabs {
+            margin-bottom: 20px;
+        }
+        .direction-tabs .nav-link {
+            font-weight: bold;
+        }
+        .direction-tabs .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .stop-list {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .stop-item {
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stop-item:hover {
+            background-color: #e9ecef;
+        }
+        .stop-handle {
+            cursor: move;
+            color: #6c757d;
+        }
+        .stop-remove {
+            cursor: pointer;
+            color: #dc3545;
+        }
+    </style>
 </head>
 <body>
     <main class="container">
         <div th:replace="base :: header"></div>
 
         <div class="row">
-            <div class="col-md-8 mx-auto">
+            <div class="col-md-10 mx-auto">
                 <div class="card mt-4">
-                    
                     <div class="card-header bg-dark text-white">
                         <h3 class="card-title mb-0">Thêm tuyến mới</h3>
                     </div>
                     <div class="card-body">
-                        <form th:action="@{/routes/add}" method="post">
-                            <div class="mb-3">
-                                <label for="name" class="form-label">Tên tuyến</label>
-                                <input type="text" class="form-control" id="name" name="name" required>
+                        <form th:action="@{/routes/add}" method="post" id="routeForm">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="name" class="form-label">Tên tuyến</label>
+                                        <input type="text" class="form-control" id="name" name="name" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="startLocation" class="form-label">Điểm bắt đầu</label>
+                                        <input type="text" class="form-control" id="startLocation" name="startLocation" required>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="endLocation" class="form-label">Điểm kết thúc</label>
+                                        <input type="text" class="form-control" id="endLocation" name="endLocation" required>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="operationStartTime" class="form-label">Giờ bắt đầu hoạt động</label>
+                                        <input type="time" class="form-control" id="operationStartTime" name="operationStartTime">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="operationEndTime" class="form-label">Giờ kết thúc hoạt động</label>
+                                        <input type="time" class="form-control" id="operationEndTime" name="operationEndTime">
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="frequencyMinutes" class="form-label">Tần suất (phút/chuyến)</label>
+                                        <input type="number" class="form-control" id="frequencyMinutes" name="frequencyMinutes" min="1">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-12">
+                                    <div class="mb-3">
+                                        <label for="routeColor" class="form-label">Màu tuyến</label>
+                                        <input type="color" class="form-control form-control-color" id="routeColor" name="routeColor" value="#4CAF50">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="isWalkingRoute" name="isWalkingRoute">
+                                        <label class="form-check-label" for="isWalkingRoute">Là tuyến đi bộ</label>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="active" name="active" checked>
+                                        <label class="form-check-label" for="active">Hoạt động</label>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="startLocation" class="form-label">Điểm bắt đầu</label>
-                                <input type="text" class="form-control" id="startLocation" name="startLocation" required>
+                            <!-- Tabs chiều đi/về -->
+                            <div class="direction-tabs">
+                                <ul class="nav nav-tabs" id="directionTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="inbound-tab" data-bs-toggle="tab" data-bs-target="#inbound" type="button" role="tab" aria-controls="inbound" aria-selected="true">
+                                            <i class="bi bi-arrow-right"></i> Chiều đi
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="outbound-tab" data-bs-toggle="tab" data-bs-target="#outbound" type="button" role="tab" aria-controls="outbound" aria-selected="false">
+                                            <i class="bi bi-arrow-left"></i> Chiều về
+                                        </button>
+                                    </li>
+                                </ul>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="endLocation" class="form-label">Điểm kết thúc</label>
-                                <input type="text" class="form-control" id="endLocation" name="endLocation" required>
+                            <!-- Nội dung tabs -->
+                            <div class="tab-content" id="directionTabsContent">
+                                <!-- Chiều đi -->
+                                <div class="tab-pane fade show active" id="inbound" role="tabpanel" aria-labelledby="inbound-tab">
+                                    <div class="mb-3">
+                                        <label class="form-label">Điểm dừng chiều đi</label>
+                                        <div class="mb-2">
+                                            <select id="stopSelectInbound" class="form-control select2" multiple>
+                                                <option value="">-- Chọn điểm dừng --</option>
+                                                <option th:each="stop : ${allStops}" 
+                                                        th:value="${stop.id}" 
+                                                        th:text="${stop.stopName + ' (' + (stop.address != null ? stop.address : 'Không có địa chỉ') + ')'}">
+                                                    Điểm dừng
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div class="mt-3">
+                                            <label class="form-label">Thứ tự điểm dừng (Kéo để sắp xếp)</label>
+                                            <div id="stopListInbound" class="stop-list">
+                                                <!-- Điểm dừng sẽ được thêm vào bằng JavaScript -->
+                                            </div>
+                                        </div>
+                                        <!-- Input ẩn lưu trữ ID của tất cả điểm dừng theo thứ tự -->
+                                        <input type="hidden" name="selectedStopsInbound" id="selectedStopsInboundField">
+                                    </div>
+                                </div>
+
+                                <!-- Chiều về -->
+                                <div class="tab-pane fade" id="outbound" role="tabpanel" aria-labelledby="outbound-tab">
+                                    <div class="mb-3">
+                                        <label class="form-label">Điểm dừng chiều về</label>
+                                        <div class="mb-2">
+                                            <select id="stopSelectOutbound" class="form-control select2" multiple>
+                                                <option value="">-- Chọn điểm dừng --</option>
+                                                <option th:each="stop : ${allStops}" 
+                                                        th:value="${stop.id}" 
+                                                        th:text="${stop.stopName + ' (' + (stop.address != null ? stop.address : 'Không có địa chỉ') + ')'}">
+                                                    Điểm dừng
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div class="mt-3">
+                                            <label class="form-label">Thứ tự điểm dừng (Kéo để sắp xếp)</label>
+                                            <div id="stopListOutbound" class="stop-list">
+                                                <!-- Điểm dừng sẽ được thêm vào bằng JavaScript -->
+                                            </div>
+                                        </div>
+                                        <!-- Input ẩn lưu trữ ID của tất cả điểm dừng theo thứ tự -->
+                                        <input type="hidden" name="selectedStopsOutbound" id="selectedStopsOutboundField">
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="totalStops" class="form-label">Số trạm</label>
-                                <input type="number" class="form-control" id="totalStops" name="totalStops" min="1" required>
-                            </div>
-
-                            <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="isWalkingRoute" name="isWalkingRoute">
-                                <label class="form-check-label" for="isWalkingRoute">Là tuyến đi bộ</label>
-                            </div>
-
-                            <div class="d-flex justify-content-between">
-                                <button type="submit" class="btn btn-primary">
+                            <div class="d-flex justify-content-between mt-4">
+                                <button type="submit" class="btn btn-dark" id="submitBtn">
                                     <i class="bi bi-save"></i> Lưu tuyến
                                 </button>
                                 <a th:href="@{/routes}" class="btn btn-secondary">
@@ -58,5 +206,187 @@
 
         <div th:replace="base :: footer"></div>
     </main>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    <script th:inline="javascript">
+        $(document).ready(function () {
+            // Khởi tạo select2
+            $('.select2').select2();
+
+            // Lấy dữ liệu từ server
+            var allStops = /*[[${allStops}]]*/ [];
+
+            // Tạo map từ ID sang đối tượng stop
+            var stopsMap = {};
+            allStops.forEach(function (stop) {
+                stopsMap[stop.id] = {
+                    id: stop.id,
+                    name: stop.stopName,
+                    address: stop.address || 'Không có địa chỉ'
+                };
+            });
+
+            // Khởi tạo danh sách các điểm dừng đã chọn
+            var stopListInbound = document.getElementById('stopListInbound');
+            var stopListOutbound = document.getElementById('stopListOutbound');
+
+            // Tạo sortable cho chiều đi
+            var sortableInbound = new Sortable(stopListInbound, {
+                animation: 150,
+                ghostClass: 'bg-light',
+                handle: '.stop-handle',
+                onEnd: function () {
+                    updateSelectedStopsInbound();
+                }
+            });
+
+            // Tạo sortable cho chiều về
+            var sortableOutbound = new Sortable(stopListOutbound, {
+                animation: 150,
+                ghostClass: 'bg-light',
+                handle: '.stop-handle',
+                onEnd: function () {
+                    updateSelectedStopsOutbound();
+                }
+            });
+
+            // Cập nhật trường ẩn khi trang được tải
+            updateSelectedStopsInbound();
+            updateSelectedStopsOutbound();
+
+            // Xử lý khi select thay đổi cho chiều đi
+            $('#stopSelectInbound').on('change', function () {
+                var selectedIds = $(this).val();
+
+                // Xóa tất cả điểm dừng hiện tại
+                $(stopListInbound).empty();
+
+                // Thêm lại các điểm dừng đã chọn
+                if (selectedIds) {
+                    selectedIds.forEach(function (stopId) {
+                        addStopToList(stopId, stopListInbound);
+                    });
+                }
+
+                // Cập nhật trường ẩn
+                updateSelectedStopsInbound();
+            });
+
+            // Xử lý khi select thay đổi cho chiều về
+            $('#stopSelectOutbound').on('change', function () {
+                var selectedIds = $(this).val();
+
+                // Xóa tất cả điểm dừng hiện tại
+                $(stopListOutbound).empty();
+
+                // Thêm lại các điểm dừng đã chọn
+                if (selectedIds) {
+                    selectedIds.forEach(function (stopId) {
+                        addStopToList(stopId, stopListOutbound);
+                    });
+                }
+
+                // Cập nhật trường ẩn
+                updateSelectedStopsOutbound();
+            });
+
+            // Xử lý submit form
+            $('#routeForm').on('submit', function () {
+                updateSelectedStopsInbound();
+                updateSelectedStopsOutbound();
+                return true;
+            });
+
+            // Thêm điểm dừng vào danh sách hiển thị
+            function addStopToList(stopId, containerElement) {
+                if (!stopsMap[stopId])
+                    return;
+
+                var stop = stopsMap[stopId];
+                var stopItem = document.createElement('div');
+                stopItem.className = 'stop-item';
+                stopItem.dataset.id = stop.id;
+
+                stopItem.innerHTML = `
+                    <div>
+                        <span class="stop-handle me-2"><i class="bi bi-grip-vertical"></i></span>
+                        <span>${stop.name}</span>
+                        <small class="text-muted ms-2">${stop.address}</small>
+                    </div>
+                    <span class="stop-remove"><i class="bi bi-x-circle"></i></span>
+                `;
+
+                // Xử lý sự kiện xóa
+                stopItem.querySelector('.stop-remove').addEventListener('click', function () {
+                    var stopId = stopItem.dataset.id;
+                    stopItem.remove();
+
+                    // Cập nhật select2 tương ứng
+                    if (containerElement.id === 'stopListInbound') {
+                        var values = $('#stopSelectInbound').val();
+                        values = values.filter(function (value) {
+                            return value !== stopId;
+                        });
+                        $('#stopSelectInbound').val(values).trigger('change');
+                        updateSelectedStopsInbound();
+                    } else {
+                        var values = $('#stopSelectOutbound').val();
+                        values = values.filter(function (value) {
+                            return value !== stopId;
+                        });
+                        $('#stopSelectOutbound').val(values).trigger('change');
+                        updateSelectedStopsOutbound();
+                    }
+                });
+
+                containerElement.appendChild(stopItem);
+            }
+
+            // Cập nhật trường ẩn chứa thứ tự các điểm dừng cho chiều đi
+            function updateSelectedStopsInbound() {
+                var selectedIds = [];
+                $('#stopListInbound .stop-item').each(function () {
+                    selectedIds.push($(this).data('id'));
+                });
+                $('#selectedStopsInboundField').val(selectedIds.join(','));
+            }
+
+            // Cập nhật trường ẩn chứa thứ tự các điểm dừng cho chiều về
+            function updateSelectedStopsOutbound() {
+                var selectedIds = [];
+                $('#stopListOutbound .stop-item').each(function () {
+                    selectedIds.push($(this).data('id'));
+                });
+                $('#selectedStopsOutboundField').val(selectedIds.join(','));
+            }
+
+            // Chức năng tạo ngược chiều về từ chiều đi
+            $('#createReverseRoute').on('click', function (e) {
+                e.preventDefault();
+
+                // Lấy danh sách điểm dừng từ chiều đi
+                var inboundStops = [];
+                $('#stopListInbound .stop-item').each(function () {
+                    inboundStops.push($(this).data('id').toString());
+                });
+
+                if (inboundStops.length === 0) {
+                    alert('Vui lòng thêm điểm dừng cho chiều đi trước');
+                    return;
+                }
+
+                // Đảo ngược thứ tự
+                inboundStops.reverse();
+
+                // Cập nhật select chiều về
+                $('#stopSelectOutbound').val(inboundStops).trigger('change');
+
+                // Chuyển sang tab chiều về
+                $('#outbound-tab').tab('show');
+            });
+        });
+    </script>
 </body>
 </html>

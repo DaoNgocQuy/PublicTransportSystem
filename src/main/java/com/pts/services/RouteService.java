@@ -1,6 +1,7 @@
 package com.pts.services;
 
 import com.pts.pojo.Routes;
+import com.pts.pojo.Stops;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,9 +32,14 @@ public interface RouteService {
 
     List<Routes> searchRoutesByName(String keyword);
 
+    List<Map<String, Object>> findRoutesWithStops(double fromLat, double fromLng, double toLat, double toLng,
+            double maxWalkDistance, int maxTransfers, String routePriority);
+
     List<Routes> findRoutesByStops(List<Integer> stopIds);
 
-    List<Map<String, Object>> findRoutesWithStops(double fromLat, double fromLng,
-            double toLat, double toLng, double maxWalkDistance,
-            int maxTransfers, String routePriority);
+    List<Routes> findRoutesByStopAndDirection(Integer stopId, Integer direction);
+
+    List<Stops> getStopsByRouteId(Integer routeId);
+
+    List<Stops> getStopsByRouteIdAndDirection(Integer routeId, Integer direction);
 }

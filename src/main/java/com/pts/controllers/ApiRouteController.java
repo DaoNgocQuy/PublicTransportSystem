@@ -47,7 +47,7 @@ public class ApiRouteController {
         if (typeId != null) {
             routes = routes.stream()
                     .filter(route -> route.getRouteType() != null
-                    && route.getRouteType().getId().equals(typeId))
+                            && route.getRouteType().getId().equals(typeId))
                     .collect(Collectors.toList());
         }
 
@@ -72,12 +72,14 @@ public class ApiRouteController {
                 // Lấy icon URL từ RouteTypes nếu có
                 String iconUrl = routeType.getIconUrl();
                 routeInfo.put("icon", iconUrl != null && !iconUrl.isEmpty()
-                        ? iconUrl : getDefaultIcon(routeType.getTypeName()));
+                        ? iconUrl
+                        : getDefaultIcon(routeType.getTypeName()));
 
                 // Lấy mã màu từ RouteTypes nếu có
                 String colorCode = routeType.getColorCode();
                 routeInfo.put("color", colorCode != null && !colorCode.isEmpty()
-                        ? colorCode : "#007bff"); // màu mặc định
+                        ? colorCode
+                        : "#007bff"); // màu mặc định
             } else {
                 // Giá trị mặc định nếu không có RouteTypes
                 routeInfo.put("icon", "https://cdn-icons-png.flaticon.com/512/2554/2554642.png");
@@ -89,7 +91,7 @@ public class ApiRouteController {
                 // Sử dụng thời gian hoạt động từ entity
                 routeInfo.put("operatingHours",
                         timeFormat.format(route.getOperationStartTime()) + " - "
-                        + timeFormat.format(route.getOperationEndTime()));
+                                + timeFormat.format(route.getOperationEndTime()));
             } else {
                 // Hoặc lấy từ lịch trình nếu không có
                 routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
@@ -126,7 +128,8 @@ public class ApiRouteController {
             if (nearbyStopsFromOrigin.isEmpty() || nearbyStopsToDestination.isEmpty()) {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "NO_STOPS_FOUND");
-                errorResponse.put("message", "Không tìm thấy trạm nào trong bán kính " + effectiveMaxDistance + "m từ điểm đi hoặc điểm đến");
+                errorResponse.put("message", "Không tìm thấy trạm nào trong bán kính " + effectiveMaxDistance
+                        + "m từ điểm đi hoặc điểm đến");
                 return ResponseEntity.ok(errorResponse);
             }
 
@@ -137,7 +140,8 @@ public class ApiRouteController {
             if (possibleRoutes.isEmpty()) {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("status", "NO_ROUTES_FOUND");
-                errorResponse.put("message", "Không tìm thấy tuyến nào đi qua cả điểm đi và điểm đến trong bán kính " + effectiveMaxDistance + "m");
+                errorResponse.put("message", "Không tìm thấy tuyến nào đi qua cả điểm đi và điểm đến trong bán kính "
+                        + effectiveMaxDistance + "m");
                 return ResponseEntity.ok(errorResponse);
             }
 
@@ -151,7 +155,8 @@ public class ApiRouteController {
                 routeOptions.add(routeOption);
             }
 
-            // 5. Sắp xếp các lựa chọn tuyến theo ưu tiên (thời gian, quãng đường, số lần chuyển tuyến)
+            // 5. Sắp xếp các lựa chọn tuyến theo ưu tiên (thời gian, quãng đường, số lần
+            // chuyển tuyến)
             routeOptions = sortRouteOptions(routeOptions, routePriority);
 
             return ResponseEntity.ok(routeOptions);
@@ -164,7 +169,7 @@ public class ApiRouteController {
         }
     }
 
-// Các phương thức hỗ trợ
+    // Các phương thức hỗ trợ
     private List<Map<String, Object>> findNearbyStops(double lat, double lng, double maxDistance) {
         // Giới hạn bán kính tìm kiếm là 1000m
         double effectiveMaxDistance = Math.min(maxDistance, 1000);
@@ -220,7 +225,8 @@ public class ApiRouteController {
         // Tính thời gian xe buýt
         int busTime = calculateEstimatedTime(route, fromStops, toStops);
 
-        // Lấy trạm gần nhất từ điểm đi và điểm đến để tính khoảng cách xe buýt và thời gian đi bộ
+        // Lấy trạm gần nhất từ điểm đi và điểm đến để tính khoảng cách xe buýt và thời
+        // gian đi bộ
         Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
         Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
 
@@ -328,12 +334,14 @@ public class ApiRouteController {
             // Lấy icon URL từ RouteTypes nếu có
             String iconUrl = routeType.getIconUrl();
             routeInfo.put("icon", iconUrl != null && !iconUrl.isEmpty()
-                    ? iconUrl : getDefaultIcon(routeType.getTypeName()));
+                    ? iconUrl
+                    : getDefaultIcon(routeType.getTypeName()));
 
             // Lấy mã màu từ RouteTypes nếu có
             String colorCode = routeType.getColorCode();
             routeInfo.put("color", colorCode != null && !colorCode.isEmpty()
-                    ? colorCode : route.getRouteColor()); // sử dụng màu từ Routes nếu không có trong RouteTypes
+                    ? colorCode
+                    : route.getRouteColor()); // sử dụng màu từ Routes nếu không có trong RouteTypes
         } else {
             // Giá trị mặc định nếu không có RouteTypes
             routeInfo.put("icon", "https://cdn-icons-png.flaticon.com/512/2554/2554642.png");
@@ -345,7 +353,7 @@ public class ApiRouteController {
             // Sử dụng thời gian hoạt động từ entity
             routeInfo.put("operatingHours",
                     timeFormat.format(route.getOperationStartTime()) + " - "
-                    + timeFormat.format(route.getOperationEndTime()));
+                            + timeFormat.format(route.getOperationEndTime()));
         } else {
             // Hoặc lấy từ lịch trình nếu không có
             routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
@@ -363,7 +371,7 @@ public class ApiRouteController {
     /**
      * Lấy thông tin thời gian hoạt động của tuyến từ lịch trình
      *
-     * @param routeId ID của tuyến
+     * @param routeId    ID của tuyến
      * @param timeFormat Định dạng thời gian
      * @return Chuỗi thời gian hoạt động
      */
@@ -427,23 +435,29 @@ public class ApiRouteController {
         Comparator<Map<String, Object>> comparator;
 
         if ("LEAST_TIME".equals(routePriority)) {
-            comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
+            comparator = Comparator
+                    .comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
         } else if ("LEAST_DISTANCE".equals(routePriority)) {
-            comparator = Comparator.comparingDouble(o -> ((Number) o.getOrDefault("totalDistance", Double.MAX_VALUE)).doubleValue());
+            comparator = Comparator
+                    .comparingDouble(o -> ((Number) o.getOrDefault("totalDistance", Double.MAX_VALUE)).doubleValue());
         } else if ("LEAST_TRANSFERS".equals(routePriority)) {
-            comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue());
+            comparator = Comparator
+                    .comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue());
         } else {
             // Mặc định sắp xếp theo thời gian
-            comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
+            comparator = Comparator
+                    .comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
         }
 
         options.sort(comparator);
         return options;
     }
 
-// Tính toán thời gian ước tính
-    // filepath: c:\PTS\PublicTransportSystem\src\main\java\com\pts\controllers\ApiRouteController.java
-    private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
+    // Tính toán thời gian ước tính
+    // filepath:
+    // c:\PTS\PublicTransportSystem\src\main\java\com\pts\controllers\ApiRouteController.java
+    private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops,
+            List<Map<String, Object>> toStops) {
         // Tìm trạm gần nhất thuộc tuyến này ở cả hai điểm
         Map<String, Object> fromStop = null;
         Map<String, Object> toStop = null;
@@ -473,7 +487,8 @@ public class ApiRouteController {
 
             int travelTime = (int) Math.ceil(estimatedDistance / 333); // phút
 
-            // Thêm thời gian dừng: giả sử mỗi trạm dừng 45 giây và trung bình 5 trạm giữa 2 điểm
+            // Thêm thời gian dừng: giả sử mỗi trạm dừng 45 giây và trung bình 5 trạm giữa 2
+            // điểm
             int stoppingTime = 5 * 45 / 60; // phút
 
             return travelTime + stoppingTime;
@@ -489,9 +504,10 @@ public class ApiRouteController {
         // Ước tính thời gian: 2 phút/trạm + 5 phút cơ bản
         return stopsBetween * 2 + 5;
     }
-// Tính toán khoảng cách ước tính
+    // Tính toán khoảng cách ước tính
 
-    private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
+    private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat,
+            double toLng) {
         // Nếu có thông tin về trạm dừng trên tuyến
         if (route != null && route.getTotalStops() != null && route.getTotalStops() > 0) {
             // Có thể sử dụng hệ số điều chỉnh để ước tính đường đi thực tế
@@ -543,7 +559,7 @@ public class ApiRouteController {
         }
     }
 
-// Tính toán khoảng cách đi bộ
+    // Tính toán khoảng cách đi bộ
     private double calculateWalkingDistance(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
@@ -556,7 +572,8 @@ public class ApiRouteController {
             Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                // Áp dụng hệ số điều chỉnh để ước tính đường đi thực tế (thường đường đi thực tế dài hơn đường thẳng)
+                // Áp dụng hệ số điều chỉnh để ước tính đường đi thực tế (thường đường đi thực
+                // tế dài hơn đường thẳng)
                 double straightLineDistance = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng);
                 distanceToFirstStop = straightLineDistance * 1.3 * 1000; // Hệ số 1.3 và chuyển km -> m
             }
@@ -580,8 +597,9 @@ public class ApiRouteController {
         return distanceToFirstStop + distanceFromLastStop;
     }
 
-// Tạo các chặng đường đi
-    private List<Map<String, Object>> createLegs(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
+    // Tạo các chặng đường đi
+    private List<Map<String, Object>> createLegs(Routes route, List<Map<String, Object>> fromStops,
+            List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
         List<Map<String, Object>> legs = new ArrayList<>();
@@ -662,15 +680,14 @@ public class ApiRouteController {
         return legs;
     }
 
-// Tìm trạm gần nhất
+    // Tìm trạm gần nhất
     private Map<String, Object> findNearestStop(List<Map<String, Object>> stops, double lat, double lng) {
         if (stops == null || stops.isEmpty()) {
             return Map.of(
                     "id", 0,
                     "name", "Trạm không xác định",
                     "lat", lat,
-                    "lng", lng
-            );
+                    "lng", lng);
         }
 
         Map<String, Object> nearestStop = stops.get(0);
@@ -692,14 +709,15 @@ public class ApiRouteController {
         // Chuẩn hóa định dạng trạm
         Map<String, Object> standardStop = new HashMap<>();
         standardStop.put("id", nearestStop.getOrDefault("id", 0));
-        standardStop.put("name", nearestStop.getOrDefault("name", nearestStop.getOrDefault("stop_name", "Trạm không xác định")));
+        standardStop.put("name",
+                nearestStop.getOrDefault("name", nearestStop.getOrDefault("stop_name", "Trạm không xác định")));
         standardStop.put("lat", getDoubleValue(nearestStop, "latitude", "lat"));
         standardStop.put("lng", getDoubleValue(nearestStop, "longitude", "lng"));
 
         return standardStop;
     }
 
-// Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
+    // Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
         // Bán kính trái đất trong km
         final double R = 6371.0;
@@ -717,7 +735,7 @@ public class ApiRouteController {
         // Công thức Haversine
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(lat1Rad) * Math.cos(lat2Rad)
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
         // Đảm bảo a không vượt quá 1 do lỗi làm tròn
         a = Math.min(a, 1.0);
@@ -728,7 +746,7 @@ public class ApiRouteController {
         return R * c;
     }
 
-// Lấy giá trị double từ Map với các key thay thế
+    // Lấy giá trị double từ Map với các key thay thế
     private Double getDoubleValue(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             if (map.containsKey(key)) {

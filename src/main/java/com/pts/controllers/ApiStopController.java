@@ -1,13 +1,18 @@
 package com.pts.controllers;
 
 import com.pts.pojo.Stops;
+import com.pts.pojo.Routes;
+import com.pts.pojo.RouteStop;
 import com.pts.services.StopService;
+import com.pts.services.RouteService;
+import com.pts.services.RouteStopService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/stops")
@@ -16,6 +21,12 @@ public class ApiStopController {
 
     @Autowired
     private StopService stopService;
+    
+    @Autowired
+    private RouteService routeService;
+    
+    @Autowired
+    private RouteStopService routeStopService;
 
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getStops(
@@ -49,6 +60,29 @@ public class ApiStopController {
     @GetMapping("/route/{routeId}")
     public ResponseEntity<List<Map<String, Object>>> getStopsByRouteId(@PathVariable Integer routeId) {
         List<Stops> stops = stopService.findStopsByRouteId(routeId);
+        
+        // Lấy thông tin về thứ tự các điểm dừng trong tuyến
+        List<RouteStop> routeStops = routeStopService.findByRouteId(routeId);
+        
+        // Tạo map ánh xạ từ stop_id đến stop_order để gắn thứ tự vào mỗi điểm dừng
+        Map<Integer, Integer> stopOrderMap = routeStops.stream()
+                .collect(Collectors.toMap(
+                    rs -> rs.getStop().getId(),
+                    RouteStop::getStopOrder,
+                    (existing, replacement) -> existing // Trong trường hợp trùng lặp, giữ giá trị đầu tiên
+                ));
+                
+        // Gắn thông tin thứ tự vào các stops
+        for (Stops stop : stops) {
+            Integer order = stopOrderMap.get(stop.getId());
+            if (order != null) {
+                stop.setStopOrder(order);
+            }
+        }
+        
+        // Sắp xếp các stops theo thứ tự trước khi format
+        stops.sort(Comparator.comparing(stop -> stopOrderMap.getOrDefault(stop.getId(), Integer.MAX_VALUE)));
+        
         List<Map<String, Object>> result = formatStopsList(stops);
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
@@ -64,7 +98,9 @@ public class ApiStopController {
         stopData.put("latitude", stop.getLatitude());
         stopData.put("longitude", stop.getLongitude());
         stopData.put("address", stop.getAddress());
-        stopData.put("stopOrder", stop.getStopOrder());
+        if (stop.getStopOrder() != null) {
+            stopData.put("stopOrder", stop.getStopOrder());
+        }
 
         if (stop.getIsAccessible() != null) {
             stopData.put("isAccessible", stop.getIsAccessible());
@@ -72,29 +108,50 @@ public class ApiStopController {
             stopData.put("isAccessible", true); // Giá trị mặc định
         }
 
-        // Thông tin về tuyến nếu có
-        if (stop.getRouteId() != null) {
-            Map<String, Object> routeInfo = new HashMap<>();
-            routeInfo.put("id", stop.getRouteId().getId());
-
-            // Thêm thông tin chi tiết về tuyến nếu có
-            if (stop.getRouteId().getName() != null) {
-                routeInfo.put("name", stop.getRouteId().getName());
+        // Lấy danh sách các tuyến đi qua điểm dừng này
+        List<Routes> routes = routeService.findRoutesByStops(List.of(stop.getId()));
+        if (routes != null && !routes.isEmpty()) {
+            List<Map<String, Object>> routeInfos = new ArrayList<>();
+            
+            for (Routes route : routes) {
+                Map<String, Object> routeInfo = new HashMap<>();
+                routeInfo.put("id", route.getId());
+                
+                if (route.getName() != null) {
+                    routeInfo.put("name", route.getName());
+                }
+                
+                if (route.getStartLocation() != null && route.getEndLocation() != null) {
+                    routeInfo.put("startLocation", route.getStartLocation());
+                    routeInfo.put("endLocation", route.getEndLocation());
+                    routeInfo.put("routePath", route.getStartLocation() + " - " + route.getEndLocation());
+                }
+                
+                if (route.getRouteColor() != null) {
+                    routeInfo.put("color", route.getRouteColor());
+                }
+                
+                // Lấy thứ tự của điểm dừng trong tuyến này
+                List<RouteStop> routeStops = routeStopService.findByRouteId(route.getId());
+                for (RouteStop rs : routeStops) {
+                    if (rs.getStop().getId().equals(stop.getId())) {
+                        routeInfo.put("stopOrder", rs.getStopOrder());
+                        // Có thể thêm direction vào đây nếu đã triển khai
+                        if (rs.getDirection() != null) {
+                            routeInfo.put("direction", rs.getDirection());
+                        }
+                        break;
+                    }
+                }
+                
+                routeInfos.add(routeInfo);
             }
-
-            if (stop.getRouteId().getStartLocation() != null && stop.getRouteId().getEndLocation() != null) {
-                routeInfo.put("startLocation", stop.getRouteId().getStartLocation());
-                routeInfo.put("endLocation", stop.getRouteId().getEndLocation());
-                routeInfo.put("routePath",
-                        stop.getRouteId().getStartLocation() + " - " + stop.getRouteId().getEndLocation());
-            }
-
-            stopData.put("route", routeInfo);
+            
+            stopData.put("routes", routeInfos);
         }
 
         return stopData;
     }
-
     
     @GetMapping("/nearby")
     public ResponseEntity<List<Map<String, Object>>> getNearbyStops(
@@ -102,10 +159,67 @@ public class ApiStopController {
             @RequestParam double lng,
             @RequestParam(defaultValue = "1000") double radius) {
 
-        List<Stops> nearbyStops = stopService.findNearbyStops(lat, lng, radius);
-        List<Map<String, Object>> result = formatStopsList(nearbyStops);
+        // Nếu bạn đã cài đặt phương thức findNearbyStopsFormatted trong StopService, hãy sử dụng nó
+        List<Map<String, Object>> nearbyStops = stopService.findNearbyStopsFormatted(lat, lng, radius);
+        
+        // Hoặc nếu bạn muốn sử dụng logic cũ
+        // List<Stops> nearbyStops = stopService.findNearbyStops(lat, lng, radius);
+        // List<Map<String, Object>> result = formatStopsList(nearbyStops);
 
-        return new ResponseEntity<>(result, HttpStatus.OK);
+        return new ResponseEntity<>(nearbyStops, HttpStatus.OK);
+    }
+    
+    @PostMapping
+    public ResponseEntity<?> createStop(@RequestBody Stops stop) {
+        try {
+            Stops savedStop = stopService.saveStop(stop);
+            Map<String, Object> response = formatStop(savedStop);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể tạo điểm dừng: " + e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        }
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateStop(@PathVariable Integer id, @RequestBody Stops stop) {
+        if (!stopService.stopExists(id)) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không tìm thấy điểm dừng với ID " + id);
+            return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        }
+        
+        try {
+            stop.setId(id);
+            Stops updatedStop = stopService.saveStop(stop);
+            Map<String, Object> response = formatStop(updatedStop);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể cập nhật điểm dừng: " + e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        }
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteStop(@PathVariable Integer id) {
+        if (!stopService.stopExists(id)) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không tìm thấy điểm dừng với ID " + id);
+            return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        }
+        
+        try {
+            stopService.deleteStop(id);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Đã xóa điểm dừng thành công");
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể xóa điểm dừng: " + e.getMessage());
+            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+        }
     }
 
     private List<Map<String, Object>> formatStopsList(List<Stops> stops) {

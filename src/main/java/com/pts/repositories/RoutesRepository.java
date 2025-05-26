@@ -1,6 +1,8 @@
+// filepath: c:\PTS\PublicTransportSystem\src\main\java\com\pts\repositories\RoutesRepository.java
 package com.pts.repositories;
 
 import com.pts.pojo.Routes;
+import com.pts.pojo.Stops;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,4 +33,18 @@ public interface RoutesRepository {
     List<Routes> findByRouteTypeId(Integer routeTypeId);
 
     List<Routes> searchRoutesByName(String keyword);
+
+    List<Routes> findByStopId(Integer stopId);
+
+    List<Routes> findByStopIdAndDirection(Integer stopId, Integer direction);
+
+    List<Stops> findStopsByRouteId(Integer routeId);
+
+    List<Stops> findStopsByRouteIdAndDirection(Integer routeId, Integer direction);
+
+    Integer countStopsByRouteId(Integer routeId);
+
+    Integer countStopsByRouteIdAndDirection(Integer routeId, Integer direction);
+
+    void updateTotalStops(Integer routeId);
 }

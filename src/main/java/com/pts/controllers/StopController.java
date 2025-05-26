@@ -61,10 +61,9 @@ public class StopController {
         return "stops/create";
     }
 
-    // Xử lý submit form tạo mới
     @PostMapping("/create")
     public String createStop(@ModelAttribute("stop") Stops stop,
-            @RequestParam(required = false) Integer selectedRouteId,
+            @RequestParam(required = false) Integer routeId,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
             BindingResult result,
             RedirectAttributes redirectAttributes) {
@@ -75,17 +74,35 @@ public class StopController {
         // Lưu trạm dừng mới
         Stops savedStop = stopService.saveStop(stop);
 
-        // Nếu có tuyến được chọn, thêm trạm vào tuyến đó với direction được chỉ định
-        if (selectedRouteId != null) {
-            routeStopService.addStopToRoute(selectedRouteId, savedStop.getId(), direction);
-            redirectAttributes.addFlashAttribute("successMessage",
-                    "Trạm dừng đã được tạo và thêm vào tuyến (chiều "
-                    + (direction == 1 ? "đi" : "về") + ") thành công!");
-            return "redirect:/routes/view/" + selectedRouteId + "?direction=" + direction;
-        } else {
-            redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được tạo thành công!");
-            return "redirect:/stops";
+        // Nếu có routeId được truyền vào từ request param, sử dụng nó thay vì từ đối tượng stop
+        if (routeId != null) {
+            // Sử dụng addStopToRoute từ service
+            RouteStop addedRouteStop = routeStopService.addStopToRoute(routeId, savedStop.getId(), direction);
+
+            if (addedRouteStop != null) {
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
+                return "redirect:/routes/view/" + routeId + "?direction=" + direction;
+            }
+        } // Kiểm tra nếu có routeId trong đối tượng stop
+        else if (stop.getRouteId() != null && stop.getRouteId().getId() != null) {
+            Integer stopRouteId = stop.getRouteId().getId();
+            // Sử dụng addStopToRoute từ service
+            RouteStop addedRouteStop = routeStopService.addStopToRoute(
+                    stopRouteId,
+                    savedStop.getId(),
+                    stop.getDirection() != null ? stop.getDirection() : direction
+            );
+
+            if (addedRouteStop != null) {
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
+                return "redirect:/routes/view/" + stopRouteId + "?direction=" + direction;
+            }
         }
+
+        redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được tạo thành công!");
+        return "redirect:/stops";
     }
 
     // Hiển thị form chỉnh sửa

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chỉnh sửa tuyến</title>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Chỉnh sửa tuyến</title>
     <th:block th:replace="base :: bootstrap"></th:block>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
@@ -72,7 +72,7 @@
                                     Vui lòng nhập tên tuyến
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="routeType" class="form-label">Loại tuyến</label>
                                 <select class="form-select" id="routeType" name="routeType">
@@ -81,7 +81,7 @@
                                     <option value="TRAIN" th:selected="${route.routeType == 'TRAIN'}">Tàu hỏa</option>
                                 </select>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="startLocation" class="form-label">Điểm bắt đầu</label>
                                 <input type="text" class="form-control" id="startLocation" name="startLocation" 
@@ -90,7 +90,7 @@
                                     Vui lòng nhập điểm bắt đầu
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="endLocation" class="form-label">Điểm kết thúc</label>
                                 <input type="text" class="form-control" id="endLocation" name="endLocation" 
@@ -99,32 +99,23 @@
                                     Vui lòng nhập điểm kết thúc
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="operationStartTime" class="form-label">Giờ bắt đầu hoạt động</label>
                                 <input type="time" class="form-control" id="operationStartTime" name="operationStartTime" 
                                        th:value="${#dates.format(route.operationStartTime, 'HH:mm')}" required>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="operationEndTime" class="form-label">Giờ kết thúc hoạt động</label>
                                 <input type="time" class="form-control" id="operationEndTime" name="operationEndTime" 
                                        th:value="${#dates.format(route.operationEndTime, 'HH:mm')}" required>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <label for="frequencyMinutes" class="form-label">Tần suất (phút/chuyến)</label>
                                 <input type="number" class="form-control" id="frequencyMinutes" name="frequencyMinutes" 
                                        th:value="${route.frequencyMinutes}" required>
-                            </div>
-                            
-                            <div class="col-md-6">
-                                <label for="status" class="form-label">Trạng thái</label>
-                                <select class="form-select" id="status" name="status">
-                                    <option value="ACTIVE" th:selected="${route.status == 'ACTIVE'}">Đang hoạt động</option>
-                                    <option value="INACTIVE" th:selected="${route.status == 'INACTIVE'}">Tạm ngưng</option>
-                                    <option value="PLANNED" th:selected="${route.status == 'PLANNED'}">Đang lên kế hoạch</option>
-                                </select>
                             </div>
                         </div>
                     </div>
@@ -136,7 +127,7 @@
                     <div class="alert alert-info">
                         Điểm dừng chiều đi có thể được thêm sau khi lưu thông tin tuyến.
                     </div>
-                    
+
                     <div th:if="${not #lists.isEmpty(selectedStopsInbound)}" class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -149,7 +140,7 @@
                             <tbody>
                                 <tr th:each="stop : ${selectedStopsInbound}">
                                     <td th:text="${stop.stopOrder}">1</td>
-                                    <td th:text="${stop.name}">Tên trạm</td>
+                                    <td th:text="${stop.stopName}">Tên trạm</td>
                                     <td th:text="${stop.address ?: '-'}">Địa chỉ</td>
                                 </tr>
                             </tbody>
@@ -166,7 +157,7 @@
                     <div class="alert alert-info">
                         Điểm dừng chiều về có thể được thêm sau khi lưu thông tin tuyến.
                     </div>
-                    
+
                     <div th:if="${not #lists.isEmpty(selectedStopsOutbound)}" class="table-responsive">
                         <table class="table table-striped">
                             <thead>
@@ -179,7 +170,7 @@
                             <tbody>
                                 <tr th:each="stop : ${selectedStopsOutbound}">
                                     <td th:text="${stop.stopOrder}">1</td>
-                                    <td th:text="${stop.name}">Tên trạm</td>
+                                    <td th:text="${stop.stopName}">Tên trạm</td>
                                     <td th:text="${stop.address ?: '-'}">Địa chỉ</td>
                                 </tr>
                             </tbody>
@@ -190,7 +181,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Nút lưu và hủy -->
             <div class="mt-4 d-flex justify-content-between">
                 <a th:href="@{/routes/view/{id}(id=${route.id})}" class="btn btn-secondary">

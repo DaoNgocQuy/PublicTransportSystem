@@ -2,15 +2,20 @@ package com.pts.repositories.impl;
 
 import com.pts.pojo.RouteTypes;
 import com.pts.pojo.Routes;
+import com.pts.pojo.Stops;
 import com.pts.repositories.RoutesRepository;
+import java.sql.PreparedStatement;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 @Repository
 public class RoutesRepositoryImpl implements RoutesRepository {
@@ -122,18 +127,27 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             String sql = "INSERT INTO routes (name, route_type_id, start_location, end_location, total_stops, "
                     + "operation_start_time, operation_end_time, frequency_minutes, route_color, is_walking_route, is_active) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            jdbcTemplate.update(sql,
-                    route.getName(),
-                    route.getRouteTypeIdValue(),
-                    route.getStartLocation(),
-                    route.getEndLocation(),
-                    route.getTotalStops(),
-                    route.getOperationStartTime(),
-                    route.getOperationEndTime(),
-                    route.getFrequencyMinutes(),
-                    route.getRouteColor(),
-                    route.getIsWalkingRoute(),
-                    route.getActive());
+
+            KeyHolder keyHolder = new GeneratedKeyHolder();
+            jdbcTemplate.update(connection -> {
+                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                ps.setString(1, route.getName());
+                ps.setObject(2, route.getRouteTypeIdValue());
+                ps.setString(3, route.getStartLocation());
+                ps.setString(4, route.getEndLocation());
+                ps.setObject(5, route.getTotalStops());
+                ps.setObject(6, route.getOperationStartTime());
+                ps.setObject(7, route.getOperationEndTime());
+                ps.setObject(8, route.getFrequencyMinutes());
+                ps.setString(9, route.getRouteColor());
+                ps.setObject(10, route.getIsWalkingRoute());
+                ps.setObject(11, route.getActive());
+                return ps;
+            }, keyHolder);
+
+            if (keyHolder.getKey() != null) {
+                route.setId(keyHolder.getKey().intValue());
+            }
         } else {
             String sql = "UPDATE routes SET name = ?, route_type_id = ?, start_location = ?, end_location = ?, "
                     + "total_stops = ?, operation_start_time = ?, operation_end_time = ?, frequency_minutes = ?, "
@@ -239,5 +253,103 @@ public class RoutesRepositoryImpl implements RoutesRepository {
                 + "WHERE r.name LIKE ? OR r.start_location LIKE ? OR r.end_location LIKE ?";
         String searchParam = "%" + keyword + "%";
         return jdbcTemplate.query(sql, routesWithTypeRowMapper, searchParam, searchParam, searchParam);
+    }
+
+    @Override
+    public List<Routes> findByStopId(Integer stopId) {
+        String sql = "SELECT r.*, rt.id as rt_id, rt.type_name, rt.color_code, rt.description "
+                + "FROM routes r "
+                + "JOIN route_stops rs ON r.id = rs.route_id "
+                + "LEFT JOIN route_types rt ON r.route_type_id = rt.id "
+                + "WHERE rs.stop_id = ?";
+        return jdbcTemplate.query(sql, routesWithTypeRowMapper, stopId);
+    }
+    
+    @Override
+    public List<Routes> findByStopIdAndDirection(Integer stopId, Integer direction) {
+        String sql = "SELECT r.*, rt.id as rt_id, rt.type_name, rt.color_code, rt.description "
+                + "FROM routes r "
+                + "JOIN route_stops rs ON r.id = rs.route_id "
+                + "LEFT JOIN route_types rt ON r.route_type_id = rt.id "
+                + "WHERE rs.stop_id = ? AND rs.direction = ?";
+        return jdbcTemplate.query(sql, routesWithTypeRowMapper, stopId, direction);
+    }
+
+    @Override
+    public List<Stops> findStopsByRouteId(Integer routeId) {
+        String sql = "SELECT s.*, rs.stop_order, rs.direction FROM stops s "
+                + "JOIN route_stops rs ON s.id = rs.stop_id "
+                + "WHERE rs.route_id = ? ORDER BY rs.stop_order";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Stops stop = new Stops();
+            stop.setId(rs.getInt("id"));
+            stop.setStopName(rs.getString("stop_name"));
+            stop.setLatitude(rs.getFloat("latitude"));
+            stop.setLongitude(rs.getFloat("longitude"));
+            stop.setAddress(rs.getString("address"));
+            
+            // Đọc thông tin stop_order và direction từ bảng route_stops
+            stop.setStopOrder(rs.getInt("stop_order"));
+            
+            // Đọc direction nếu có
+            int direction = rs.getInt("direction");
+            if (!rs.wasNull()) {
+                stop.setDirection(direction);
+            }
+
+            if (rs.getObject("is_accessible") != null) {
+                stop.setIsAccessible(rs.getBoolean("is_accessible"));
+            }
+
+            return stop;
+        }, routeId);
+    }
+    
+    @Override
+    public List<Stops> findStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
+        String sql = "SELECT s.*, rs.stop_order, rs.direction FROM stops s "
+                + "JOIN route_stops rs ON s.id = rs.stop_id "
+                + "WHERE rs.route_id = ? AND rs.direction = ? ORDER BY rs.stop_order";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Stops stop = new Stops();
+            stop.setId(rs.getInt("id"));
+            stop.setStopName(rs.getString("stop_name"));
+            stop.setLatitude(rs.getFloat("latitude"));
+            stop.setLongitude(rs.getFloat("longitude"));
+            stop.setAddress(rs.getString("address"));
+            
+            // Đọc thông tin stop_order và direction từ bảng route_stops
+            stop.setStopOrder(rs.getInt("stop_order"));
+            stop.setDirection(rs.getInt("direction"));
+
+            if (rs.getObject("is_accessible") != null) {
+                stop.setIsAccessible(rs.getBoolean("is_accessible"));
+            }
+
+            return stop;
+        }, routeId, direction);
+    }
+
+    @Override
+    public Integer countStopsByRouteId(Integer routeId) {
+        String sql = "SELECT COUNT(*) FROM route_stops WHERE route_id = ?";
+        return jdbcTemplate.queryForObject(sql, Integer.class, routeId);
+    }
+    
+    @Override
+    public Integer countStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
+        String sql = "SELECT COUNT(*) FROM route_stops WHERE route_id = ? AND direction = ?";
+        return jdbcTemplate.queryForObject(sql, Integer.class, routeId, direction);
+    }
+
+    @Override
+    public void updateTotalStops(Integer routeId) {
+        Integer stopCount = countStopsByRouteId(routeId);
+        if (stopCount != null) {
+            String sql = "UPDATE routes SET total_stops = ? WHERE id = ?";
+            jdbcTemplate.update(sql, stopCount, routeId);
+        }
     }
 }

@@ -169,8 +169,19 @@
             <!-- Bản đồ -->
             <div class="col-md-12">
                 <div class="card mb-4">
-                    <div class="card-header bg-secondary text-white">
-                        <h3>Bản đồ tuyến đường</h3>
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <h3 class="mb-0">Bản đồ tuyến đường</h3>
+                        <!-- Nút chuyển chiều đặt ở đây -->
+                        <div class="btn-group" th:if="${hasInbound || hasOutbound}">
+                            <button th:if="${hasInbound}" type="button" onclick="changeDirection(1)"
+                                    class="btn" th:classappend="${currentDirection == 1 ? 'btn-light' : 'btn-outline-light'}" id="btnInbound">
+                                <i class="bi bi-arrow-right"></i> Chiều đi
+                            </button>
+                            <button th:if="${hasOutbound}" type="button" onclick="changeDirection(2)"
+                                    class="btn" th:classappend="${currentDirection == 2 ? 'btn-light' : 'btn-outline-light'}" id="btnOutbound">
+                                <i class="bi bi-arrow-left"></i> Chiều về
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div id="map"></div>
@@ -178,28 +189,7 @@
                 </div>
             </div>
 
-            <!-- Tabs cho chiều đi/về -->
-            <div class="col-md-12">
-                <div class="direction-tabs">
-                    <ul class="nav nav-tabs justify-content-end" id="directionTabs" role="tablist">
-                        <li class="nav-item" role="presentation" th:if="${hasInbound}">
-                            <a class="nav-link" th:classappend="${currentDirection == 1 ? 'active' : ''}" 
-                               th:href="@{/routes/view/{id}(id=${route.id}, direction=1)}" role="tab">
-                                <i class="bi bi-arrow-right"></i> Chiều đi
-                            </a>
-                        </li>
-                        <li class="nav-item" role="presentation" th:if="${hasOutbound}">
-                            <a class="nav-link" th:classappend="${currentDirection == 2 ? 'active' : ''}" 
-                               th:href="@{/routes/view/{id}(id=${route.id}, direction=2)}" role="tab">
-                                <i class="bi bi-arrow-left"></i> Chiều về
-                            </a>
-                        </li>
-                        <li class="nav-item" role="presentation" th:if="${!hasInbound && !hasOutbound}">
-                            <span class="nav-link active">Tuyến đường</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+
 
             <!-- Danh sách trạm dừng và lịch trình cạnh nhau -->
             <div class="col-md-7">
@@ -320,19 +310,494 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-polylinedecorator/1.6.0/leaflet.polylineDecorator.min.js"></script>
 
 <script th:inline="javascript">
-                                                   /*<![CDATA[*/
-                                                   console.log("view.js loaded!");
+                                                   // Biến toàn cục để lưu trữ trạng thái
 
-                                                   // Giải mã polyline (được sử dụng bởi OSRM)
-                                                   L.Polyline.fromEncoded = function (encoded, options) {
-                                                       var polyline = L.polyline([], options);
-                                                       polyline.setLatLngs(L.PolylineUtil.decode(encoded));
-                                                       return polyline;
-                                                   };
 
+                                                   $(document).ready(function () {
+                                                       // Lấy dữ liệu từ Thymeleaf
+                                                       var coordinates = /*[[${coordinates}]]*/ [];
+                                                       var currentDirection = /*[[${currentDirection}]]*/ 1;
+                                                       var route = /*[[${route}]]*/ {};
+
+                                                       // Lưu trữ các biến toàn cục
+                                                       window.currentDirectionValue = currentDirection;
+                                                       window.routeId = route.id;
+
+                                                       // Kiểm tra phần tử map
+                                                       if (document.getElementById('map')) {
+                                                           // Khởi tạo bản đồ
+                                                           var map = L.map('map').setView([10.77, 106.69], 13);
+                                                           window.mapInstance = map;
+                                                           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                                               attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                           }).addTo(map);
+
+                                                           // Xác định loại tuyến (1 = bus, 2 = metro)
+                                                           var routeTypeId = route.routeTypeIdValue || (route.routeTypeId ? route.routeTypeId.id : 1);
+                                                           var isMetro = (routeTypeId === 2);
+                                                           var routeColor = route.routeColor || (isMetro ? '#FF0000' : '#0000FF');
+
+                                                           // Kiểm tra tọa độ
+                                                           if (coordinates && coordinates.length > 1) {
+                                                               var markers = [];
+                                                               var validCoordinates = coordinates.filter(function (coord) {
+                                                                   return Array.isArray(coord) && coord.length === 2 &&
+                                                                           !isNaN(coord[0]) && !isNaN(coord[1]);
+                                                               });
+
+                                                               if (validCoordinates.length > 1) {
+                                                                   // Tạo một polyline tạm thời (sẽ bị xóa sau)
+                                                                   var tempPolyline = L.polyline(validCoordinates, {
+                                                                       color: '#999',
+                                                                       weight: 2,
+                                                                       opacity: 0.4,
+                                                                       dashArray: '5,10'
+                                                                   }).addTo(map);
+
+                                                                   if (isMetro) {
+                                                                       // Metro: Sử dụng OSRM nhưng với kiểu dáng đặc biệt để đại diện cho đường ray metro
+                                                                       // Tạo chuỗi waypoints cho OSRM
+                                                                       map.removeLayer(tempPolyline);
+
+                                                                       // Vẽ đường ray trực tiếp giữa các điểm
+                                                                       drawMetroRailsDirectly(map, validCoordinates, routeColor);
+                                                                   } else {
+                                                                       // Bus: Sử dụng OSRM để vẽ tuyến theo đường giao thông
+                                                                       var waypointsStr = validCoordinates.map(function (coord) {
+                                                                           return coord[1] + ',' + coord[0];
+                                                                       }).join(';');
+
+                                                                       var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' +
+                                                                               waypointsStr +
+                                                                               '?overview=full&geometries=polyline&steps=false';
+
+                                                                       $.ajax({
+                                                                           url: osrmUrl,
+                                                                           method: 'GET',
+                                                                           dataType: 'json',
+                                                                           success: function (data) {
+                                                                               // Xóa polyline tạm
+                                                                               map.removeLayer(tempPolyline);
+
+                                                                               if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                                                                                   // Decode polyline từ OSRM
+                                                                                   var routeGeometry = data.routes[0].geometry;
+                                                                                   var routeCoordinates = L.PolylineUtil.decode(routeGeometry);
+
+                                                                                   // Vẽ đường đi theo đường giao thông
+                                                                                   var busLineOptions = {
+                                                                                       color: routeColor,
+                                                                                       weight: 4,
+                                                                                       opacity: 0.8
+                                                                                   };
+
+                                                                                   var busLine = L.polyline(routeCoordinates, busLineOptions).addTo(map);
+                                                                               } else {
+                                                                                   console.error("OSRM API error:", data);
+                                                                                   // Fallback: vẽ đường thẳng giữa các điểm
+                                                                                   var fallbackLine = L.polyline(validCoordinates, {
+                                                                                       color: routeColor,
+                                                                                       weight: 4,
+                                                                                       opacity: 0.8
+                                                                                   }).addTo(map);
+                                                                               }
+                                                                           },
+                                                                           error: function (xhr, status, error) {
+                                                                               // Xóa polyline tạm
+                                                                               map.removeLayer(tempPolyline);
+                                                                               console.error("OSRM request failed:", error);
+
+                                                                               // Fallback: vẽ đường thẳng giữa các điểm
+                                                                               var fallbackLine = L.polyline(validCoordinates, {
+                                                                                   color: routeColor,
+                                                                                   weight: 4,
+                                                                                   opacity: 0.8
+                                                                               }).addTo(map);
+                                                                           }
+                                                                       });
+                                                                   }
+
+                                                                   // Thêm markers cho các trạm dừng
+                                                                   for (var i = 0; i < validCoordinates.length; i++) {
+                                                                       var markerHtml;
+                                                                       var markerClass = isMetro ? 'metro-stop-marker' : 'bus-stop-marker';
+
+                                                                       if (i === 0) {
+                                                                           // Điểm đầu (A)
+                                                                           markerHtml = '<div style="background-color: #28a745; color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;' +
+                                                                                   (isMetro ? 'border-radius: 0%' : 'border-radius: 50%') + '">A</div>';
+                                                                       } else if (i === validCoordinates.length - 1) {
+                                                                           // Điểm cuối (B)
+                                                                           markerHtml = '<div style="background-color: #dc3545; color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;' +
+                                                                                   (isMetro ? 'border-radius: 0%' : 'border-radius: 50%') + '">B</div>';
+                                                                       } else {
+                                                                           // Điểm trung gian (số)
+                                                                           markerHtml = '<div style="background-color: #0d6efd; color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;' +
+                                                                                   (isMetro ? 'border-radius: 0%' : 'border-radius: 50%') + '">' + i + '</div>';
+                                                                       }
+
+                                                                       var icon = L.divIcon({
+                                                                           html: markerHtml,
+                                                                           className: markerClass,
+                                                                           iconSize: [24, 24],
+                                                                           iconAnchor: [12, 12]
+                                                                       });
+
+                                                                       var marker = L.marker(validCoordinates[i], {icon: icon}).addTo(map);
+
+                                                                       // Thêm popup
+                                                                       var popupContent = i === 0 ? "Điểm xuất phát" :
+                                                                               (i === validCoordinates.length - 1 ? "Điểm cuối" : "Trạm số " + i);
+                                                                       if (currentDirection === 1) {
+                                                                           popupContent += " (Chiều đi)";
+                                                                       } else if (currentDirection === 2) {
+                                                                           popupContent += " (Chiều về)";
+                                                                       }
+
+                                                                       marker.bindPopup(popupContent);
+                                                                       markers.push(marker);
+                                                                   }
+
+                                                                   // Fit map to markers
+                                                                   var group = new L.featureGroup(markers);
+                                                                   map.fitBounds(group.getBounds().pad(0.2));
+                                                               } else {
+                                                                   document.getElementById('map').innerHTML =
+                                                                           '<div class="alert alert-warning">Không có đủ tọa độ để hiển thị tuyến đường</div>';
+                                                               }
+                                                           } else {
+                                                               document.getElementById('map').innerHTML =
+                                                                       '<div class="alert alert-warning">Không có tọa độ để hiển thị tuyến đường</div>';
+                                                           }
+                                                       }
+                                                   });
+
+                                                   // Hàm chuyển đổi hướng mà không reload trang
+                                                   function changeDirection(direction) {
+                                                       if (currentDirectionValue === direction) {
+                                                           return; // Không làm gì nếu đã đang ở hướng này
+                                                       }
+
+                                                       // Hiển thị thông báo đang tải
+                                                       $('#map').html('<div class="d-flex justify-content-center align-items-center" style="height: 400px;"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Đang tải...</span></div></div>');
+
+                                                       // Gọi API để lấy dữ liệu tuyến đường và trạm dừng theo hướng mới
+                                                       $.ajax({
+                                                           url: '/PTS/routes/api/getRouteData',
+                                                           method: 'GET',
+                                                           data: {
+                                                               routeId: routeId,
+                                                               direction: direction
+                                                           },
+                                                           success: function (data) {
+                                                               // Cập nhật biến direction hiện tại
+                                                               currentDirectionValue = direction;
+
+                                                               // Cập nhật UI nút
+                                                               if (direction === 1) {
+                                                                   $('#btnInbound').removeClass('btn-outline-light').addClass('btn-light');
+                                                                   $('#btnOutbound').removeClass('btn-light').addClass('btn-outline-light');
+                                                               } else {
+                                                                   $('#btnOutbound').removeClass('btn-outline-light').addClass('btn-light');
+                                                                   $('#btnInbound').removeClass('btn-light').addClass('btn-outline-light');
+                                                               }
+
+                                                               // Cập nhật tiêu đề danh sách trạm
+                                                               if (direction === 1) {
+                                                                   $('.card-header .mb-0').first().html('<span>Trạm dừng (Chiều đi)</span>');
+                                                               } else {
+                                                                   $('.card-header .mb-0').first().html('<span>Trạm dừng (Chiều về)</span>');
+                                                               }
+
+                                                               // Khởi tạo lại bản đồ với dữ liệu mới
+                                                               initMap(data.coordinates, data.route);
+
+                                                               // Cập nhật danh sách trạm dừng
+                                                               updateStopList(data.stops);
+
+                                                               // Cập nhật URL mà không reload trang
+                                                               const url = new URL(window.location.href);
+                                                               url.searchParams.set('direction', direction);
+                                                               window.history.pushState({path: url.href}, '', url.href);
+                                                           },
+                                                           error: function (error) {
+                                                               console.error('Error fetching route data:', error);
+                                                               alert('Không thể tải dữ liệu cho hướng này. Vui lòng thử lại sau.');
+                                                           }
+                                                       });
+                                                   }
+
+                                                   // Hàm khởi tạo bản đồ mới
+                                                   function initMap(coordinates, route) {
+                                                       // Xóa bản đồ cũ nếu có
+                                                       if (mapInstance) {
+                                                           mapInstance.remove();
+                                                       }
+
+                                                       // Khởi tạo bản đồ mới
+                                                       mapInstance = L.map('map').setView([10.77, 106.69], 13);
+
+                                                       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                                           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                       }).addTo(mapInstance);
+
+                                                       // Xác định loại tuyến
+                                                       var routeTypeId = route.routeTypeIdValue || (route.routeTypeId ? route.routeTypeId.id : 1);
+                                                       var isMetro = (routeTypeId === 2);
+                                                       var routeColor = route.routeColor || (isMetro ? '#FF0000' : '#0000FF');
+
+                                                       // Vẽ tuyến đường
+                                                       drawRoute(mapInstance, coordinates, isMetro, routeColor);
+                                                   }
+
+                                                   // Hàm vẽ tuyến đường
+                                                   function drawRoute(map, coordinates, isMetro, routeColor) {
+                                                       if (!coordinates || coordinates.length < 2) {
+                                                           document.getElementById('map').innerHTML =
+                                                                   '<div class="alert alert-warning">Không có đủ tọa độ để hiển thị tuyến đường</div>';
+                                                           return;
+                                                       }
+
+                                                       var markers = [];
+                                                       var validCoordinates = coordinates.filter(function (coord) {
+                                                           return Array.isArray(coord) && coord.length === 2 &&
+                                                                   !isNaN(coord[0]) && !isNaN(coord[1]);
+                                                       });
+
+                                                       if (validCoordinates.length < 2) {
+                                                           document.getElementById('map').innerHTML =
+                                                                   '<div class="alert alert-warning">Không có đủ tọa độ để hiển thị tuyến đường</div>';
+                                                           return;
+                                                       }
+
+                                                       // Tạo polyline tạm thời
+                                                       var tempPolyline = L.polyline(validCoordinates, {
+                                                           color: '#999',
+                                                           weight: 2,
+                                                           opacity: 0.4,
+                                                           dashArray: '5,10'
+                                                       }).addTo(map);
+
+                                                       if (isMetro) {
+                                                           // Metro: Vẽ đường ray trực tiếp
+                                                           map.removeLayer(tempPolyline);
+                                                           drawMetroRailsDirectly(map, validCoordinates, routeColor);
+                                                       } else {
+                                                           // Bus: Sử dụng OSRM
+                                                           var waypointsStr = validCoordinates.map(function (coord) {
+                                                               return coord[1] + ',' + coord[0];
+                                                           }).join(';');
+
+                                                           var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' +
+                                                                   waypointsStr +
+                                                                   '?overview=full&geometries=polyline&steps=false';
+
+                                                           $.ajax({
+                                                               url: osrmUrl,
+                                                               method: 'GET',
+                                                               dataType: 'json',
+                                                               success: function (data) {
+                                                                   // Xóa polyline tạm
+                                                                   map.removeLayer(tempPolyline);
+
+                                                                   if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                                                                       // Decode polyline từ OSRM
+                                                                       var routeGeometry = data.routes[0].geometry;
+                                                                       var routeCoordinates = L.PolylineUtil.decode(routeGeometry);
+
+                                                                       // Vẽ đường đi theo đường giao thông
+                                                                       var busLineOptions = {
+                                                                           color: routeColor,
+                                                                           weight: 4,
+                                                                           opacity: 0.8
+                                                                       };
+
+                                                                       var busLine = L.polyline(routeCoordinates, busLineOptions).addTo(map);
+                                                                   } else {
+                                                                       console.error("OSRM API error:", data);
+                                                                       // Fallback: vẽ đường thẳng
+                                                                       var fallbackLine = L.polyline(validCoordinates, {
+                                                                           color: routeColor,
+                                                                           weight: 4,
+                                                                           opacity: 0.8
+                                                                       }).addTo(map);
+                                                                   }
+                                                               },
+                                                               error: function (xhr, status, error) {
+                                                                   // Xóa polyline tạm
+                                                                   map.removeLayer(tempPolyline);
+                                                                   console.error("OSRM request failed:", error);
+
+                                                                   // Fallback: vẽ đường thẳng
+                                                                   var fallbackLine = L.polyline(validCoordinates, {
+                                                                       color: routeColor,
+                                                                       weight: 4,
+                                                                       opacity: 0.8
+                                                                   }).addTo(map);
+                                                               }
+                                                           });
+                                                       }
+
+                                                       // Thêm markers cho các trạm dừng
+                                                       for (var i = 0; i < validCoordinates.length; i++) {
+                                                           var markerHtml;
+                                                           var markerClass = isMetro ? 'metro-stop-marker' : 'bus-stop-marker';
+
+                                                           if (i === 0) {
+                                                               // Điểm đầu (A)
+                                                               markerHtml = '<div style="background-color: #28a745; color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;' +
+                                                                       (isMetro ? 'border-radius: 0%' : 'border-radius: 50%') + '">A</div>';
+                                                           } else if (i === validCoordinates.length - 1) {
+                                                               // Điểm cuối (B)
+                                                               markerHtml = '<div style="background-color: #dc3545; color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;' +
+                                                                       (isMetro ? 'border-radius: 0%' : 'border-radius: 50%') + '">B</div>';
+                                                           } else {
+                                                               // Điểm trung gian (số)
+                                                               markerHtml = '<div style="background-color: #0d6efd; color: white; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;' +
+                                                                       (isMetro ? 'border-radius: 0%' : 'border-radius: 50%') + '">' + i + '</div>';
+                                                           }
+
+                                                           var icon = L.divIcon({
+                                                               html: markerHtml,
+                                                               className: markerClass,
+                                                               iconSize: [24, 24],
+                                                               iconAnchor: [12, 12]
+                                                           });
+
+                                                           var marker = L.marker(validCoordinates[i], {icon: icon}).addTo(map);
+
+                                                           // Thêm popup
+                                                           var popupContent = i === 0 ? "Điểm xuất phát" :
+                                                                   (i === validCoordinates.length - 1 ? "Điểm cuối" : "Trạm số " + i);
+                                                           if (currentDirectionValue === 1) {
+                                                               popupContent += " (Chiều đi)";
+                                                           } else if (currentDirectionValue === 2) {
+                                                               popupContent += " (Chiều về)";
+                                                           }
+
+                                                           marker.bindPopup(popupContent);
+                                                           markers.push(marker);
+                                                       }
+
+                                                       // Fit map to markers
+                                                       var group = new L.featureGroup(markers);
+                                                       map.fitBounds(group.getBounds().pad(0.2));
+                                                   }
+
+                                                   // Hàm cập nhật danh sách trạm dừng
+                                                   function updateStopList(stops) {
+                                                       let stopListHtml = '';
+
+                                                       if (!stops || stops.length === 0) {
+                                                           stopListHtml = '<div class="alert alert-info py-2">Tuyến này chưa có trạm dừng nào cho chiều này.</div>';
+                                                       } else {
+                                                           // Bắt đầu container
+                                                           stopListHtml = '<div class="list-group stop-list' +
+                                                                   (stops.length > 8 ? ' stop-list-scroll' : '') +
+                                                                   '">';
+
+                                                           // Tạo HTML cho mỗi trạm
+                                                           for (let i = 0; i < stops.length; i++) {
+                                                               let stop = stops[i];
+                                                               let markerType = '';
+                                                               let markerClass = '';
+
+                                                               if (i === 0) {
+                                                                   markerType = 'A';
+                                                                   markerClass = 'bg-success';
+                                                               } else if (i === stops.length - 1) {
+                                                                   markerType = 'B';
+                                                                   markerClass = 'bg-danger';
+                                                               } else {
+                                                                   markerType = i;
+                                                                   markerClass = 'bg-primary';
+                                                               }
+
+                                                               // Tạo HTML cho mỗi trạm
+                                                               stopListHtml += `
+                    <div class="list-group-item list-group-item-action d-flex align-items-center py-2">
+                        <div class="me-2">
+                            <div class="rounded-circle ${markerClass} text-white d-flex justify-content-center align-items-center" 
+                                 style="width: 30px; height: 30px; font-weight: bold;">
+                                ${markerType}
+                            </div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">${stop.stopName}</h6>
+                                <div>
+                                    <span class="badge ${stop.isAccessible ? 'bg-success' : 'bg-secondary'} me-1">
+                                        ${stop.isAccessible ? '✓' : '✗'}
+                                    </span>
+                                    <a href="/stops/view/${stop.id}" class="btn btn-sm btn-info action-btn p-0 px-1">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="/stops/edit/${stop.id}" class="btn btn-sm btn-warning action-btn p-0 px-1">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="/routes/${routeId}/stops/${stop.id}/remove?direction=${currentDirectionValue}"
+                                       onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này khỏi tuyến?');"
+                                       class="btn btn-sm btn-danger action-btn p-0 px-1">
+                                        <i class="bi bi-x"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <small class="text-muted">${stop.address || 'Không có địa chỉ'}</small>
+                        </div>
+                    </div>
+                `;
+                                                           }
+
+                                                           stopListHtml += '</div>'; // Kết thúc container
+                                                       }
+
+                                                       // Cập nhật nội dung HTML
+                                                       $('.card-body.p-2').first().html(stopListHtml);
+                                                   }
+
+                                                   // Hàm vẽ đường ray metro trực tiếp giữa các điểm
+                                                   function drawMetroRailsDirectly(map, coordinates, color) {
+                                                       // Vẽ đường chính
+                                                       var mainRail = L.polyline(coordinates, {
+                                                           color: color,
+                                                           weight: 6,
+                                                           opacity: 0.8,
+                                                           dashArray: '15,10'
+                                                       }).addTo(map);
+
+                                                       // Vẽ đường ray phụ (song song)
+                                                       var secondaryRail = L.polyline(coordinates, {
+                                                           color: '#000',
+                                                           weight: 1,
+                                                           opacity: 0.5,
+                                                           dashArray: '5,10'
+                                                       }).addTo(map);
+
+                                                       // Thêm chi tiết đường ray nếu có thư viện polylineDecorator
+                                                       if (window.L.polylineDecorator) {
+                                                           var decorator = L.polylineDecorator(mainRail, {
+                                                               patterns: [
+                                                                   {
+                                                                       offset: '5%',
+                                                                       repeat: '15%',
+                                                                       symbol: L.Symbol.dash({
+                                                                           pixelSize: 10,
+                                                                           pathOptions: {
+                                                                               color: '#000',
+                                                                               weight: 2,
+                                                                               opacity: 0.7
+                                                                           }
+                                                                       })
+                                                                   }
+                                                               ]
+                                                           }).addTo(map);
+                                                       }
+                                                   }
+
+                                                   // Utility function to decode polyline from OSRM
                                                    L.PolylineUtil = {
-                                                       // Giải mã chuỗi polyline thành mảng tọa độ [lat, lng]
                                                        decode: function (str, precision) {
+                                                           precision = typeof precision === 'number' ? precision : 5;
                                                            var index = 0,
                                                                    lat = 0,
                                                                    lng = 0,
@@ -342,11 +807,9 @@
                                                                    byte = null,
                                                                    latitude_change,
                                                                    longitude_change,
-                                                                   factor = Math.pow(10, precision || 5);
+                                                                   factor = Math.pow(10, precision);
 
-                                                           // Đọc lat và lng cho đến khi hết chuỗi str
                                                            while (index < str.length) {
-                                                               // Reset shift, result, và byte
                                                                byte = null;
                                                                shift = 0;
                                                                result = 0;
@@ -378,238 +841,6 @@
                                                            return coordinates;
                                                        }
                                                    };
-
-                                                   // Khởi tạo bản đồ sau khi trang đã tải xong
-                                                   function initRouteMap(coordinates, currentDirection) {
-                                                       var map = L.map('map').setView([10.77, 106.69], 13);
-
-                                                       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                                           attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-                                                       }).addTo(map);
-
-                                                       // Kiểm tra nếu có tọa độ
-                                                       if (coordinates && coordinates.length > 0) {
-                                                           var markers = [];
-                                                           var validCoordinates = coordinates.filter(function (coord) {
-                                                               return coord && Array.isArray(coord) && coord.length === 2 &&
-                                                                       !isNaN(coord[0]) && !isNaN(coord[1]);
-                                                           });
-
-                                                           if (validCoordinates.length > 0) {
-                                                               // Tạo polyline đơn giản kết nối các điểm ban đầu
-                                                               var simplePolyline = L.polyline(validCoordinates, {
-                                                                   color: currentDirection === 1 ? 'blue' : 'green',
-                                                                   weight: 2,
-                                                                   dashArray: '5,10',
-                                                                   opacity: 0.6
-                                                               }).addTo(map);
-
-                                                               // Nếu có ít nhất 2 điểm, sử dụng OSRM để vẽ đường đi theo đường phố
-                                                               if (validCoordinates.length >= 2) {
-                                                                   // Tạo URL cho API OSRM
-                                                                   var waypointsStr = validCoordinates.map(function (coord) {
-                                                                       return coord[1] + ',' + coord[0]; // OSRM yêu cầu định dạng [lon, lat]
-                                                                   }).join(';');
-
-                                                                   var url = 'https://router.project-osrm.org/route/v1/driving/' + waypointsStr +
-                                                                           '?overview=full&geometries=polyline&steps=true&continue_straight=true';
-
-                                                                   // Gọi API OSRM
-                                                                   $.ajax({
-                                                                       url: url,
-                                                                       method: 'GET',
-                                                                       dataType: 'json',
-                                                                       success: function (data) {
-                                                                           if (data.code === 'Ok') {
-                                                                               // Giải mã tọa độ polyline từ phản hồi
-                                                                               var encoded = data.routes[0].geometry;
-                                                                               var routeCoords = L.PolylineUtil.decode(encoded);
-
-                                                                               // Vẽ tuyến đường chính
-                                                                               var routePolyline = L.polyline(routeCoords, {
-                                                                                   color: currentDirection === 1 ? 'blue' : 'green',
-                                                                                   weight: 5,
-                                                                                   opacity: 0.8
-                                                                               }).addTo(map);
-
-                                                                               // Tìm điểm gần nhất trên đường polyline cho mỗi trạm dừng
-                                                                               for (var i = 0; i < validCoordinates.length; i++) {
-                                                                                   var stop = validCoordinates[i];
-                                                                                   var closestPoint = findClosestPointOnPolyline(stop, routeCoords);
-
-                                                                                   // Sử dụng điểm gần nhất trên polyline làm vị trí trạm
-                                                                                   var adjustedPosition = closestPoint;
-
-                                                                                   // Tạo marker với icon phù hợp
-                                                                                   var markerIcon = L.divIcon({
-                                                                                       html: getStopMarkerHtml(i, validCoordinates.length),
-                                                                                       className: 'marker-station',
-                                                                                       iconSize: [24, 24],
-                                                                                       iconAnchor: [12, 12]
-                                                                                   });
-
-                                                                                   var marker = L.marker(adjustedPosition, {icon: markerIcon}).addTo(map);
-
-                                                                                   // Thêm thông tin chiều vào popup và chỉ số trạm theo thứ tự
-                                                                                   var popupContent = getStopPopupContent(i, validCoordinates.length, currentDirection);
-                                                                                   marker.bindPopup(popupContent);
-                                                                                   markers.push(marker);
-
-                                                                                   // Vẽ đường nối từ vị trí thực tế đến điểm trên đường nếu khoảng cách > 10m
-                                                                                   var distance = calculateDistance(stop, adjustedPosition);
-                                                                                   if (distance > 0.01) { // 0.01 km = 10m
-                                                                                       L.polyline([stop, adjustedPosition], {
-                                                                                           color: 'gray',
-                                                                                           weight: 1,
-                                                                                           dashArray: '3,6',
-                                                                                           opacity: 0.5
-                                                                                       }).addTo(map);
-                                                                                   }
-                                                                               }
-
-                                                                               // Xóa polyline đơn giản
-                                                                               map.removeLayer(simplePolyline);
-
-                                                                               // Fit bản đồ vào tất cả điểm
-                                                                               var group = new L.featureGroup(markers.concat([routePolyline]));
-                                                                               map.fitBounds(group.getBounds(), {padding: [30, 30]});
-                                                                           } else {
-                                                                               console.error('Lỗi từ OSRM API:', data.code);
-                                                                               addDefaultMarkers(map, validCoordinates, markers, currentDirection);
-                                                                           }
-                                                                       },
-                                                                       error: function (xhr, status, error) {
-                                                                           console.error('Lỗi khi gọi OSRM API:', error);
-                                                                           addDefaultMarkers(map, validCoordinates, markers, currentDirection);
-                                                                       }
-                                                                   });
-                                                               } else {
-                                                                   addDefaultMarkers(map, validCoordinates, markers, currentDirection);
-                                                               }
-                                                           } else {
-                                                               showNoCoordinatesMessage();
-                                                           }
-                                                       } else {
-                                                           showNoCoordinatesMessage();
-                                                       }
-
-                                                       return map;
-                                                   }
-
-                                                   // Hàm tạo HTML cho marker
-                                                   function getStopMarkerHtml(index, total) {
-                                                       if (index === 0) {
-                                                           // Điểm đầu (A)
-                                                           return '<div style="background-color: #28a745; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;">A</div>';
-                                                       } else if (index === total - 1) {
-                                                           // Điểm cuối (B)
-                                                           return '<div style="background-color: #dc3545; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;">B</div>';
-                                                       } else {
-                                                           // Điểm trung gian (số)
-                                                           return '<div style="background-color: #0d6efd; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; justify-content: center; align-items: center; font-weight: bold;">' + index + '</div>';
-                                                       }
-                                                   }
-
-                                                   // Hàm tạo nội dung popup
-                                                   function getStopPopupContent(index, total, direction) {
-                                                       var stopType = "";
-
-                                                       if (index === 0) {
-                                                           stopType = "<strong>Điểm xuất phát (A)</strong>";
-                                                       } else if (index === total - 1) {
-                                                           stopType = "<strong>Điểm kết thúc (B)</strong>";
-                                                       } else {
-                                                           stopType = "<strong>Trạm số " + index + "</strong>";
-                                                       }
-
-                                                       var directionText = "";
-                                                       if (direction === 1) {
-                                                           directionText = " (Chiều đi)";
-                                                       } else if (direction === 2) {
-                                                           directionText = " (Chiều về)";
-                                                       }
-
-                                                       return stopType + directionText;
-                                                   }
-
-                                                   // Hàm tìm điểm gần nhất trên polyline
-                                                   function findClosestPointOnPolyline(point, polyline) {
-                                                       var closestPoint = polyline[0];
-                                                       var minDistance = calculateDistance(point, polyline[0]);
-
-                                                       for (var i = 1; i < polyline.length; i++) {
-                                                           var distance = calculateDistance(point, polyline[i]);
-                                                           if (distance < minDistance) {
-                                                               minDistance = distance;
-                                                               closestPoint = polyline[i];
-                                                           }
-                                                       }
-                                                       return closestPoint;
-                                                   }
-
-                                                   // Hàm tính khoảng cách giữa hai điểm (theo công thức Haversine)
-                                                   function calculateDistance(point1, point2) {
-                                                       var lat1 = point1[0], lon1 = point1[1];
-                                                       var lat2 = point2[0], lon2 = point2[1];
-
-                                                       var R = 6371; // Bán kính Trái Đất (km)
-                                                       var dLat = deg2rad(lat2 - lat1);
-                                                       var dLon = deg2rad(lon2 - lon1);
-                                                       var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                                                               Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-                                                               Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                                                       var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                                                       var d = R * c; // Khoảng cách (km)
-                                                       return d;
-                                                   }
-
-                                                   function deg2rad(deg) {
-                                                       return deg * (Math.PI / 180);
-                                                   }
-
-                                                   // Thêm các marker mặc định khi không dùng OSRM
-                                                   function addDefaultMarkers(map, validCoordinates, markers, currentDirection) {
-                                                       validCoordinates.forEach(function (coord, index) {
-                                                           var markerIcon = L.divIcon({
-                                                               html: getStopMarkerHtml(index, validCoordinates.length),
-                                                               className: 'marker-station',
-                                                               iconSize: [24, 24],
-                                                               iconAnchor: [12, 12]
-                                                           });
-
-                                                           var marker = L.marker([coord[0], coord[1]], {icon: markerIcon}).addTo(map);
-                                                           var popupContent = getStopPopupContent(index, validCoordinates.length, currentDirection);
-                                                           marker.bindPopup(popupContent);
-                                                           markers.push(marker);
-                                                       });
-
-                                                       fitMapToMarkers(map, markers);
-                                                   }
-
-                                                   function fitMapToMarkers(map, markers) {
-                                                       if (markers.length > 0) {
-                                                           var group = new L.featureGroup(markers);
-                                                           map.fitBounds(group.getBounds(), {padding: [30, 30]});
-                                                       }
-                                                   }
-
-                                                   function showNoCoordinatesMessage() {
-                                                       document.getElementById('map').innerHTML =
-                                                               '<div class="d-flex align-items-center justify-content-center h-100 bg-light">' +
-                                                               '<p class="text-muted">Không có tọa độ nào cho tuyến đường này</p></div>';
-                                                   }
-
-                                                   // Sử dụng hàm từ file JS
-                                                   $(document).ready(function () {
-                                                       var coordinates = /*[[${coordinates}]]*/ [];
-                                                       var currentDirection = /*[[${currentDirection}]]*/ 1;
-
-                                                       console.log("Coordinates:", coordinates);
-                                                       console.log("Direction:", currentDirection);
-
-                                                       initRouteMap(coordinates, currentDirection);
-                                                   });
-                                                   /*]]>*/
 </script>
 </body>
 </html>

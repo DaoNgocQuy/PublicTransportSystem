@@ -318,6 +318,43 @@ public class RouteController {
         }
     }
 
+    @GetMapping("/api/getRouteData")
+    @ResponseBody
+    public Map<String, Object> getRouteData(@RequestParam("routeId") Integer routeId,
+            @RequestParam("direction") Integer direction) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Sửa từ findById thành getRouteById
+            Optional<Routes> routeOptional = routesService.getRouteById(routeId);
+
+            if (routeOptional.isPresent()) {
+                Routes route = routeOptional.get();
+                response.put("route", route);
+
+                // Lấy danh sách trạm dừng theo chiều
+                List<Stops> stops = stopService.findStopsByRouteIdAndDirection(routeId, direction);
+                response.put("stops", stops);
+
+                // Lấy tọa độ
+                List<double[]> coordinates = new ArrayList<>();
+                for (Stops stop : stops) {
+                    if (stop.getLatitude() != null && stop.getLongitude() != null) {
+                        coordinates.add(new double[]{stop.getLatitude(), stop.getLongitude()});
+                    }
+                }
+                response.put("coordinates", coordinates);
+            } else {
+                response.put("error", "Route not found");
+            }
+
+            return response;
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            return response;
+        }
+    }
+
     // Tạo nội dung email
     private String createEmailContent(String fullName, Routes oldRoute, Routes newRoute) {
         // Giữ nguyên phương thức này như trong code gốc

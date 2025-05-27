@@ -13,13 +13,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 /**
  * Entity class representing the route_stops table Maps the relationship between
  * routes and stops with ordering
  */
 @Entity
-@Table(name = "route_stops")
+@Table(name = "route_stops", uniqueConstraints = {
+    @UniqueConstraint(name = "route_direction_stop_order", columnNames = {"route_id", "direction", "stop_order"})
+})
 public class RouteStop {
 
     @Id
@@ -33,7 +36,7 @@ public class RouteStop {
     @ManyToOne
     @JoinColumn(name = "stop_id", nullable = false)
     private Stops stop;
-    @Column(name = "direction")
+    @Column(name = "direction", nullable = false)
     private Integer direction;
     @Column(name = "stop_order", nullable = false)
     private Integer stopOrder;
@@ -43,6 +46,7 @@ public class RouteStop {
 
     // Default constructor
     public RouteStop() {
+        this.direction = 1;
     }
 
     // Constructor with all fields
@@ -101,7 +105,8 @@ public class RouteStop {
     }
 
     public void setDirection(Integer direction) {
-        this.direction = direction;
+        this.direction = direction != null ? direction : 1;
+
     }
 
     @Override

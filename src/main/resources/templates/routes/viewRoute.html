@@ -231,7 +231,7 @@
                                         A
                                     </div>
                                     <div th:unless="${iterStat.first || iterStat.last}" class="rounded-circle bg-primary text-white d-flex justify-content-center align-items-center" 
-                                         style="width: 30px; height: 30px; font-weight: bold;" th:text="${iterStat.count}">
+                                         style="width: 30px; height: 30px; font-weight: bold;" th:text="${iterStat.index}">
                                         1
                                     </div>
                                     <div th:if="${iterStat.last && !iterStat.first}" class="rounded-circle bg-danger text-white d-flex justify-content-center align-items-center" 
@@ -412,7 +412,7 @@
                                                                    }).join(';');
 
                                                                    var url = 'https://router.project-osrm.org/route/v1/driving/' + waypointsStr +
-                                                                           '?overview=full&geometries=polyline&steps=true';
+                                                                           '?overview=full&geometries=polyline&steps=true&continue_straight=true';
 
                                                                    // Gọi API OSRM
                                                                    $.ajax({

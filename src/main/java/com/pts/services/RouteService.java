@@ -42,4 +42,6 @@ public interface RouteService {
     List<Stops> getStopsByRouteId(Integer routeId);
 
     List<Stops> getStopsByRouteIdAndDirection(Integer routeId, Integer direction);
+
+    void recalculateRoute(Integer routeId);
 }

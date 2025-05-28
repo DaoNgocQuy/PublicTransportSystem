@@ -31,4 +31,7 @@ public interface StopService {
     List<Stops> findNearbyStops(double lat, double lng, double radiusMeters);
 
     List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radiusMeters);
+
+    List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder);
+
 }

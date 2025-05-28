@@ -177,4 +177,13 @@ public class StopRepositoryImpl implements StopRepository {
 
         return jdbcTemplate.query(sql, stopRowMapper, latitude, longitude, latitude, radius);
     }
+
+    @Override
+    public List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder) {
+        String sql = "SELECT s.* FROM stops s "
+                + "JOIN route_stops rs ON s.id = rs.stop_id "
+                + "WHERE rs.route_id = ? AND rs.stop_order BETWEEN ? AND ? "
+                + "ORDER BY rs.stop_order";
+        return jdbcTemplate.query(sql, stopRowMapper, routeId, startOrder, endOrder);
+    }
 }

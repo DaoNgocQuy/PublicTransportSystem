@@ -143,7 +143,6 @@ public class StopServiceImpl implements StopService {
                     Map<String, Object> routeMap = new HashMap<>();
                     routeMap.put("id", route.getId());
                     routeMap.put("name", route.getName());
-                    routeMap.put("color", route.getRouteColor());
                     routeMap.put("stopOrder", rs.getStopOrder());
 
                     // Thêm thông tin chiều
@@ -164,6 +163,16 @@ public class StopServiceImpl implements StopService {
         result.sort(Comparator.comparingDouble(stop -> ((Number) stop.get("distance")).doubleValue()));
 
         return result;
+    }
+
+    @Override
+    public List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder) {
+        try {
+            return stopRepository.findStopsByRouteIdAndStopOrderRange(routeId, startOrder, endOrder);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tìm trạm theo khoảng thứ tự: " + e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {

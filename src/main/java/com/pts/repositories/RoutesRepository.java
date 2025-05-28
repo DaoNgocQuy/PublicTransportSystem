@@ -3,6 +3,7 @@ package com.pts.repositories;
 
 import com.pts.pojo.Routes;
 import com.pts.pojo.Stops;
+import java.sql.Time;
 import java.util.List;
 import java.util.Optional;
 
@@ -47,4 +48,6 @@ public interface RoutesRepository {
     Integer countStopsByRouteIdAndDirection(Integer routeId, Integer direction);
 
     void updateTotalStops(Integer routeId);
+
+    void updateRouteOperationDetails(Integer routeId, Time startTime, Time endTime, Integer frequencyMinutes);
 }

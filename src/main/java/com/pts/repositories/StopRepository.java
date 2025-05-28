@@ -29,4 +29,7 @@ public interface StopRepository {
     List<Stops> searchStops(String keyword);
 
     List<Stops> findNearbyStops(double latitude, double longitude, double radius);
+
+    List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder);
+
 }

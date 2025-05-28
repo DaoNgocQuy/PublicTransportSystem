@@ -72,10 +72,26 @@ public class RouteController {
         try {
             // Lấy thông tin tuyến đường theo ID
             Optional<Routes> routeOptional = routesService.getRouteById(id);
-
+            
             // Kiểm tra tuyến có tồn tại không
             if (routeOptional.isPresent()) {
                 Routes route = routeOptional.get();
+                
+                
+                // Kiểm tra nếu bất kỳ trường nào là NULL, tính toán lại
+                if ( route.getFrequencyMinutes() == 0
+                        || route.getOperationStartTime() == null
+                        || route.getOperationEndTime() == null) {
+
+                    // Lưu lại tuyến sẽ kích hoạt updateRouteCalculatedFields()
+                    routesService.saveRoute(route);
+
+                    // Lấy lại tuyến sau khi cập nhật
+                    routeOptional = routesService.getRouteById(id);
+                    route = routeOptional.get();
+
+                    System.out.println("Đã tự động tính thông tin cho tuyến ID " + id);
+                }
                 model.addAttribute("route", route);
                 model.addAttribute("title", "Chi tiết tuyến " + route.getName());
                 model.addAttribute("currentDirection", direction);

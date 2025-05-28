@@ -335,8 +335,9 @@
                                                            // Xác định loại tuyến (1 = bus, 2 = metro)
                                                            var routeTypeId = route.routeTypeIdValue || (route.routeTypeId ? route.routeTypeId.id : 1);
                                                            var isMetro = (routeTypeId === 2);
-                                                           var routeColor = route.routeColor || (isMetro ? '#FF0000' : '#0000FF');
-
+                                                           var routeColor = route.routeType && route.routeType.colorCode ?
+                                                                   route.routeType.colorCode :
+                                                                   (isMetro ? '#FF0000' : '#0000FF');
                                                            // Kiểm tra tọa độ
                                                            if (coordinates && coordinates.length > 1) {
                                                                var markers = [];
@@ -544,8 +545,9 @@
                                                        // Xác định loại tuyến
                                                        var routeTypeId = route.routeTypeIdValue || (route.routeTypeId ? route.routeTypeId.id : 1);
                                                        var isMetro = (routeTypeId === 2);
-                                                       var routeColor = route.routeColor || (isMetro ? '#FF0000' : '#0000FF');
-
+                                                       var routeColor = route.routeType && route.routeType.colorCode ?
+                                                               route.routeType.colorCode :
+                                                               (isMetro ? '#FF0000' : '#0000FF');
                                                        // Vẽ tuyến đường
                                                        drawRoute(mapInstance, coordinates, isMetro, routeColor);
                                                    }

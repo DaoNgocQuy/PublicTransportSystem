@@ -3,6 +3,7 @@ package com.pts.services.impl;
 import com.pts.pojo.Routes;
 import com.pts.pojo.Stops;
 import com.pts.pojo.RouteStop;
+import com.pts.pojo.Schedules;
 import com.pts.repositories.RoutesRepository;
 import com.pts.repositories.RouteStopRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,11 +14,16 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import com.pts.services.RouteService;
 import com.pts.services.StopService;
+import com.pts.services.ScheduleService;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.sql.Time;
+import java.util.Calendar;
+import java.util.Collections;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @Service
 public class RoutesServiceImpl implements RouteService {
@@ -29,7 +35,12 @@ public class RoutesServiceImpl implements RouteService {
     private StopService stopService;
 
     @Autowired
+    private ScheduleService scheduleService;
+
+    @Autowired
     private RouteStopRepository routeStopRepository;
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Override
     public List<Routes> getAllRoutes() {
@@ -43,7 +54,7 @@ public class RoutesServiceImpl implements RouteService {
 
     @Override
     public Routes saveRoute(Routes route) {
-        // Đảm bảo các giá trị mặc định được thiết lập
+        // Set default values
         if (route.getActive() == null) {
             route.setActive(true);
         }
@@ -52,23 +63,30 @@ public class RoutesServiceImpl implements RouteService {
             route.setIsWalkingRoute(false);
         }
 
-        // Lưu route
+        // Save route without calculated fields first
         Routes savedRoute = routesRepository.save(route);
 
-        // Cập nhật tổng số điểm dừng
         if (savedRoute.getId() != null) {
-            routesRepository.updateTotalStops(savedRoute.getId());
+            // Update calculated fields
+            updateRouteCalculatedFields(savedRoute.getId());
         }
 
-        return savedRoute;
+        // Return the route with updated fields
+        return routesRepository.findById(savedRoute.getId()).orElse(savedRoute);
     }
 
+    /**
+     * Updates calculated fields for a route: - total_stops: Count of stops on
+     * the route - operation_start_time: Time of first scheduled departure -
+     * operation_end_time: Time of last scheduled departure - frequency_minutes:
+     * Average time between schedules
+     */
     @Override
     public void deleteRoute(Integer id) {
-        // Xóa các liên kết trong bảng route_stops trước
+        // Delete route_stops links first
         routeStopRepository.deleteByRouteId(id);
 
-        // Sau đó xóa tuyến
+        // Then delete the route
         routesRepository.deleteById(id);
     }
 
@@ -121,19 +139,19 @@ public class RoutesServiceImpl implements RouteService {
             return new ArrayList<>();
         }
 
-        // Lấy tất cả các tuyến
+        // Get all routes
         List<Routes> allRoutes = getAllRoutes();
 
-        // Lọc các tuyến đi qua tất cả điểm dừng được chỉ định
+        // Filter routes that pass through all specified stops
         return allRoutes.stream()
                 .filter(route -> {
-                    // Lấy tất cả các điểm dừng của tuyến này
+                    // Get all stops for this route
                     List<Stops> routeStops = routesRepository.findStopsByRouteId(route.getId());
                     List<Integer> routeStopIds = routeStops.stream()
                             .map(Stops::getId)
                             .collect(Collectors.toList());
 
-                    // Kiểm tra xem tuyến có chứa tất cả các điểm dừng không
+                    // Check if route contains all specified stops
                     return routeStopIds.containsAll(stopIds);
                 })
                 .collect(Collectors.toList());
@@ -164,20 +182,20 @@ public class RoutesServiceImpl implements RouteService {
         try {
             double effectiveMaxDistance = Math.min(maxWalkDistance, 1000);
 
-            // 1. Tìm trạm gần điểm đi và điểm đến
+            // 1. Find stops near start and end points
             List<Map<String, Object>> fromStops = stopService.findNearbyStopsFormatted(fromLat, fromLng, effectiveMaxDistance);
             List<Map<String, Object>> toStops = stopService.findNearbyStopsFormatted(toLat, toLng, effectiveMaxDistance);
 
-            // 2. Tìm các tuyến đi qua cả từ điểm đi đến điểm đến
+            // 2. Find routes that go from start to end
             List<Routes> directRoutes = findDirectRoutes(fromStops, toStops);
 
-            // 3. Nếu maxTransfers > 0, tìm các tuyến cần chuyển
+            // 3. If maxTransfers > 0, find routes that require transfers
             List<List<Routes>> transferRoutes = new ArrayList<>();
             if (maxTransfers > 0) {
                 transferRoutes = findTransferRoutes(fromStops, toStops, maxTransfers);
             }
 
-            // 4. Định dạng kết quả
+            // 4. Format results
             result = formatRoutesResult(directRoutes, transferRoutes, fromStops, toStops,
                     fromLat, fromLng, toLat, toLng, routePriority);
 
@@ -188,7 +206,7 @@ public class RoutesServiceImpl implements RouteService {
         return result;
     }
 
-    // Tìm các tuyến đi trực tiếp (không cần chuyển tuyến)
+    // Find direct routes (no transfers needed)
     private List<Routes> findDirectRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
         List<Routes> directRoutes = new ArrayList<>();
         Set<Integer> fromStopIds = extractStopIds(fromStops);
@@ -198,14 +216,14 @@ public class RoutesServiceImpl implements RouteService {
             return directRoutes;
         }
 
-        // Lấy tất cả các tuyến đi qua điểm dừng đầu tiên
+        // Get all routes that pass through the first stop
         Set<Routes> potentialRoutes = new HashSet<>();
         for (Integer stopId : fromStopIds) {
             List<Routes> routes = routesRepository.findByStopId(stopId);
             potentialRoutes.addAll(routes);
         }
 
-        // Kiểm tra xem những tuyến này có đi qua điểm dừng cuối cùng không
+        // Check which of these routes also pass through the end stop
         for (Routes route : potentialRoutes) {
             List<Stops> routeStops = routesRepository.findStopsByRouteId(route.getId());
             Set<Integer> routeStopIds = routeStops.stream()
@@ -228,7 +246,7 @@ public class RoutesServiceImpl implements RouteService {
         return directRoutes;
     }
 
-    // Trích xuất ID của các trạm từ danh sách Map
+    // Extract stop IDs from the list of Map objects
     private Set<Integer> extractStopIds(List<Map<String, Object>> stops) {
         Set<Integer> stopIds = new HashSet<>();
 
@@ -241,7 +259,7 @@ public class RoutesServiceImpl implements RouteService {
                     try {
                         stopIds.add(Integer.parseInt((String) idObj));
                     } catch (NumberFormatException e) {
-                        // Bỏ qua nếu không thể chuyển đổi
+                        // Skip if conversion fails
                     }
                 }
             }
@@ -250,7 +268,7 @@ public class RoutesServiceImpl implements RouteService {
         return stopIds;
     }
 
-    // Tìm các tuyến đường cần chuyển tuyến
+    // Find routes that require transfers
     private List<List<Routes>> findTransferRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops, int maxTransfers) {
         List<List<Routes>> transferRoutes = new ArrayList<>();
         Set<Integer> fromStopIds = extractStopIds(fromStops);
@@ -260,38 +278,37 @@ public class RoutesServiceImpl implements RouteService {
             return transferRoutes;
         }
 
-        // Tìm tất cả các tuyến đi qua các điểm xuất phát
+        // Find all routes passing through starting points
         Set<Routes> startRoutes = new HashSet<>();
         for (Integer stopId : fromStopIds) {
             startRoutes.addAll(routesRepository.findByStopId(stopId));
         }
 
-        // Tìm tất cả các tuyến đi qua các điểm đích
+        // Find all routes passing through destination points
         Set<Routes> endRoutes = new HashSet<>();
         for (Integer stopId : toStopIds) {
             endRoutes.addAll(routesRepository.findByStopId(stopId));
         }
 
-        // Nếu có ít nhất 1 tuyến chung giữa điểm xuất phát và điểm đích, thì đó là tuyến trực tiếp
-        // và đã được xử lý trong findDirectRoutes, không cần xử lý ở đây nữa.
+        // Remove direct routes as they're already handled separately
         startRoutes.removeAll(endRoutes);
 
-        // Tìm các tuyến có điểm chuyển tiếp (maxTransfers = 1)
+        // Find routes with transfers (maxTransfers = 1)
         for (Routes startRoute : startRoutes) {
-            // Lấy danh sách tất cả các điểm dừng của tuyến xuất phát
+            // Get all stops on the starting route
             List<Stops> startRouteStops = routesRepository.findStopsByRouteId(startRoute.getId());
 
-            // Với mỗi điểm dừng của tuyến xuất phát, kiểm tra xem có tuyến nào đi từ điểm này đến điểm đích không
+            // For each stop on the starting route, check if any routes go from here to destination
             for (Stops transferStop : startRouteStops) {
                 List<Routes> transferRoutesList = routesRepository.findByStopId(transferStop.getId());
 
                 for (Routes transferRoute : transferRoutesList) {
-                    // Loại bỏ tuyến xuất phát để tránh trùng lặp
+                    // Skip if it's the same as starting route to avoid duplicates
                     if (transferRoute.getId().equals(startRoute.getId())) {
                         continue;
                     }
 
-                    // Kiểm tra xem tuyến chuyển tiếp có đi qua điểm đích không
+                    // Check if transfer route passes through destination
                     List<Stops> transferRouteStops = routesRepository.findStopsByRouteId(transferRoute.getId());
                     Set<Integer> transferRouteStopIds = transferRouteStops.stream()
                             .map(Stops::getId)
@@ -306,7 +323,7 @@ public class RoutesServiceImpl implements RouteService {
                     }
 
                     if (hasEndStop) {
-                        // Tìm thấy một chuỗi tuyến hợp lệ với 1 lần chuyển tiếp
+                        // Found a valid route sequence with 1 transfer
                         List<Routes> routeSequence = new ArrayList<>();
                         routeSequence.add(startRoute);
                         routeSequence.add(transferRoute);
@@ -319,14 +336,14 @@ public class RoutesServiceImpl implements RouteService {
         return transferRoutes;
     }
 
-    // Định dạng kết quả để trả về
+    // Format results for return
     private List<Map<String, Object>> formatRoutesResult(List<Routes> directRoutes, List<List<Routes>> transferRoutes,
             List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng, String routePriority) {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
-        // Xử lý các tuyến đi trực tiếp
+        // Process direct routes
         int optionId = 1;
         for (Routes route : directRoutes) {
             Map<String, Object> option = new HashMap<>();
@@ -338,23 +355,23 @@ public class RoutesServiceImpl implements RouteService {
             option.put("walkingDistance", calculateWalkingDistance(fromStops, toStops, fromLat, fromLng, toLat, toLng));
             option.put("transfers", 0);
 
-            // Thông tin về hành trình
+            // Journey information
             List<Map<String, Object>> legs = createLegs(route, fromStops, toStops, fromLat, fromLng, toLat, toLng);
             option.put("legs", legs);
 
-            // Thêm thông tin routes để hiển thị
+            // Add route display information
             List<Map<String, Object>> routes = new ArrayList<>();
             Map<String, Object> routeInfo = new HashMap<>();
             routeInfo.put("number", route.getId().toString());
             routeInfo.put("name", route.getName());
-            routeInfo.put("color", route.getRouteColor() != null ? route.getRouteColor() : "#4CAF50");
+            routeInfo.put("color", route.getRouteTypeColor() != null ? route.getRouteTypeColor() : "#4CAF50");
             routes.add(routeInfo);
             option.put("routes", routes);
 
             result.add(option);
         }
 
-        // Xử lý các tuyến cần chuyển tuyến
+        // Process routes that require transfers
         for (List<Routes> transferRoute : transferRoutes) {
             Map<String, Object> option = new HashMap<>();
             option.put("id", optionId++);
@@ -368,7 +385,7 @@ public class RoutesServiceImpl implements RouteService {
             }
             option.put("name", nameBuilder.toString());
 
-            // Tính toán các thông số của hành trình chuyển tuyến
+            // Calculate journey parameters
             int totalTime = 0;
             double totalDistance = 0;
             double walkingDistance = 0;
@@ -378,24 +395,224 @@ public class RoutesServiceImpl implements RouteService {
                 totalDistance += calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) / transferRoute.size();
             }
 
-            // Đặt các thông số
+            // Set parameters
             option.put("totalTime", totalTime);
             option.put("totalDistance", totalDistance);
             option.put("walkingDistance", walkingDistance);
             option.put("transfers", transferRoute.size() - 1);
 
-            // Thông tin về hành trình - đây là một ví dụ đơn giản
+            // Journey information - simplified example
             List<Map<String, Object>> legs = new ArrayList<>();
             option.put("legs", legs);
 
             result.add(option);
         }
 
-        // Sắp xếp kết quả theo ưu tiên
+        // Sort results by priority
         return sortRouteOptions(result, routePriority);
     }
 
-    // Sắp xếp các lựa chọn tuyến đường theo ưu tiên
+    private void updateRouteCalculatedFields(Integer routeId) {
+        try {
+            System.out.println("Bắt đầu tính toán dữ liệu cho tuyến ID: " + routeId);
+
+            var schedules = scheduleService.findSchedulesByRouteId(routeId);
+            System.out.println("Tìm thấy " + (schedules != null ? schedules.size() : 0) + " lịch trình");
+
+            if (schedules != null && !schedules.isEmpty()) {
+                // Sort schedules by departure time
+                schedules.sort(Comparator.comparing(s -> s.getDepartureTime()));
+
+                // Set operation start time from first schedule
+                Time startTime = new Time(schedules.get(0).getDepartureTime().getTime());
+                System.out.println("Thời gian bắt đầu: " + startTime);
+
+                // Set operation end time from last schedule
+                Time endTime = new Time(schedules.get(schedules.size() - 1).getDepartureTime().getTime());
+                System.out.println("Thời gian kết thúc: " + endTime);
+
+                // Calculate frequency - THUẬT TOÁN ĐƠN GIẢN HƠN
+                Integer frequencyMinutes = null;
+
+                if (schedules.size() >= 2) {
+                    // Đơn giản hóa thuật toán: Tính trung bình tất cả khoảng cách thời gian hợp lý
+                    int totalMinutes = 0;
+                    int validIntervals = 0;
+
+                    for (int i = 0; i < schedules.size() - 1; i++) {
+                        if (schedules.get(i).getDepartureTime() != null && schedules.get(i + 1).getDepartureTime() != null) {
+                            long diffMs = schedules.get(i + 1).getDepartureTime().getTime()
+                                    - schedules.get(i).getDepartureTime().getTime();
+                            int diffMinutes = (int) (diffMs / (60 * 1000));
+
+                            // Chấp nhận khoảng cách từ 1 phút đến 4 giờ 
+                            if (diffMinutes > 0 && diffMinutes <= 240) {
+                                totalMinutes += diffMinutes;
+                                validIntervals++;
+                                System.out.println("Khoảng cách lịch trình " + i + " và " + (i + 1) + ": " + diffMinutes + " phút");
+                            }
+                        }
+                    }
+
+                    if (validIntervals > 0) {
+                        frequencyMinutes = totalMinutes / validIntervals;
+                        System.out.println("Tần suất tính được: " + frequencyMinutes + " phút ("
+                                + totalMinutes + " / " + validIntervals + ")");
+                    } else {
+                        // Nếu không có khoảng thời gian hợp lệ, sử dụng phương pháp khác: thời gian hoạt động / số chuyến
+                        long operatingMs = endTime.getTime() - startTime.getTime();
+                        int operatingMinutes = (int) (operatingMs / (60 * 1000));
+
+                        if (operatingMinutes > 0) {
+                            // Số chuyến - 1 = số khoảng thời gian giữa các chuyến
+                            frequencyMinutes = operatingMinutes / Math.max(1, schedules.size() - 1);
+                            System.out.println("Tần suất tính theo thời gian hoạt động: " + frequencyMinutes + " phút");
+                        } else {
+                            // Giá trị mặc định
+                            frequencyMinutes = 30;
+                            System.out.println("Sử dụng tần suất mặc định: " + frequencyMinutes + " phút");
+                        }
+                    }
+                } else {
+                    // Nếu chỉ có 1 lịch trình, đặt giá trị mặc định
+                    frequencyMinutes = 60;
+                    System.out.println("Chỉ có 1 lịch trình, sử dụng giá trị mặc định: " + frequencyMinutes + " phút");
+                }
+
+                // Đảm bảo luôn có giá trị hợp lệ cho frequency_minutes (không được null)
+                if (frequencyMinutes == null || frequencyMinutes <= 0) {
+                    frequencyMinutes = 30; // Mặc định 30 phút nếu tính ra giá trị không hợp lệ
+                    System.out.println("Frequency không hợp lệ, sử dụng mặc định: " + frequencyMinutes + " phút");
+                }
+
+                // Update the route with calculated values using JDBC directly for better debugging
+                String sql = "UPDATE routes SET operation_start_time = ?, operation_end_time = ?, frequency_minutes = ? WHERE id = ?";
+                int rowsUpdated = jdbcTemplate.update(sql, startTime, endTime, frequencyMinutes, routeId);
+                System.out.println("Cập nhật " + rowsUpdated + " dòng: start=" + startTime
+                        + ", end=" + endTime + ", freq=" + frequencyMinutes);
+
+                // Double-check if the update was successful
+                String checkSql = "SELECT frequency_minutes FROM routes WHERE id = ?";
+                Integer savedFreq = jdbcTemplate.queryForObject(checkSql, Integer.class, routeId);
+                System.out.println("Kiểm tra frequency đã lưu: " + savedFreq);
+
+            } else {
+                System.out.println("Không tìm thấy lịch trình cho tuyến ID " + routeId);
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tính toán dữ liệu tuyến ID " + routeId + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private Integer calculateFrequency(List<Schedules> schedules) {
+        if (schedules == null || schedules.size() < 2) {
+            System.out.println("Not enough schedules to calculate frequency");
+            return null;
+        }
+
+        System.out.println("Calculating frequency from " + schedules.size() + " schedules");
+
+        // Group by hour of day
+        Map<Integer, List<Schedules>> schedulesByHour = new HashMap<>();
+
+        for (Schedules schedule : schedules) {
+            if (schedule.getDepartureTime() == null) {
+                continue;
+            }
+
+            // Group by hour of day
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(schedule.getDepartureTime());
+            int hour = cal.get(Calendar.HOUR_OF_DAY);
+
+            if (!schedulesByHour.containsKey(hour)) {
+                schedulesByHour.put(hour, new ArrayList<>());
+            }
+            schedulesByHour.get(hour).add(schedule);
+        }
+
+        System.out.println("Grouped schedules into " + schedulesByHour.size() + " hours");
+
+        // Calculate frequencies for each hour group
+        List<Integer> hourlyFrequencies = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<Schedules>> entry : schedulesByHour.entrySet()) {
+            List<Schedules> hourSchedules = entry.getValue();
+            int hour = entry.getKey();
+
+            if (hourSchedules.size() >= 2) {
+                // Sort by departure time
+                hourSchedules.sort(Comparator.comparing(s -> s.getDepartureTime()));
+
+                // Calculate intervals between consecutive departures
+                List<Integer> intervals = new ArrayList<>();
+
+                for (int i = 0; i < hourSchedules.size() - 1; i++) {
+                    long diffMs = hourSchedules.get(i + 1).getDepartureTime().getTime()
+                            - hourSchedules.get(i).getDepartureTime().getTime();
+                    int diffMinutes = (int) (diffMs / (60 * 1000));
+
+                    // Only consider reasonable intervals (1-120 minutes between services)
+                    if (diffMinutes > 0 && diffMinutes <= 120) {
+                        intervals.add(diffMinutes);
+                    }
+                }
+
+                // Calculate median interval for this hour if we have enough data
+                if (!intervals.isEmpty()) {
+                    Collections.sort(intervals);
+                    int median = intervals.get(intervals.size() / 2);
+                    hourlyFrequencies.add(median);
+                    System.out.println("Hour " + hour + ": " + hourSchedules.size() + " schedules, median frequency: " + median + " minutes");
+                } else {
+                    System.out.println("Hour " + hour + ": No valid intervals found");
+                }
+            } else {
+                System.out.println("Hour " + hour + ": Not enough schedules (" + hourSchedules.size() + ")");
+            }
+        }
+
+        // If we have hourly frequencies, use their median
+        if (!hourlyFrequencies.isEmpty()) {
+            Collections.sort(hourlyFrequencies);
+            int result = hourlyFrequencies.get(hourlyFrequencies.size() / 2);
+            System.out.println("Final frequency (median of hourly frequencies): " + result + " minutes");
+            return result;
+        }
+
+        System.out.println("No hourly frequencies found, falling back to overall calculation");
+
+        // Fallback: calculate overall frequency using all schedules
+        List<Integer> allIntervals = new ArrayList<>();
+
+        for (int i = 0; i < schedules.size() - 1; i++) {
+            if (schedules.get(i).getDepartureTime() != null && schedules.get(i + 1).getDepartureTime() != null) {
+                long diffMs = schedules.get(i + 1).getDepartureTime().getTime()
+                        - schedules.get(i).getDepartureTime().getTime();
+                int diffMinutes = (int) (diffMs / (60 * 1000));
+
+                // Only count reasonable intervals
+                if (diffMinutes > 0 && diffMinutes <= 120) {
+                    allIntervals.add(diffMinutes);
+                    System.out.println("Found interval: " + diffMinutes + " minutes");
+                }
+            }
+        }
+
+        if (!allIntervals.isEmpty()) {
+            Collections.sort(allIntervals);
+            // Use median to avoid outliers affecting the result
+            int result = allIntervals.get(allIntervals.size() / 2);
+            System.out.println("Final frequency (fallback calculation): " + result + " minutes");
+            return result;
+        }
+
+        System.out.println("Could not calculate frequency");
+        return null;
+    }
+
+    // Sort route options by priority
     private List<Map<String, Object>> sortRouteOptions(List<Map<String, Object>> options, String routePriority) {
         if (options == null || options.isEmpty()) {
             return options;
@@ -410,7 +627,7 @@ public class RoutesServiceImpl implements RouteService {
         } else if ("LEAST_TRANSFERS".equals(routePriority)) {
             comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue());
         } else {
-            // Mặc định sắp xếp theo thời gian
+            // Default sort by time
             comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
         }
 
@@ -418,29 +635,29 @@ public class RoutesServiceImpl implements RouteService {
         return options;
     }
 
-    // Tính toán thời gian ước tính
+    // Calculate estimated time
     private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
-        // Tìm trạm thuộc tuyến này ở cả hai điểm
+        // Find stops on this route at both ends
         Map<String, Object> fromStop = findStopOnRoute(fromStops, route.getId());
         Map<String, Object> toStop = findStopOnRoute(toStops, route.getId());
 
         if (fromStop == null || toStop == null) {
-            return 30; // Giá trị mặc định
+            return 30; // Default value
         }
 
-        // Nếu có thông tin stop_order, dùng nó để tính thời gian
+        // If stop_order information is available, use it to calculate time
         Integer fromOrder = (Integer) fromStop.getOrDefault("stopOrder", 0);
         Integer toOrder = (Integer) toStop.getOrDefault("stopOrder", 0);
 
-        // Tính số trạm dừng giữa hai điểm
+        // Calculate number of stops between points
         int stopsBetween = Math.abs(toOrder - fromOrder);
 
-        // Ước tính thời gian: 2 phút/trạm + 5 phút cơ bản
+        // Estimate time: 2 minutes/stop + 5 minutes base
         return stopsBetween * 2 + 5;
     }
 
     private Map<String, Object> findStopOnRoute(List<Map<String, Object>> stops, Integer routeId) {
-        // Cập nhật để tìm stop dựa vào các routes đi qua nó (từ cấu trúc mới của vị trí dừng)
+        // Find stop based on routes that pass through it
         for (Map<String, Object> stop : stops) {
             if (stop.containsKey("routes")) {
                 @SuppressWarnings("unchecked")
@@ -455,17 +672,17 @@ public class RoutesServiceImpl implements RouteService {
         return null;
     }
 
-    // Tính toán khoảng cách ước tính
+    // Calculate estimated distance
     private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
-        // Tính khoảng cách giữa hai điểm (km) - công thức Haversine
+        // Calculate distance between two points (km) - Haversine formula
         return calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
     }
 
-    // Tính toán khoảng cách đi bộ
+    // Calculate walking distance
     private double calculateWalkingDistance(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
-        // Tính khoảng cách từ điểm đi đến trạm gần nhất
+        // Calculate distance from start to nearest stop
         Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
         double distanceToFirstStop = 0;
 
@@ -474,11 +691,11 @@ public class RoutesServiceImpl implements RouteService {
             Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                distanceToFirstStop = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // Chuyển km -> m
+                distanceToFirstStop = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // Convert km to m
             }
         }
 
-        // Tính khoảng cách từ trạm gần nhất đến điểm đến
+        // Calculate distance from nearest stop to destination
         Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
         double distanceFromLastStop = 0;
 
@@ -487,23 +704,23 @@ public class RoutesServiceImpl implements RouteService {
             Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                distanceFromLastStop = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // Chuyển km -> m
+                distanceFromLastStop = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // Convert km to m
             }
         }
 
         return distanceToFirstStop + distanceFromLastStop;
     }
 
-    // Tạo các chặng đường đi
+    // Create journey legs
     private List<Map<String, Object>> createLegs(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
         List<Map<String, Object>> legs = new ArrayList<>();
 
-        // Lấy thông tin trạm gần nhất từ điểm đầu
+        // Get nearest stop from start point
         Map<String, Object> nearestFromStop = findNearestStop(fromStops, fromLat, fromLng);
 
-        // Tính khoảng cách và thời gian đi bộ thực tế từ điểm đi đến trạm
+        // Calculate actual walking distance and time from start to stop
         double walkToStopDistance = 0;
         int walkToStopDuration = 0;
 
@@ -512,39 +729,39 @@ public class RoutesServiceImpl implements RouteService {
             Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                // Tính khoảng cách thực tế
+                // Calculate actual distance
                 walkToStopDistance = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // m
-                // Tính thời gian đi bộ (giả sử tốc độ trung bình 80m/phút)
+                // Calculate walking time (assume average speed 80m/minute)
                 walkToStopDuration = (int) Math.ceil(walkToStopDistance / 80);
             }
         }
 
-        // Chặng đi từ vị trí người dùng đến trạm đầu
+        // Leg from user location to first stop
         Map<String, Object> firstLeg = new HashMap<>();
         firstLeg.put("type", "WALK");
-        firstLeg.put("distance", walkToStopDistance); // Khoảng cách thực tế
-        firstLeg.put("duration", walkToStopDuration); // Thời gian thực tế
-        firstLeg.put("from", Map.of("lat", fromLat, "lng", fromLng, "name", "Vị trí của bạn"));
+        firstLeg.put("distance", walkToStopDistance); // Actual distance
+        firstLeg.put("duration", walkToStopDuration); // Actual time
+        firstLeg.put("from", Map.of("lat", fromLat, "lng", fromLng, "name", "Your location"));
         firstLeg.put("to", nearestFromStop);
         legs.add(firstLeg);
 
-        // Chặng đi bằng phương tiện công cộng
+        // Transit leg
         Map<String, Object> busLeg = new HashMap<>();
         busLeg.put("type", "BUS");
         busLeg.put("routeId", route.getId());
-        busLeg.put("routeNumber", route.getId().toString()); // Thêm routeNumber
+        busLeg.put("routeNumber", route.getId().toString());
         busLeg.put("routeName", route.getName());
-        busLeg.put("routeColor", route.getRouteColor() != null ? route.getRouteColor() : "#4CAF50");
+        busLeg.put("routeColor", route.getRouteTypeColor() != null ? route.getRouteTypeColor() : "#4CAF50");
         busLeg.put("distance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // m
         busLeg.put("duration", calculateEstimatedTime(route, fromStops, toStops));
         busLeg.put("from", nearestFromStop);
 
-        // Lấy thông tin trạm gần nhất từ điểm cuối
+        // Get nearest stop to destination
         Map<String, Object> nearestToStop = findNearestStop(toStops, toLat, toLng);
         busLeg.put("to", nearestToStop);
         legs.add(busLeg);
 
-        // Tính khoảng cách và thời gian đi bộ thực tế từ trạm đến điểm đến
+        // Calculate actual walking distance and time from stop to destination
         double walkFromStopDistance = 0;
         int walkFromStopDuration = 0;
 
@@ -553,31 +770,36 @@ public class RoutesServiceImpl implements RouteService {
             Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                // Tính khoảng cách thực tế
+                // Calculate actual distance
                 walkFromStopDistance = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // m
-                // Tính thời gian đi bộ (giả sử tốc độ trung bình 80m/phút)
+                // Calculate walking time (assume average speed 80m/minute)
                 walkFromStopDuration = (int) Math.ceil(walkFromStopDistance / 80);
             }
         }
 
-        // Chặng đi từ trạm cuối đến vị trí đích
+        // Leg from final stop to destination
         Map<String, Object> lastLeg = new HashMap<>();
         lastLeg.put("type", "WALK");
-        lastLeg.put("distance", walkFromStopDistance); // Khoảng cách thực tế
-        lastLeg.put("duration", walkFromStopDuration); // Thời gian thực tế
+        lastLeg.put("distance", walkFromStopDistance); // Actual distance
+        lastLeg.put("duration", walkFromStopDuration); // Actual time
         lastLeg.put("from", nearestToStop);
-        lastLeg.put("to", Map.of("lat", toLat, "lng", toLng, "name", "Điểm đến của bạn"));
+        lastLeg.put("to", Map.of("lat", toLat, "lng", toLng, "name", "Your destination"));
         legs.add(lastLeg);
 
         return legs;
     }
 
-    // Tìm trạm gần nhất
+    @Override
+    public void recalculateRoute(Integer routeId) {
+        updateRouteCalculatedFields(routeId);
+    }
+
+    // Find nearest stop
     private Map<String, Object> findNearestStop(List<Map<String, Object>> stops, double lat, double lng) {
         if (stops == null || stops.isEmpty()) {
             return Map.of(
                     "id", 0,
-                    "name", "Trạm không xác định",
+                    "name", "Undefined stop",
                     "lat", lat,
                     "lng", lng
             );
@@ -599,37 +821,37 @@ public class RoutesServiceImpl implements RouteService {
             }
         }
 
-        // Chuẩn hóa định dạng trạm
+        // Standardize stop format
         Map<String, Object> standardStop = new HashMap<>();
         standardStop.put("id", nearestStop.getOrDefault("id", 0));
-        standardStop.put("name", nearestStop.getOrDefault("name", nearestStop.getOrDefault("stop_name", "Trạm không xác định")));
+        standardStop.put("name", nearestStop.getOrDefault("name", nearestStop.getOrDefault("stop_name", "Undefined stop")));
         standardStop.put("lat", getDoubleValue(nearestStop, "latitude", "lat"));
         standardStop.put("lng", getDoubleValue(nearestStop, "longitude", "lng"));
 
         return standardStop;
     }
 
-    // Công thức Haversine tính khoảng cách giữa hai điểm trên mặt đất
+    // Haversine formula to calculate distance between two points on Earth
     private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
-        // Bán kính trái đất trong km
+        // Earth radius in km
         final int R = 6371;
 
-        // Chuyển đổi độ sang radian
+        // Convert degrees to radians
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
 
-        // Công thức Haversine
+        // Haversine formula
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        // Khoảng cách theo km
+        // Distance in km
         return R * c;
     }
 
-    // Lấy giá trị double từ Map với các key thay thế
+    // Get double value from Map with alternative keys
     private Double getDoubleValue(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             if (map.containsKey(key)) {
@@ -642,7 +864,7 @@ public class RoutesServiceImpl implements RouteService {
                     try {
                         return Double.parseDouble((String) value);
                     } catch (NumberFormatException e) {
-                        // Bỏ qua lỗi và thử key tiếp theo
+                        // Skip error and try next key
                     }
                 }
             }

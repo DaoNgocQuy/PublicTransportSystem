@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -34,7 +35,6 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             route.setName(rs.getString("name"));
             route.setStartLocation(rs.getString("start_location"));
             route.setEndLocation(rs.getString("end_location"));
-            route.setTotalStops(rs.getInt("total_stops"));
 
             // Kiểm tra null cho các trường có thể null
             if (rs.getObject("is_walking_route") != null) {
@@ -54,7 +54,6 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             route.setOperationStartTime(rs.getTime("operation_start_time"));
             route.setOperationEndTime(rs.getTime("operation_end_time"));
             route.setFrequencyMinutes(rs.getInt("frequency_minutes"));
-            route.setRouteColor(rs.getString("route_color"));
             route.setCreatedAt(rs.getTimestamp("created_at"));
             route.setLastUpdated(rs.getTimestamp("last_updated"));
 
@@ -125,7 +124,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
     public Routes save(Routes route) {
         if (route.getId() == null) {
             String sql = "INSERT INTO routes (name, route_type_id, start_location, end_location, total_stops, "
-                    + "operation_start_time, operation_end_time, frequency_minutes, route_color, is_walking_route, is_active) "
+                    + "operation_start_time, operation_end_time, frequency_minutes, is_walking_route, is_active) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -135,11 +134,9 @@ public class RoutesRepositoryImpl implements RoutesRepository {
                 ps.setObject(2, route.getRouteTypeIdValue());
                 ps.setString(3, route.getStartLocation());
                 ps.setString(4, route.getEndLocation());
-                ps.setObject(5, route.getTotalStops());
                 ps.setObject(6, route.getOperationStartTime());
                 ps.setObject(7, route.getOperationEndTime());
                 ps.setObject(8, route.getFrequencyMinutes());
-                ps.setString(9, route.getRouteColor());
                 ps.setObject(10, route.getIsWalkingRoute());
                 ps.setObject(11, route.getActive());
                 return ps;
@@ -151,17 +148,15 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         } else {
             String sql = "UPDATE routes SET name = ?, route_type_id = ?, start_location = ?, end_location = ?, "
                     + "total_stops = ?, operation_start_time = ?, operation_end_time = ?, frequency_minutes = ?, "
-                    + "route_color = ?, is_walking_route = ?, is_active = ? WHERE id = ?";
+                    + " is_walking_route = ?, is_active = ? WHERE id = ?";
             jdbcTemplate.update(sql,
                     route.getName(),
                     route.getRouteTypeIdValue(),
                     route.getStartLocation(),
                     route.getEndLocation(),
-                    route.getTotalStops(),
                     route.getOperationStartTime(),
                     route.getOperationEndTime(),
                     route.getFrequencyMinutes(),
-                    route.getRouteColor(),
                     route.getIsWalkingRoute(),
                     route.getActive(),
                     route.getId());
@@ -264,7 +259,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
                 + "WHERE rs.stop_id = ?";
         return jdbcTemplate.query(sql, routesWithTypeRowMapper, stopId);
     }
-    
+
     @Override
     public List<Routes> findByStopIdAndDirection(Integer stopId, Integer direction) {
         String sql = "SELECT r.*, rt.id as rt_id, rt.type_name, rt.color_code, rt.description "
@@ -288,10 +283,10 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             stop.setLatitude(rs.getFloat("latitude"));
             stop.setLongitude(rs.getFloat("longitude"));
             stop.setAddress(rs.getString("address"));
-            
+
             // Đọc thông tin stop_order và direction từ bảng route_stops
             stop.setStopOrder(rs.getInt("stop_order"));
-            
+
             // Đọc direction nếu có
             int direction = rs.getInt("direction");
             if (!rs.wasNull()) {
@@ -305,7 +300,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             return stop;
         }, routeId);
     }
-    
+
     @Override
     public List<Stops> findStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
         String sql = "SELECT s.*, rs.stop_order, rs.direction FROM stops s "
@@ -319,7 +314,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             stop.setLatitude(rs.getFloat("latitude"));
             stop.setLongitude(rs.getFloat("longitude"));
             stop.setAddress(rs.getString("address"));
-            
+
             // Đọc thông tin stop_order và direction từ bảng route_stops
             stop.setStopOrder(rs.getInt("stop_order"));
             stop.setDirection(rs.getInt("direction"));
@@ -337,7 +332,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         String sql = "SELECT COUNT(*) FROM route_stops WHERE route_id = ?";
         return jdbcTemplate.queryForObject(sql, Integer.class, routeId);
     }
-    
+
     @Override
     public Integer countStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
         String sql = "SELECT COUNT(*) FROM route_stops WHERE route_id = ? AND direction = ?";
@@ -346,10 +341,22 @@ public class RoutesRepositoryImpl implements RoutesRepository {
 
     @Override
     public void updateTotalStops(Integer routeId) {
-        Integer stopCount = countStopsByRouteId(routeId);
-        if (stopCount != null) {
-            String sql = "UPDATE routes SET total_stops = ? WHERE id = ?";
-            jdbcTemplate.update(sql, stopCount, routeId);
+        String sql = "UPDATE routes r SET total_stops = (SELECT COUNT(*) FROM route_stops rs WHERE rs.route_id = r.id) WHERE r.id = ?";
+        jdbcTemplate.update(sql, routeId);
+    }
+
+    @Override
+    public void updateRouteOperationDetails(Integer routeId, Time startTime, Time endTime, Integer frequencyMinutes) {
+        try {
+            String sql = "UPDATE routes SET operation_start_time = ?, operation_end_time = ?, frequency_minutes = ? WHERE id = ?";
+            jdbcTemplate.update(sql, startTime, endTime, frequencyMinutes, routeId);
+            System.out.println("Đã cập nhật chi tiết hoạt động của tuyến ID " + routeId
+                    + ": startTime=" + startTime
+                    + ", endTime=" + endTime
+                    + ", frequency=" + frequencyMinutes);
+        } catch (Exception e) {
+            System.err.println("Lỗi cập nhật chi tiết hoạt động: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

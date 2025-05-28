@@ -3,6 +3,7 @@ package com.pts.controllers;
 import com.pts.pojo.Routes;
 import com.pts.pojo.RouteTypes;
 import com.pts.pojo.Schedules;
+import com.pts.pojo.Stops;
 import com.pts.services.RouteService;
 import com.pts.services.ScheduleService;
 import com.pts.services.StopService;
@@ -47,7 +48,7 @@ public class ApiRouteController {
         if (typeId != null) {
             routes = routes.stream()
                     .filter(route -> route.getRouteType() != null
-                            && route.getRouteType().getId().equals(typeId))
+                    && route.getRouteType().getId().equals(typeId))
                     .collect(Collectors.toList());
         }
 
@@ -91,7 +92,7 @@ public class ApiRouteController {
                 // Sử dụng thời gian hoạt động từ entity
                 routeInfo.put("operatingHours",
                         timeFormat.format(route.getOperationStartTime()) + " - "
-                                + timeFormat.format(route.getOperationEndTime()));
+                        + timeFormat.format(route.getOperationEndTime()));
             } else {
                 // Hoặc lấy từ lịch trình nếu không có
                 routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
@@ -289,7 +290,10 @@ public class ApiRouteController {
         Map<String, Object> routeInfo = new HashMap<>();
         routeInfo.put("number", route.getId().toString());
         routeInfo.put("name", route.getName());
-        routeInfo.put("color", route.getRouteColor() != null ? route.getRouteColor() : "#4CAF50");
+        String colorCode = route.getRouteType() != null && route.getRouteType().getColorCode() != null
+                ? route.getRouteType().getColorCode()
+                : "#4CAF50";
+        routeInfo.put("color", colorCode);
         routes.add(routeInfo);
         option.put("routes", routes);
 
@@ -341,11 +345,12 @@ public class ApiRouteController {
             String colorCode = routeType.getColorCode();
             routeInfo.put("color", colorCode != null && !colorCode.isEmpty()
                     ? colorCode
-                    : route.getRouteColor()); // sử dụng màu từ Routes nếu không có trong RouteTypes
+                    : "#007bff"); // sử dụng màu từ Routes nếu không có trong RouteTypes
         } else {
             // Giá trị mặc định nếu không có RouteTypes
             routeInfo.put("icon", "https://cdn-icons-png.flaticon.com/512/2554/2554642.png");
-            routeInfo.put("color", route.getRouteColor() != null ? route.getRouteColor() : "#007bff");
+            routeInfo.put("color", "#007bff");
+
         }
 
         // Thời gian hoạt động
@@ -353,7 +358,7 @@ public class ApiRouteController {
             // Sử dụng thời gian hoạt động từ entity
             routeInfo.put("operatingHours",
                     timeFormat.format(route.getOperationStartTime()) + " - "
-                            + timeFormat.format(route.getOperationEndTime()));
+                    + timeFormat.format(route.getOperationEndTime()));
         } else {
             // Hoặc lấy từ lịch trình nếu không có
             routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
@@ -371,7 +376,7 @@ public class ApiRouteController {
     /**
      * Lấy thông tin thời gian hoạt động của tuyến từ lịch trình
      *
-     * @param routeId    ID của tuyến
+     * @param routeId ID của tuyến
      * @param timeFormat Định dạng thời gian
      * @return Chuỗi thời gian hoạt động
      */
@@ -642,7 +647,10 @@ public class ApiRouteController {
         busLeg.put("routeId", route.getId());
         busLeg.put("routeNumber", route.getId().toString()); // Thêm routeNumber
         busLeg.put("routeName", route.getName());
-        busLeg.put("routeColor", route.getRouteColor() != null ? route.getRouteColor() : "#4CAF50");
+        String colorCode = route.getRouteType() != null && route.getRouteType().getColorCode() != null
+                ? route.getRouteType().getColorCode()
+                : "#4CAF50";
+        busLeg.put("routeColor", colorCode);
         busLeg.put("distance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // m
         busLeg.put("duration", calculateEstimatedTime(route, fromStops, toStops));
         busLeg.put("from", nearestFromStop);
@@ -735,7 +743,7 @@ public class ApiRouteController {
         // Công thức Haversine
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(lat1Rad) * Math.cos(lat2Rad)
-                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
         // Đảm bảo a không vượt quá 1 do lỗi làm tròn
         a = Math.min(a, 1.0);
@@ -765,5 +773,32 @@ public class ApiRouteController {
             }
         }
         return null;
+    }
+
+    private List<Map<String, Object>> getStopsEnRoute(Integer routeId, Integer fromStopOrder, Integer toStopOrder) {
+        List<Map<String, Object>> stopsEnRoute = new ArrayList<>();
+
+        // Đảm bảo thứ tự trạm hợp lệ
+        int startOrder = Math.min(fromStopOrder, toStopOrder);
+        int endOrder = Math.max(fromStopOrder, toStopOrder);
+
+        try {
+            // Lấy danh sách trạm giữa điểm đón và điểm trả
+            List<Stops> stops = stopService.findStopsByRouteIdAndStopOrderRange(routeId, startOrder, endOrder);
+
+            for (Stops stop : stops) {
+                Map<String, Object> stopInfo = new HashMap<>();
+                stopInfo.put("id", stop.getId());
+                stopInfo.put("name", stop.getStopName());
+                stopInfo.put("latitude", stop.getLatitude());
+                stopInfo.put("longitude", stop.getLongitude());
+                stopInfo.put("order", stop.getStopOrder());
+                stopsEnRoute.add(stopInfo);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return stopsEnRoute;
     }
 }

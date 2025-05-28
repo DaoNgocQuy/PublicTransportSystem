@@ -34,7 +34,7 @@
                     <th>Tên tuyến</th>
                     <th>Điểm bắt đầu</th>
                     <th>Điểm kết thúc</th>
-                    <th>Số trạm</th>
+                    <th>Tần suất</th> <!-- Đổi từ "Số trạm" thành "Tần suất" -->
                     <th>Loại</th>
                     <th>Trạng thái</th>
                     <th>Hành động</th>
@@ -49,7 +49,11 @@
                     <td th:text="${route.name}"></td>
                     <td th:text="${route.startLocation}"></td>
                     <td th:text="${route.endLocation}"></td>
-                    <td th:text="${route.totalStops}"></td>
+                    <!-- Thay thế route.totalStops bằng route.frequencyMinutes -->
+                    <td>
+                        <span th:if="${route.frequencyMinutes != null}" th:text="${route.frequencyMinutes + ' phút'}"></span>
+                        <span th:unless="${route.frequencyMinutes != null}">-</span>
+                    </td>
                     <!-- Sửa lỗi truy cập routeType -->
                     <td>
                         <span th:if="${route.routeType != null}" th:text="${route.routeType.typeName}"></span>

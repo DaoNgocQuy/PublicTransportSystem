@@ -100,6 +100,8 @@ const RoutePath = React.memo(({ busStops, selectedRoute, direction }) => {
     }, [direction]);
 
 
+
+
     const lineColor = useMemo(() => {
         // Lấy màu từ database
         const routeColor = selectedRoute?.color;
@@ -244,6 +246,48 @@ const RoutePath = React.memo(({ busStops, selectedRoute, direction }) => {
         />
     );
 });
+const MapClickHandler = ({ selectionMode, onLocationSelect, activeTab }) => {
+    const map = useMapEvents({
+        dblclick: (e) => {
+            // Chỉ xử lý khi đang ở tab tìm đường
+            if (activeTab !== 'search') return;
+
+            const { lat, lng } = e.latlng;
+            console.log(`Double clicked at: ${lat}, ${lng} in mode: ${selectionMode}`);
+
+            // Tạo object thông tin vị trí
+            const locationData = {
+                latitude: lat,
+                longitude: lng,
+                stop_name: 'Vị trí đã chọn',
+                address: `[${lat.toFixed(6)}, ${lng.toFixed(6)}]`,
+                locationType: selectionMode || 'origin'
+            };
+
+            // Thực hiện reverse geocoding để lấy địa chỉ thực
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) {
+                        const betterLocationData = {
+                            ...locationData,
+                            stop_name: data.display_name.split(',')[0] || 'Vị trí đã chọn',
+                            address: data.display_name || locationData.address
+                        };
+                        onLocationSelect(betterLocationData);
+                    } else {
+                        onLocationSelect(locationData);
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi reverse geocoding:", err);
+                    onLocationSelect(locationData);
+                });
+        }
+    });
+
+    return null;
+};
 
 // Xử lý sự kiện bản đồ
 const MapEventsHandler = ({ onBoundsChange, onZoomChange }) => {
@@ -301,7 +345,11 @@ const LocateControl = ({ userLocation, onLocate }) => {
 const DEFAULT_LOCATION = [10.7769, 106.7009];
 const MIN_ZOOM_SHOW_STOPS = 15;
 
-const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction }) => {
+const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction, activeTab = 'lookup',
+    selectionMode = 'origin',
+    onLocationSelect,
+    onSelectionModeChange,
+    ...otherProps }) => {
     const [userLocation, setUserLocation] = useState(DEFAULT_LOCATION);
     const [accuracy, setAccuracy] = useState(0);
     const [selectedStop, setSelectedStop] = useState(null);
@@ -310,7 +358,9 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction }) 
     const [visibleStops, setVisibleStops] = useState([]);
     const [showUserLocation, setShowUserLocation] = useState(false);
     const [shouldFocusUserLocation, setShouldFocusUserLocation] = useState(false);
-
+    const [originPoint, setOriginPoint] = useState(null);
+    const [destinationPoint, setDestinationPoint] = useState(null);
+    const [currentSelectionMode, setCurrentSelectionMode] = useState(selectionMode);
     // Tạo icon cho trạm dừng
     const busStopIcon = useMemo(() => L.icon({
         iconUrl: require('../../assets/icons/busstop.png'),
@@ -318,7 +368,9 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction }) 
         iconAnchor: [18, 36],
         popupAnchor: [0, -36]
     }), []);
-
+    useEffect(() => {
+        setCurrentSelectionMode(selectionMode);
+    }, [selectionMode]);
     // Lấy vị trí người dùng
     useEffect(() => {
         if (navigator.geolocation) {
@@ -333,7 +385,60 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction }) 
             );
         }
     }, []);
+    const handleLocationSelect = (locationData) => {
+        console.log("Selected location:", locationData);
 
+        // Lưu điểm đã chọn theo loại
+        if (locationData.locationType === 'origin') {
+            setOriginPoint({
+                position: [locationData.latitude, locationData.longitude],
+                name: locationData.stop_name || "Điểm đi",
+                address: locationData.address
+            });
+        } else {
+            setDestinationPoint({
+                position: [locationData.latitude, locationData.longitude],
+                name: locationData.stop_name || "Điểm đến",
+                address: locationData.address
+            });
+        }
+
+        // Chuyển dữ liệu ra component cha
+        if (typeof onLocationSelect === 'function') {
+            onLocationSelect(locationData);
+        }
+    };
+
+    // Xử lý khi người dùng thay đổi chế độ chọn điểm
+    const handleSelectionModeChange = (mode) => {
+        setCurrentSelectionMode(mode);
+
+        // Thông báo ra bên ngoài
+        if (typeof onSelectionModeChange === 'function') {
+            onSelectionModeChange(mode);
+        }
+    };
+    const originIcon = useMemo(() => L.icon({
+        iconUrl: require('../../assets/icons/blue_pin.png'),    // Sử dụng icon có sẵn trong assets
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
+    }), []);
+
+    const destinationIcon = useMemo(() => L.icon({
+        iconUrl: require('../../assets/icons/red_pin.png'),    // Sử dụng icon có sẵn trong assets
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
+    }), []);
+
+    useEffect(() => {
+        if (activeTab !== 'search') {
+            // Reset điểm đi/đến khi chuyển sang tab khác
+            setOriginPoint(null);
+            setDestinationPoint(null);
+        }
+    }, [activeTab]);
     // Xác định danh sách trạm hiển thị
     const stopsToUse = useMemo(() => {
         if (selectedRoute) {
@@ -410,7 +515,46 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction }) 
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             />
+            {/* Xử lý double-click */}
+            {activeTab === 'search' && (
+                <MapClickHandler
+                    selectionMode={currentSelectionMode}
+                    onLocationSelect={handleLocationSelect}
+                    activeTab={activeTab}
+                />
+            )}
 
+            {/* Hiển thị điểm đi */}
+            {activeTab === 'search' && originPoint && (
+                <Marker
+                    position={originPoint.position}
+                    icon={originIcon}
+                >
+                    <Popup>
+                        <div>
+                            <strong>Điểm đi</strong>
+                            <p>{originPoint.name}</p>
+                            <p style={{ fontSize: '12px' }}>{originPoint.address}</p>
+                        </div>
+                    </Popup>
+                </Marker>
+            )}
+
+            {/* Hiển thị điểm đến */}
+            {activeTab === 'search' && destinationPoint && (
+                <Marker
+                    position={destinationPoint.position}
+                    icon={destinationIcon}
+                >
+                    <Popup>
+                        <div>
+                            <strong>Điểm đến</strong>
+                            <p>{destinationPoint.name}</p>
+                            <p style={{ fontSize: '12px' }}>{destinationPoint.address}</p>
+                        </div>
+                    </Popup>
+                </Marker>
+            )}
             {/* Hiển thị đường đi tuyến - Truyền thêm selectedRoute */}
             {selectedRoute && busStops.length > 1 && (
                 <RoutePath

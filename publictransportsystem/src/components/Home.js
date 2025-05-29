@@ -83,66 +83,74 @@ const Home = () => {
     }, []);
 
     useEffect(() => {
-    // Kiểm tra xem có tuyến được chọn từ trang Userinfo không
-    const selectedRouteId = sessionStorage.getItem('selectedRouteId');
-    
-    if (selectedRouteId && selectedRouteId !== 'processed') {
-        console.log("Found selectedRouteId:", selectedRouteId);
-        
-        // Đánh dấu đã xử lý để tránh xử lý lặp lại
-        sessionStorage.setItem('selectedRouteId', 'processed');
-        
-        // Tìm tuyến đã chọn trong danh sách routes
-        const routeId = parseInt(selectedRouteId);
-        const foundRoute = routes.find(route => route.id === routeId);
-        
-        if (foundRoute) {
-        console.log("Found route in cached data:", foundRoute);
-        setSelectedRoute(foundRoute);
-        setTripDirection('outbound');
-        } else {
-        console.log("Route not found in cached data, fetching from API");
-        // Lấy thông tin từ API
-        const fetchSelectedRoute = async () => {
-            try {
-            setLoading(true);
-            const response = await authApi.get(`/api/routes/${routeId}`);
-            console.log("API response for route:", response.data);
-            
-            if (response.data) {
-                setSelectedRoute(response.data);
+        // Kiểm tra xem có tuyến được chọn từ trang Userinfo không
+        const selectedRouteId = sessionStorage.getItem('selectedRouteId');
+
+        if (selectedRouteId && selectedRouteId !== 'processed') {
+            console.log("Found selectedRouteId:", selectedRouteId);
+
+            // Đánh dấu đã xử lý để tránh xử lý lặp lại
+            sessionStorage.setItem('selectedRouteId', 'processed');
+
+            // Tìm tuyến đã chọn trong danh sách routes
+            const routeId = parseInt(selectedRouteId);
+            const foundRoute = routes.find(route => route.id === routeId);
+
+            if (foundRoute) {
+                console.log("Found route in cached data:", foundRoute);
+                setSelectedRoute(foundRoute);
                 setTripDirection('outbound');
-                // Sau khi lấy thông tin tuyến, cần lấy thông tin các điểm dừng
-                try {
-                const stopsResponse = await authApi.get(`/api/stops/route/${routeId}?direction=outbound`);
-                if (Array.isArray(stopsResponse.data)) {
-                    setRouteStops(stopsResponse.data);
-                }
-                } catch (error) {
-                console.error("Error fetching stops for selected route:", error);
-                }
+            } else {
+                console.log("Route not found in cached data, fetching from API");
+                // Lấy thông tin từ API
+                const fetchSelectedRoute = async () => {
+                    try {
+                        setLoading(true);
+                        const response = await authApi.get(`/api/routes/${routeId}`);
+                        console.log("API response for route:", response.data);
+
+                        if (response.data) {
+                            const routeDetails = response.data;
+
+                            // Thêm các trường cần thiết
+                            setSelectedRoute({
+                                ...routeDetails,
+                                routeTypeId: routeDetails.routeTypeId || routeDetails.routeType?.id,
+                                routeTypeName: routeDetails.routeTypeName || routeDetails.routeType?.typeName
+                            });
+                            setTripDirection('outbound');
+
+                            // Sau khi lấy thông tin tuyến, cần lấy thông tin các điểm dừng
+                            try {
+                                const stopsResponse = await authApi.get(`/api/stops/route/${routeId}?direction=outbound`);
+                                if (Array.isArray(stopsResponse.data)) {
+                                    setRouteStops(stopsResponse.data);
+                                }
+                            } catch (error) {
+                                console.error("Error fetching stops for selected route:", error);
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error fetching selected route:", error);
+                        toast.error("Không thể tải thông tin tuyến");
+                        // Xóa để có thể thử lại
+                        sessionStorage.removeItem('selectedRouteId');
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                // Gọi hàm fetch
+                fetchSelectedRoute();
             }
-            } catch (error) {
-            console.error("Error fetching selected route:", error);
-            toast.error("Không thể tải thông tin tuyến");
-            // Xóa để có thể thử lại
-            sessionStorage.removeItem('selectedRouteId');
-            } finally {
-            setLoading(false);
-            }
-        };
-        
-        // Gọi hàm fetch
-        fetchSelectedRoute();
         }
-    }
     }, [routes]); // Thêm routes vào dependencies
 
     useEffect(() => {
         return () => {
             // Khi component unmount, xóa selectedRouteId nếu đã được đánh dấu là processed
             if (sessionStorage.getItem('selectedRouteId') === 'processed') {
-            sessionStorage.removeItem('selectedRouteId');
+                sessionStorage.removeItem('selectedRouteId');
             }
         };
     }, []);
@@ -313,10 +321,28 @@ const Home = () => {
         fetchStops();
     }, [selectedRoute, tripDirection]);
 
-    const handleRouteSelect = (route) => {
+    const handleRouteSelect = async (route) => {
         setSelectedRoute(route);
         setTripDirection('outbound');
-        // Reset to outbound when selecting a new route
+        try {
+            // Gọi API để lấy thông tin chi tiết về tuyến
+            const detailResponse = await authApi.get(`/api/routes/${route.id}`);
+            console.log("Route details from API:", detailResponse.data);
+
+            // Cập nhật selectedRoute với thông tin chi tiết hơn
+            if (detailResponse.data) {
+                const routeDetails = detailResponse.data;
+                setSelectedRoute(prevRoute => ({
+                    ...prevRoute,
+                    routeTypeId: routeDetails.routeTypeId || routeDetails.routeType?.id,
+                    routeTypeName: routeDetails.routeTypeName || routeDetails.routeType?.typeName,
+                    color: routeDetails.color || routeDetails.routeType?.color,
+                    routeType: routeDetails.routeType
+                }));
+            }
+        } catch (error) {
+            console.error("Error fetching route details:", error);
+        }
     };
 
     // Switch between outbound and return trips
@@ -478,7 +504,7 @@ const Home = () => {
                         busStops={routeStops}
                         allStops={allBusStops}
                         selectedRoute={selectedRoute}
-                        tripDirection={tripDirection}
+                        direction={tripDirection === 'outbound' ? 1 : 2}
                         landmarks={landmarks}
                         onLocationSelect={handleMapLocationSelect}
                         selectionMode={mapSelectionType}

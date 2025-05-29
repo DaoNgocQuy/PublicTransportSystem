@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/stops")
-@CrossOrigin // Cho phép React truy cập API
+@CrossOrigin
 public class ApiStopController {
 
     @Autowired
@@ -58,37 +58,112 @@ public class ApiStopController {
     }
 
     @GetMapping("/route/{routeId}")
-    public ResponseEntity<List<Map<String, Object>>> getStopsByRouteId(@PathVariable Integer routeId) {
-        List<Stops> stops = stopService.findStopsByRouteId(routeId);
+    public ResponseEntity<List<Map<String, Object>>> getStopsByRouteId(
+            @PathVariable Integer routeId,
+            @RequestParam(required = false) String direction) {
 
-        // Lấy thông tin về thứ tự các điểm dừng trong tuyến
-        List<RouteStop> routeStops = routeStopService.findByRouteId(routeId);
+        List<Stops> stops;
+        Integer directionValue = null;
 
-        // Tạo map ánh xạ từ stop_id đến stop_order để gắn thứ tự vào mỗi điểm dừng
-        Map<Integer, Integer> stopOrderMap = routeStops.stream()
-                .collect(Collectors.toMap(
-                        rs -> rs.getStop().getId(),
-                        RouteStop::getStopOrder,
-                        (existing, replacement) -> existing // Trong trường hợp trùng lặp, giữ giá trị đầu tiên
-                ));
-
-        // Gắn thông tin thứ tự vào các stops
-        for (Stops stop : stops) {
-            Integer order = stopOrderMap.get(stop.getId());
-            if (order != null) {
-                stop.setStopOrder(order);
+        // Xác định giá trị direction (0: outbound/chiều đi, 1: return/chiều về) 
+        if (direction != null) {
+            if (direction.equalsIgnoreCase("outbound")) {
+                directionValue = 1; // Sửa từ 0 thành 1
+            } else if (direction.equalsIgnoreCase("return")) {
+                directionValue = 2; // Sửa từ 1 thành 2
             }
         }
 
-        // Sắp xếp các stops theo thứ tự trước khi format
-        stops.sort(Comparator.comparing(stop -> stopOrderMap.getOrDefault(stop.getId(), Integer.MAX_VALUE)));
+        // Lấy thông tin route_stops trước, vì nó chứa thứ tự và hướng đi
+        List<RouteStop> routeStops;
+        if (directionValue != null) {
+            routeStops = routeStopService.findByRouteIdAndDirection(routeId, directionValue);
+        } else {
+            routeStops = routeStopService.findByRouteId(routeId);
+            // Mặc định lấy chiều đi nếu không chỉ định direction
+            routeStops = routeStops.stream()
+                    .filter(rs -> rs.getDirection() == null || rs.getDirection() == 1) // Sửa từ 0 thành 1
+                    .collect(Collectors.toList());
+        }
 
-        List<Map<String, Object>> result = formatStopsList(stops);
+        // Sắp xếp routeStops theo thứ tự tăng dần
+        routeStops.sort(Comparator.comparing(RouteStop::getStopOrder));
+
+        // Lấy ra danh sách stops từ routeStops đã sắp xếp
+        stops = routeStops.stream()
+                .map(RouteStop::getStop)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+
+        // Gán thông tin từ route_stop vào mỗi stop
+        for (int i = 0; i < stops.size(); i++) {
+            Stops stop = stops.get(i);
+            RouteStop rs = routeStops.get(i);
+
+            stop.setStopOrder(rs.getStopOrder());
+
+            if (directionValue != null) {
+                stop.setDirection(directionValue);
+            } else if (rs.getDirection() != null) {
+                stop.setDirection(rs.getDirection());
+            } else {
+                // Mặc định là chiều đi (1) nếu không có direction
+                stop.setDirection(1); // Sửa từ 0 thành 1
+            }
+        }
+
+        // Format và trả về kết quả
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (int i = 0; i < stops.size(); i++) {
+            Stops stop = stops.get(i);
+            RouteStop rs = routeStops.get(i);
+
+            Map<String, Object> stopData = new HashMap<>();
+            stopData.put("id", stop.getId());
+            stopData.put("name", stop.getStopName());
+            stopData.put("latitude", stop.getLatitude());
+            stopData.put("longitude", stop.getLongitude());
+            stopData.put("address", stop.getAddress());
+            stopData.put("stopOrder", rs.getStopOrder());
+            stopData.put("direction", rs.getDirection() != null ? rs.getDirection() : 0);
+
+            if (stop.getIsAccessible() != null) {
+                stopData.put("isAccessible", stop.getIsAccessible());
+            } else {
+                stopData.put("isAccessible", true);
+            }
+
+            // Thêm thông tin về tuyến
+            Routes route = rs.getRoute();
+            if (route != null) {
+                Map<String, Object> routeInfo = new HashMap<>();
+                routeInfo.put("id", route.getId());
+                routeInfo.put("name", route.getName());
+
+                if (route.getStartLocation() != null && route.getEndLocation() != null) {
+                    routeInfo.put("startLocation", route.getStartLocation());
+                    routeInfo.put("endLocation", route.getEndLocation());
+                    routeInfo.put("routePath", route.getStartLocation() + " - " + route.getEndLocation());
+                }
+                if (route.getRouteType() != null && route.getRouteType().getColorCode() != null) {
+                    routeInfo.put("color", route.getRouteType().getColorCode());
+                } else {
+                    routeInfo.put("color", "#4CAF50"); // Default color
+                }
+
+                stopData.put("route", routeInfo);
+            }
+
+            result.add(stopData);
+        }
+
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
     /**
-     * Format một đối tượng Stops thành định dạng JSON phù hợp cho frontend
+     * Format một đối tượng Stops thành định dạng JSON phù hợp cho frontend Cải
+     * tiến để hiển thị chính xác thông tin tuyến đi qua trạm dừng
      */
     private Map<String, Object> formatStop(Stops stop) {
         Map<String, Object> stopData = new HashMap<>();
@@ -102,18 +177,29 @@ public class ApiStopController {
             stopData.put("stopOrder", stop.getStopOrder());
         }
 
+        // Thêm direction nếu có
+        if (stop.getDirection() != null) {
+            stopData.put("direction", stop.getDirection());
+        }
+
         if (stop.getIsAccessible() != null) {
             stopData.put("isAccessible", stop.getIsAccessible());
         } else {
             stopData.put("isAccessible", true); // Giá trị mặc định
         }
 
-        // Lấy danh sách các tuyến đi qua điểm dừng này
-        List<Routes> routes = routeService.findRoutesByStops(List.of(stop.getId()));
-        if (routes != null && !routes.isEmpty()) {
+        // Lấy thông tin từ bảng route_stops để hiển thị chính xác mối quan hệ
+        List<RouteStop> routeStops = routeStopService.findByStopId(stop.getId());
+        if (routeStops != null && !routeStops.isEmpty()) {
             List<Map<String, Object>> routeInfos = new ArrayList<>();
 
-            for (Routes route : routes) {
+            for (RouteStop rs : routeStops) {
+                // Đảm bảo route không null
+                Routes route = rs.getRoute();
+                if (route == null) {
+                    continue;
+                }
+
                 Map<String, Object> routeInfo = new HashMap<>();
                 routeInfo.put("id", route.getId());
 
@@ -133,16 +219,20 @@ public class ApiStopController {
                     routeInfo.put("color", "#4CAF50"); // Default color
                 }
 
-                // Lấy thứ tự của điểm dừng trong tuyến này
-                List<RouteStop> routeStops = routeStopService.findByRouteId(route.getId());
-                for (RouteStop rs : routeStops) {
-                    if (rs.getStop().getId().equals(stop.getId())) {
-                        routeInfo.put("stopOrder", rs.getStopOrder());
-                        // Có thể thêm direction vào đây nếu đã triển khai
-                        if (rs.getDirection() != null) {
-                            routeInfo.put("direction", rs.getDirection());
-                        }
-                        break;
+                // Thêm thông tin từ bảng route_stops
+                routeInfo.put("stopOrder", rs.getStopOrder());
+
+                // Thêm thông tin hướng đi nếu có
+                if (rs.getDirection() != null) {
+                    routeInfo.put("direction", rs.getDirection());
+
+                    // Thêm mô tả hướng đi nếu cần
+                    if (rs.getDirection() == 1) { // Sửa từ 0 thành 1
+                        routeInfo.put("directionName", "Chiều đi");
+                    } else if (rs.getDirection() == 2) { // Sửa từ 1 thành 2
+                        routeInfo.put("directionName", "Chiều về");
+                    } else {
+                        routeInfo.put("directionName", "Chưa xác định");
                     }
                 }
 
@@ -150,6 +240,37 @@ public class ApiStopController {
             }
 
             stopData.put("routes", routeInfos);
+        } else {
+            // Phương pháp thay thế nếu không có thông tin route_stops
+            List<Routes> routes = routeService.findRoutesByStops(List.of(stop.getId()));
+            if (routes != null && !routes.isEmpty()) {
+                List<Map<String, Object>> routeInfos = new ArrayList<>();
+
+                for (Routes route : routes) {
+                    Map<String, Object> routeInfo = new HashMap<>();
+                    routeInfo.put("id", route.getId());
+
+                    if (route.getName() != null) {
+                        routeInfo.put("name", route.getName());
+                    }
+
+                    if (route.getStartLocation() != null && route.getEndLocation() != null) {
+                        routeInfo.put("startLocation", route.getStartLocation());
+                        routeInfo.put("endLocation", route.getEndLocation());
+                        routeInfo.put("routePath", route.getStartLocation() + " - " + route.getEndLocation());
+                    }
+
+                    if (route.getRouteType() != null && route.getRouteType().getColorCode() != null) {
+                        routeInfo.put("color", route.getRouteType().getColorCode());
+                    } else {
+                        routeInfo.put("color", "#4CAF50"); // Default color
+                    }
+
+                    routeInfos.add(routeInfo);
+                }
+
+                stopData.put("routes", routeInfos);
+            }
         }
 
         return stopData;
@@ -161,15 +282,11 @@ public class ApiStopController {
             @RequestParam double lng,
             @RequestParam(defaultValue = "1000") double radius) {
 
-        // Nếu bạn đã cài đặt phương thức findNearbyStopsFormatted trong StopService, hãy sử dụng nó
         List<Map<String, Object>> nearbyStops = stopService.findNearbyStopsFormatted(lat, lng, radius);
-
-        // Hoặc nếu bạn muốn sử dụng logic cũ
-        // List<Stops> nearbyStops = stopService.findNearbyStops(lat, lng, radius);
-        // List<Map<String, Object>> result = formatStopsList(nearbyStops);
         return new ResponseEntity<>(nearbyStops, HttpStatus.OK);
     }
 
+    // Giữ nguyên các phương thức createStop, updateStop, deleteStop
     @PostMapping
     public ResponseEntity<?> createStop(@RequestBody Stops stop) {
         try {
@@ -227,7 +344,14 @@ public class ApiStopController {
         List<Map<String, Object>> result = new ArrayList<>();
 
         for (Stops stop : stops) {
-            result.add(formatStop(stop));
+            Map<String, Object> stopData = formatStop(stop);
+
+            // Đảm bảo direction luôn được đưa vào kết quả nếu có trong stop
+            if (stop.getDirection() != null) {
+                stopData.put("direction", stop.getDirection());
+            }
+
+            result.add(stopData);
         }
 
         return result;

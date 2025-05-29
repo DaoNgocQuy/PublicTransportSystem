@@ -151,11 +151,24 @@ public class StopRepositoryImpl implements StopRepository {
 
     @Override
     public List<Stops> findByRouteIdAndDirection(Integer routeId, Integer direction) {
-        String sql = "SELECT s.*, rs.stop_order, rs.direction FROM stops s "
+        // Thêm log và debug
+        System.out.println("findByRouteIdAndDirection: Tìm trạm cho routeId=" + routeId + ", direction=" + direction);
+
+        String sql = "SELECT s.* FROM stops s "
                 + "JOIN route_stops rs ON s.id = rs.stop_id "
                 + "WHERE rs.route_id = ? AND rs.direction = ? "
                 + "ORDER BY rs.stop_order";
-        return jdbcTemplate.query(sql, stopRowMapper, routeId, direction);
+
+        List<Stops> stops = jdbcTemplate.query(sql, stopRowMapper, routeId, direction);
+
+        // Debug kết quả
+        System.out.println("findByRouteIdAndDirection: Tìm thấy " + stops.size() + " trạm");
+        for (Stops stop : stops) {
+            // Transfer the direction information to each stop
+            stop.setDirection(direction);
+        }
+
+        return stops;
     }
 
     @Override

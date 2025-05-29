@@ -53,28 +53,7 @@ authApi.interceptors.request.use(config => {
     return Promise.reject(error);
 });
 
-authApi.interceptors.request.use(config => {
-    try {
-        // Lấy từ sessionStorage
-        const userStr = sessionStorage.getItem('user');
-        if (userStr) {
-            const user = JSON.parse(userStr);
-            if (user && user.token) {
-                console.log("Gửi JWT token trong request");
-                config.headers.Authorization = `Bearer ${user.token}`;
-            } else {
-                console.log("Không tìm thấy JWT token trong user object");
-            }
-        } else {
-            console.log("Không tìm thấy user trong sessionStorage");
-        }
-    } catch (error) {
-        console.error('Lỗi khi xử lý thông tin user:', error);
-    }
-    return config;
-}, error => {
-    return Promise.reject(error);
-});
+
 
 export default axios.create({
     baseURL: BASE_URL

@@ -16,7 +16,14 @@ import java.io.IOException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+/**
+ * Bộ lọc JWT kiểm tra và xác thực token cho các request tới API bảo mật
+ */
 public class JwtFilter implements Filter {
+    // Các hằng số cho token
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String TOKEN_PREFIX = "Bearer ";
+    
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
@@ -33,17 +40,16 @@ public class JwtFilter implements Filter {
                       (httpRequest.getMethod().equals("POST") || 
                        httpRequest.getMethod().equals("PUT") || 
                        httpRequest.getMethod().equals("DELETE")));
-        
-        if (requiresJwt) {
-            String header = httpRequest.getHeader("Authorization");
+          if (requiresJwt) {
+            String header = httpRequest.getHeader(AUTHORIZATION_HEADER);
             
-            if (header == null || !header.startsWith("Bearer ")) {
+            if (header == null || !header.startsWith(TOKEN_PREFIX)) {
                 httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 return;
             }
             
             try {
-                String token = header.substring(7); // Bỏ "Bearer " ở đầu
+                String token = header.substring(TOKEN_PREFIX.length()); // Bỏ "Bearer " ở đầu
                 String username = JwtUtils.validateTokenAndGetUsername(token);
                 
                 if (username != null) {

@@ -63,31 +63,72 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 const detailedOption = await getRouteLegsDetails(option);
                 setRouteDetails(detailedOption);
 
-                // Tìm chặng đi bằng xe buýt
+                // Check if this is a walking-only route
+                if (option.walkingOnly) {
+                    // Cải thiện cấu trúc đối tượng walking route
+                    const walkingRoute = {
+                        walkingOnly: true,
+                        id: "walking-route",
+                        name: "Đi bộ",
+                        routeName: "Đường đi bộ",
+                        description: `Đi bộ ${(option.totalDistance / 1000).toFixed(1)}km`,
+                        legs: option.legs, // Giữ nguyên legs để hiển thị trong RouteItinerary
+                        journeySegment: {
+                            origin: option.legs[0]?.from,
+                            destination: option.legs[0]?.to,
+                            // Thêm thông tin khoảng cách và thời gian
+                            walkingDistance: option.totalDistance || option.legs[0]?.distance,
+                            walkingDuration: option.totalTime || option.legs[0]?.duration
+                        },
+                        // Thêm phần thông tin để hiển thị tổng quan
+                        totalDistance: option.totalDistance,
+                        totalTime: option.totalTime
+                    };
+
+                    console.log("Created walking route object:", walkingRoute);
+                    onRouteFound && onRouteFound(walkingRoute);
+                    setLoadingDetails(false);
+                    return;
+                }
+
+                // For bus routes
                 const busLegs = option.legs?.filter(leg => leg.type === 'BUS') || [];
 
-                if (busLegs.length > 0 && busLegs[0].routeId && onRouteFound) {
-                    try {
-                        const routeDetail = await getRouteDetails(busLegs[0].routeId);
+                if (busLegs.length > 0 && onRouteFound) {
+                    const routeId = busLegs[0].routeId;
 
-                        if (routeDetail) {
-                            // Thêm thông tin trạm lên xe và xuống xe vào routeDetail
-                            const enhancedRoute = {
-                                ...routeDetail,
-                                journeySegment: {
-                                    // Chỉ gửi các thông tin cần thiết
-                                    routeId: busLegs[0].routeId,
-                                    boardStop: busLegs[0].from,
-                                    alightStop: busLegs[0].to,
-                                    boardStopOrder: busLegs[0].boardStopOrder,
-                                    alightStopOrder: busLegs[0].alightStopOrder
-                                }
-                            };
+                    // Make sure we have a valid routeId
+                    if (routeId && routeId !== 'undefined') {
+                        try {
+                            const routeDetail = await getRouteDetails(routeId);
 
-                            onRouteFound(enhancedRoute);
+                            if (routeDetail) {
+                                const enhancedRoute = {
+                                    ...routeDetail,
+                                    journeySegment: {
+                                        routeId: busLegs[0].routeId,
+                                        boardStop: busLegs[0].boardStop || busLegs[0].from,
+                                        alightStop: busLegs[0].alightStop || busLegs[0].to,
+                                        boardStopOrder: busLegs[0].boardStopOrder,
+                                        alightStopOrder: busLegs[0].alightStopOrder
+                                    }
+                                };
+                                onRouteFound(enhancedRoute);
+                            }
+                        } catch (err) {
+                            console.error('Error loading route for map display:', err);
                         }
-                    } catch (err) {
-                        console.error('Error loading route for map display:', err);
+                    } else {
+                        // Create a minimal route object for routes without a valid ID
+                        onRouteFound({
+                            id: option.id || "walk-route",
+                            name: option.name || "Walking route",
+                            walkingOnly: true,
+                            journeySegment: {
+                                boardStop: busLegs[0].boardStop || busLegs[0].from,
+                                alightStop: busLegs[0].alightStop || busLegs[0].to
+                            }
+                        });
                     }
                 }
             } catch (err) {
@@ -97,76 +138,10 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 setLoadingDetails(false);
             }
         }
-
     };
 
-    const showRouteDirections = (routeDetails) => {
-        console.log("Route details for directions:", routeDetails);
 
-        if (!routeDetails || !routeDetails.legs || routeDetails.legs.length === 0) {
-            console.log("No legs data available");
-            return null;
-        }
 
-        return (
-            <div className="route-directions-container">
-                <h3 className="directions-title">Chi tiết cách di chuyển</h3>
-
-                <div className="journey-steps">
-                    {routeDetails.legs.map((leg, index) => {
-                        // Làm sạch dữ liệu và thêm giá trị mặc định
-                        const legType = leg.type?.toUpperCase() || 'UNKNOWN';
-                        const distance = leg.distance || 0;
-                        const duration = leg.duration || '?';
-                        const fromName = leg.from?.name || leg.boardStop?.name || 'Điểm xuất phát';
-                        const toName = leg.to?.name || leg.alightStop?.name || 'Điểm đến';
-
-                        return (
-                            <div key={index} className={`journey-step journey-step-${legType.toLowerCase()}`}>
-                                <div className="step-icon">
-                                    {legType === 'WALK' ?
-                                        <FaWalking className="walk-icon" /> :
-                                        <FaBus className="bus-icon" />}
-                                </div>
-
-                                <div className="step-details">
-                                    {legType === 'WALK' ? (
-                                        <>
-                                            <div className="step-title">
-                                                <span className="step-type">Đi bộ</span>
-                                                <span className="step-distance">{distance}m</span>
-                                                <span className="step-time">{duration} phút</span>
-                                            </div>
-                                            <div className="step-instruction">
-                                                Từ {fromName} đến {toName}
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="step-title">
-                                                <span className="step-type">
-                                                    <span className="bus-number" style={{ backgroundColor: leg.routeColor || '#4CAF50' }}>
-                                                        {leg.routeNumber || leg.routeId || ''}
-                                                    </span>
-                                                    {leg.routeName || ''}
-                                                </span>
-                                                <span className="step-time">{duration} phút</span>
-                                            </div>
-                                            <div className="step-instruction">
-                                                <div>Lên xe tại: {fromName}</div>
-                                                <div>Xuống xe tại: {toName}</div>
-                                                {leg.stops && <div className="stop-count">{typeof leg.stops === 'number' ? leg.stops : (Array.isArray(leg.stops) ? leg.stops.length : 0)} điểm dừng</div>}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
     useEffect(() => {
         const fetchStopsAndLandmarks = async () => {
             try {
@@ -377,7 +352,11 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
         setLoading(true);
         setError(null);
         setRouteOptions([]);
-
+        setSelectedRouteOption(null);
+        if (onRouteFound) {
+            // Pass null to clear the current route
+            onRouteFound(null);
+        }
         try {
             const cleanOrigin = formatLocationForSearch(origin);
             const cleanDestination = formatLocationForSearch(destination);
@@ -413,19 +392,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
             const options = response.data.options;
             if (options && options.length > 0) {
                 setRouteOptions(options);
-                setSelectedRouteOption(options[0]);
 
-                // Hiển thị tuyến đầu tiên trên bản đồ
-                const firstRoute = options[0];
-                if (firstRoute && firstRoute.legs) {
-                    const busLegs = firstRoute.legs.filter(leg => leg.type === 'BUS');
-                    if (busLegs.length > 0 && busLegs[0].routeId) {
-                        const routeDetail = await getRouteDetails(busLegs[0].routeId);
-                        if (routeDetail && onRouteFound) {
-                            onRouteFound(routeDetail);
-                        }
-                    }
-                }
             } else {
                 setError('Không tìm thấy tuyến đường phù hợp');
             }
@@ -616,7 +583,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                         ))}
                     </ul>
                 ) : (
-                    !loading && searchResults.length === 0 && origin && destination && (
+                    !loading && origin && destination && routeOptions.length === 0 && (
                         <p className="no-data">Không tìm thấy tuyến đường phù hợp.</p>
                     )
                 )}

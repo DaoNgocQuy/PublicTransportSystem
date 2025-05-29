@@ -296,7 +296,16 @@ const Home = () => {
     // useEffect và handleRouteSelect
     useEffect(() => {
         if (!selectedRoute) return;
-
+        if (selectedRoute.walkingOnly === true) {
+            console.log("Walking-only route detected, skipping stops fetch");
+            setRouteStops([]);
+            return;
+        }
+        if (!selectedRoute.id) {
+            console.warn("Selected route has no ID, cannot fetch stops");
+            setRouteStops([]);
+            return;
+        }
         const fetchStops = async () => {
             setLoading(true);
             try {
@@ -317,7 +326,6 @@ const Home = () => {
                 setLoading(false);
             }
         };
-
         fetchStops();
     }, [selectedRoute, tripDirection]);
 

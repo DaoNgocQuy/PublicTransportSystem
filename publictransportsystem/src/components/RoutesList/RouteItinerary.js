@@ -23,6 +23,9 @@ const RouteItinerary = ({ routeOption, onSelectRoute }) => {
         return `${(meters / 1000).toFixed(1)} km`;
     };
 
+    // Check if this is a walking-only route
+    const isWalkingOnly = routeOption.walkingOnly === true;
+
     // Find bus legs
     const busLegs = routeOption.legs ? routeOption.legs.filter(leg => leg.type === 'BUS') : [];
     const firstBusLeg = busLegs.length > 0 ? busLegs[0] : null;
@@ -40,7 +43,11 @@ const RouteItinerary = ({ routeOption, onSelectRoute }) => {
         <div className="route-itinerary busmap-style">
             <div className="route-option-header">
                 <div className="route-option-number">
-                    {firstBusLeg && (
+                    {isWalkingOnly ? (
+                        <div className="route-number-badge walking-badge">
+                            <FaWalking />
+                        </div>
+                    ) : firstBusLeg && (
                         <div
                             className="route-number-badge"
                             style={{ backgroundColor: firstBusLeg.routeColor || '#4CAF50' }}
@@ -49,18 +56,26 @@ const RouteItinerary = ({ routeOption, onSelectRoute }) => {
                         </div>
                     )}
                     <div className="route-time-info">
-                        {routeOption.totalTime || '?'} phút
+                        {formatDuration(routeOption.totalTime || 0)}
                     </div>
                 </div>
                 <div className="route-travel-info">
-                    <div className="walk-distance">
-                        <FaWalking className="travel-icon" /> {formatDistance(routeOption.walkingDistance || 0)}
-                    </div>
-                    <FaLongArrowAltRight className="arrow-icon" />
-                    <div className="bus-distance">
-                        <FaBus className="travel-icon" /> {formatDistance(routeOption.busDistance ||
-                            (routeOption.totalDistance - routeOption.walkingDistance) || 0)}
-                    </div>
+                    {isWalkingOnly ? (
+                        <div className="walk-distance walking-only">
+                            <FaWalking className="travel-icon" /> {formatDistance(routeOption.totalDistance || 0)}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="walk-distance">
+                                <FaWalking className="travel-icon" /> {formatDistance(routeOption.walkingDistance || 0)}
+                            </div>
+                            <FaLongArrowAltRight className="arrow-icon" />
+                            <div className="bus-distance">
+                                <FaBus className="travel-icon" /> {formatDistance(routeOption.busDistance ||
+                                    (routeOption.totalDistance - routeOption.walkingDistance) || 0)}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -79,11 +94,23 @@ const RouteItinerary = ({ routeOption, onSelectRoute }) => {
                                 </div>
                                 <div className="segment-details">
                                     <div className="segment-distance">{formatDistance(leg.distance)} · {formatDuration(leg.duration)}</div>
-                                    <div className="segment-instruction">
-                                        Đi bộ {leg.from && leg.to ?
-                                            <>từ <strong>{leg.from.name || 'Điểm xuất phát'}</strong> đến <strong>{leg.to.name || 'Điểm đến'}</strong></> :
-                                            ''}
-                                    </div>
+                                    {isWalkingOnly ? (
+                                        <div className="segment-instruction">
+                                            <strong>Đi bộ {formatDistance(leg.distance)}</strong>
+                                            {leg.from && leg.to ?
+                                                <div className="walking-route-info">
+                                                    <div>Từ: {leg.from.name || 'Điểm xuất phát'}</div>
+                                                    <div>Đến: {leg.to.name || 'Điểm đến'}</div>
+                                                </div> : ''
+                                            }
+                                        </div>
+                                    ) : (
+                                        <div className="segment-instruction">
+                                            Đi bộ {leg.from && leg.to ?
+                                                <>từ <strong>{leg.from.name || 'Điểm xuất phát'}</strong> đến <strong>{leg.to.name || 'Điểm đến'}</strong></> :
+                                                ''}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : leg.type === 'BUS' ? (

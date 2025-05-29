@@ -202,8 +202,41 @@ public class ApiRouteController {
             @RequestParam(required = false, defaultValue = "LEAST_TIME") String priority) {
 
         try {
-            Map<String, Object> result = routeService.findJourneyOptions(
+            // Calculate direct distance between origin and destination
+            double directDistance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
+            System.out.println("Direct distance between points: " + directDistance + " meters");
+
+            Map<String, Object> result = new HashMap<>();
+            List<Map<String, Object>> allOptions = new ArrayList<>();
+
+            // If the distance is 1km or less, add a walking option
+            if (directDistance <= 1000) {
+                Map<String, Object> walkingOption = createWalkingOption(
+                        fromLat, fromLng, toLat, toLng, directDistance);
+                allOptions.add(walkingOption);
+            }
+
+            // Get regular public transport options
+            Map<String, Object> ptOptions = routeService.findJourneyOptions(
                     fromLat, fromLng, toLat, toLng, maxWalkDistance, priority);
+
+            // If there are public transport options, add them to our list
+            if (ptOptions.containsKey("options") && ptOptions.get("options") instanceof List) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> options = (List<Map<String, Object>>) ptOptions.get("options");
+                allOptions.addAll(options);
+            }
+
+            // If we have options, optimize them to show only the best
+            if (!allOptions.isEmpty()) {
+                List<Map<String, Object>> optimizedOptions = optimizeRouteOptions(allOptions, priority);
+                result.put("status", "success");
+                result.put("options", optimizedOptions);
+                result.put("count", optimizedOptions.size());
+            } else {
+                result.put("error", "Không tìm thấy phương án di chuyển phù hợp");
+                result.put("options", Collections.emptyList());
+            }
 
             return ResponseEntity.ok(result);
         } catch (Exception e) {
@@ -306,6 +339,127 @@ public class ApiRouteController {
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonMap("error", "Lỗi khi tính đường đi bộ: " + e.getMessage()));
         }
+    }
+
+    private List<Map<String, Object>> optimizeRouteOptions(List<Map<String, Object>> options, String priority) {
+        // Nếu chỉ có 1-3 phương án, trả về tất cả
+        if (options.size() <= 3) {
+            return options;
+        }
+
+        // Tạo các bản sao để sắp xếp theo các tiêu chí khác nhau
+        List<Map<String, Object>> byTime = new ArrayList<>(options);
+        List<Map<String, Object>> byTransfers = new ArrayList<>(options);
+        List<Map<String, Object>> byWalkingDistance = new ArrayList<>(options);
+
+        // Sắp xếp theo thời gian
+        byTime.sort(Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue()));
+
+        // Sắp xếp theo số lần chuyển tuyến
+        byTransfers.sort(Comparator.comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue()));
+
+        // Sắp xếp theo khoảng cách đi bộ
+        byWalkingDistance.sort(Comparator.comparingDouble(o -> ((Number) o.getOrDefault("walkingDistance", Double.MAX_VALUE)).doubleValue()));
+
+        // Tạo tập hợp các phương án tối ưu (dùng Set để tránh trùng lặp)
+        Set<Map<String, Object>> optimizedOptions = new LinkedHashSet<>();
+
+        // Ưu tiên theo tham số priority
+        if ("LEAST_WALKING".equals(priority)) {
+            optimizedOptions.add(byWalkingDistance.get(0));
+            if (!byTime.get(0).equals(byWalkingDistance.get(0))) {
+                optimizedOptions.add(byTime.get(0));
+            }
+            if (!byTransfers.get(0).equals(byWalkingDistance.get(0)) && !byTransfers.get(0).equals(byTime.get(0))) {
+                optimizedOptions.add(byTransfers.get(0));
+            }
+        } else if ("LEAST_TRANSFERS".equals(priority)) {
+            optimizedOptions.add(byTransfers.get(0));
+            if (!byTime.get(0).equals(byTransfers.get(0))) {
+                optimizedOptions.add(byTime.get(0));
+            }
+            if (!byWalkingDistance.get(0).equals(byTransfers.get(0)) && !byWalkingDistance.get(0).equals(byTime.get(0))) {
+                optimizedOptions.add(byWalkingDistance.get(0));
+            }
+        } else {
+            // LEAST_TIME hoặc mặc định
+            optimizedOptions.add(byTime.get(0));
+            if (!byTransfers.get(0).equals(byTime.get(0))) {
+                optimizedOptions.add(byTransfers.get(0));
+            }
+            if (!byWalkingDistance.get(0).equals(byTime.get(0)) && !byWalkingDistance.get(0).equals(byTransfers.get(0))) {
+                optimizedOptions.add(byWalkingDistance.get(0));
+            }
+        }
+
+        // Đảm bảo phương án đi bộ luôn được thêm vào nếu có
+        for (Map<String, Object> option : options) {
+            if (Boolean.TRUE.equals(option.get("walkingOnly"))) {
+                optimizedOptions.add(option);
+                break;
+            }
+        }
+
+        // Chuyển Set thành List và giới hạn tối đa 3 phương án
+        List<Map<String, Object>> result = new ArrayList<>(optimizedOptions);
+        return result.size() <= 3 ? result : result.subList(0, 3);
+    }
+
+    private Map<String, Object> createWalkingOption(double fromLat, double fromLng, double toLat, double toLng, double distanceMeters) {
+        // Tính thời gian đi bộ (giả sử tốc độ đi bộ là 4km/h = ~67m/phút)
+        final double walkingSpeedMeterPerMinute = 67;
+        int estimatedMinutes = (int) Math.ceil(distanceMeters / walkingSpeedMeterPerMinute);
+
+        Map<String, Object> walkingOption = new HashMap<>();
+        walkingOption.put("id", "walking");
+        walkingOption.put("name", String.format("Đi bộ %.1f km", distanceMeters / 1000));
+        walkingOption.put("walkingOnly", true);
+        walkingOption.put("totalTime", estimatedMinutes);
+        walkingOption.put("totalDistance", distanceMeters);
+        walkingOption.put("walkingDistance", distanceMeters);
+        walkingOption.put("transfers", 0);
+        walkingOption.put("numStops", 0);
+
+        // Tạo leg đi bộ
+        List<Map<String, Object>> legs = new ArrayList<>();
+        Map<String, Object> walkLeg = new HashMap<>();
+        walkLeg.put("type", "WALK");
+        walkLeg.put("distance", distanceMeters);
+        walkLeg.put("duration", estimatedMinutes);
+        walkLeg.put("from", Map.of(
+                "name", "Vị trí của bạn",
+                "lat", fromLat,
+                "lng", fromLng
+        ));
+        walkLeg.put("to", Map.of(
+                "name", "Điểm đến của bạn",
+                "lat", toLat,
+                "lng", toLng
+        ));
+        legs.add(walkLeg);
+
+        walkingOption.put("legs", legs);
+
+        return walkingOption;
+    }
+
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Earth radius in meters
+        final int R = 6371000;
+
+        // Convert degrees to radians
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        // Haversine formula
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        // Distance in meters
+        return R * c;
     }
 
     /**

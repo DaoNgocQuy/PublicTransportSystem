@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Time;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -25,6 +27,27 @@ public class ScheduleServiceImpl implements ScheduleService {
     public List<Schedules> getAllSchedules() {
         return scheduleRepository.findAll();
     }
+      @Override
+    public Map<String, Object> getSchedulesWithPagination(int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        int offset = page * size;
+        
+        List<Schedules> schedules = scheduleRepository.findAllWithPagination(offset, size);
+        int totalItems = scheduleRepository.countAll();
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+        
+        System.out.println("Pagination debug:");
+        System.out.println("page=" + page + ", size=" + size + ", offset=" + offset);
+        System.out.println("totalItems=" + totalItems + ", totalPages=" + totalPages);
+        System.out.println("schedules.size()=" + schedules.size());
+        
+        result.put("schedules", schedules);
+        result.put("currentPage", page);
+        result.put("totalItems", totalItems);
+        result.put("totalPages", totalPages);
+        
+        return result;
+    }
 
     @Override
     public Optional<Schedules> getScheduleById(Integer id) {
@@ -35,20 +58,88 @@ public class ScheduleServiceImpl implements ScheduleService {
     public List<Schedules> getSchedulesByVehicle(Vehicles vehicleId) {
         return scheduleRepository.findByVehicleId(vehicleId);
     }
+    
+    @Override
+    public Map<String, Object> getSchedulesByVehicleWithPagination(Vehicles vehicleId, int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        int offset = page * size;
+        
+        List<Schedules> schedules = scheduleRepository.findByVehicleIdWithPagination(vehicleId, offset, size);
+        int totalItems = scheduleRepository.countByVehicleId(vehicleId);
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+        
+        result.put("schedules", schedules);
+        result.put("currentPage", page);
+        result.put("totalItems", totalItems);
+        result.put("totalPages", totalPages);
+        
+        return result;
+    }
 
     @Override
     public List<Schedules> getSchedulesByRoute(Routes routeId) {
         return scheduleRepository.findByRouteId(routeId);
+    }
+    
+    @Override
+    public Map<String, Object> getSchedulesByRouteWithPagination(Routes routeId, int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        int offset = page * size;
+        
+        List<Schedules> schedules = scheduleRepository.findByRouteIdWithPagination(routeId, offset, size);
+        int totalItems = scheduleRepository.countByRouteId(routeId);
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+        
+        result.put("schedules", schedules);
+        result.put("currentPage", page);
+        result.put("totalItems", totalItems);
+        result.put("totalPages", totalPages);
+        
+        return result;
     }
 
     @Override
     public List<Schedules> getSchedulesByTimeRange(Time startTime, Time endTime) {
         return scheduleRepository.findByDepartureTimeBetween(startTime, endTime);
     }
+    
+    @Override
+    public Map<String, Object> getSchedulesByTimeRangeWithPagination(Time startTime, Time endTime, int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        int offset = page * size;
+        
+        List<Schedules> schedules = scheduleRepository.findByDepartureTimeBetweenWithPagination(startTime, endTime, offset, size);
+        int totalItems = scheduleRepository.countByDepartureTimeBetween(startTime, endTime);
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+        
+        result.put("schedules", schedules);
+        result.put("currentPage", page);
+        result.put("totalItems", totalItems);
+        result.put("totalPages", totalPages);
+        
+        return result;
+    }
 
     @Override
     public List<Schedules> findSchedulesByRouteId(Integer routeId) {
         return scheduleRepository.findByRouteId(routeId);
+    }
+    
+    @Override
+    public Map<String, Object> findSchedulesByRouteIdWithPagination(Integer routeId, int page, int size) {
+        Map<String, Object> result = new HashMap<>();
+        int offset = page * size;
+        
+        List<Schedules> schedules = scheduleRepository.findByRouteIdWithPagination(routeId, offset, size);
+        int totalItems = scheduleRepository.countByRouteId(routeId);
+        int totalPages = (int) Math.ceil((double) totalItems / size);
+        
+        result.put("schedules", schedules);
+        result.put("currentPage", page);
+        result.put("totalItems", totalItems);
+        result.put("totalPages", totalPages);
+        
+        return result;
     }
 
     @Override

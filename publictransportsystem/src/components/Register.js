@@ -96,12 +96,11 @@ const Register = () => {
       // Sử dụng authApi thay vì axios
       const response = await authApi.post(endpoints.register, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
-      });
-        toast.success("Đăng ký thành công!");
+      });        toast.success("Đăng ký thành công!");
       
       setTimeout(() => {
         navigate('/login');
-      }, 3500);
+      }, 1800);
       
     } catch (error) {
       console.error("Đăng ký lỗi:", error);

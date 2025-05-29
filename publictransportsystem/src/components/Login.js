@@ -77,7 +77,7 @@ const Login = () => {
       // Chuyển hướng sau khi hiển thị thông báo
       setTimeout(() => {
         navigate('/');
-      }, 3500);
+      }, 1800);
     } catch (error) {
       console.error("Lỗi đăng nhập:", error);
       
@@ -185,14 +185,13 @@ const Login = () => {
               dispatch({
                   type: "login",
                   payload: user
-              });
-                setTimeout(() => {
+              });              setTimeout(() => {
                   navigate('/');
-              }, 3500);
+              }, 1800);
           } else {              // Nếu không, chuyển về màn hình đăng nhập
               setTimeout(() => {
                   setView('login');
-              }, 3500);
+              }, 1800);
           }
       } catch (error) {
           toast.error(

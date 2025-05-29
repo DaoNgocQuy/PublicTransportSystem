@@ -28,16 +28,15 @@ public class ApiRouteController {
 
     @Autowired
     private ScheduleService scheduleService;
-    
+
     @Autowired
     private StopService stopService;
-    
+
     @Autowired
     private RouteStopService routeStopService;
 
     /**
-     * Lấy danh sách tất cả các tuyến
-     * Hỗ trợ tìm kiếm theo tên và loại tuyến
+     * Lấy danh sách tất cả các tuyến Hỗ trợ tìm kiếm theo tên và loại tuyến
      */
     @GetMapping
     public ResponseEntity<List<Map<String, Object>>> getRoutes(
@@ -57,7 +56,7 @@ public class ApiRouteController {
         if (typeId != null) {
             routes = routes.stream()
                     .filter(route -> route.getRouteType() != null
-                            && route.getRouteType().getId().equals(typeId))
+                    && route.getRouteType().getId().equals(typeId))
                     .collect(Collectors.toList());
         }
 
@@ -98,7 +97,7 @@ public class ApiRouteController {
             if (route.getOperationStartTime() != null && route.getOperationEndTime() != null) {
                 routeInfo.put("operatingHours",
                         timeFormat.format(route.getOperationStartTime()) + " - "
-                                + timeFormat.format(route.getOperationEndTime()));
+                        + timeFormat.format(route.getOperationEndTime()));
             } else {
                 routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
             }
@@ -110,8 +109,7 @@ public class ApiRouteController {
     }
 
     /**
-     * Lấy chi tiết một tuyến theo ID
-     * Bao gồm cả các trạm dừng theo hai chiều
+     * Lấy chi tiết một tuyến theo ID Bao gồm cả các trạm dừng theo hai chiều
      */
     @GetMapping("/{id}")
     public ResponseEntity<?> getRouteById(@PathVariable Integer id) {
@@ -131,18 +129,18 @@ public class ApiRouteController {
         routeInfo.put("id", route.getId());
         routeInfo.put("name", route.getName());
         routeInfo.put("route", route.getStartLocation() + " - " + route.getEndLocation());
-        
+
         RouteTypes routeType = route.getRouteType();
         if (routeType != null) {
-            
+
             routeInfo.put("routeTypeId", routeType.getId());
             routeInfo.put("routeTypeName", routeType.getTypeName());
-            
+
             String iconUrl = routeType.getIconUrl();
             routeInfo.put("icon", iconUrl != null && !iconUrl.isEmpty()
                     ? iconUrl
                     : getDefaultIcon(routeType.getTypeName()));
-            
+
             String colorCode = routeType.getColorCode();
             routeInfo.put("color", colorCode != null && !colorCode.isEmpty()
                     ? colorCode
@@ -156,7 +154,7 @@ public class ApiRouteController {
         if (route.getOperationStartTime() != null && route.getOperationEndTime() != null) {
             routeInfo.put("operatingHours",
                     timeFormat.format(route.getOperationStartTime()) + " - "
-                            + timeFormat.format(route.getOperationEndTime()));
+                    + timeFormat.format(route.getOperationEndTime()));
         } else {
             routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
         }
@@ -170,7 +168,7 @@ public class ApiRouteController {
         // Lấy danh sách trạm dừng cho cả hai chiều
         List<Map<String, Object>> stopsInbound = getFormattedStops(route.getId(), 1);
         List<Map<String, Object>> stopsOutbound = getFormattedStops(route.getId(), 2);
-        
+
         routeInfo.put("stopsInbound", stopsInbound);
         routeInfo.put("stopsOutbound", stopsOutbound);
 
@@ -182,35 +180,57 @@ public class ApiRouteController {
      */
     @GetMapping("/nearby-stops")
     public ResponseEntity<List<Map<String, Object>>> getNearbyStops(
-            @RequestParam double lat, 
-            @RequestParam double lng, 
+            @RequestParam double lat,
+            @RequestParam double lng,
             @RequestParam(defaultValue = "1000") double radius) {
-        
+
         List<Map<String, Object>> nearbyStops = stopService.findNearbyStopsFormatted(lat, lng, radius);
         return ResponseEntity.ok(nearbyStops);
     }
 
     /**
-     * API tìm tuyến đơn giản - chỉ trả về các tuyến đi qua khu vực gần vị trí người dùng
-     * Không tính toán chi tiết lộ trình
+     * API tìm tuyến đơn giản - chỉ trả về các tuyến đi qua khu vực gần vị trí
+     * người dùng Không tính toán chi tiết lộ trình
      */
+    @GetMapping("/find-journey")
+    public ResponseEntity<?> findJourney(
+            @RequestParam Double fromLat,
+            @RequestParam Double fromLng,
+            @RequestParam Double toLat,
+            @RequestParam Double toLng,
+            @RequestParam(required = false, defaultValue = "500") Integer maxWalkDistance,
+            @RequestParam(required = false, defaultValue = "LEAST_TIME") String priority) {
+
+        try {
+            Map<String, Object> result = routeService.findJourneyOptions(
+                    fromLat, fromLng, toLat, toLng, maxWalkDistance, priority);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Lỗi khi tìm phương án di chuyển: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/simple-search")
     public ResponseEntity<?> findSimpleRoutes(
-            @RequestParam double lat, 
-            @RequestParam double lng, 
+            @RequestParam double lat,
+            @RequestParam double lng,
             @RequestParam(defaultValue = "1000") double radius) {
-        
+
         try {
             // Tìm các trạm gần vị trí
             List<Map<String, Object>> nearbyStops = stopService.findNearbyStopsFormatted(lat, lng, radius);
-            
+
             if (nearbyStops.isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("status", "NO_STOPS_FOUND");
                 error.put("message", "Không tìm thấy trạm nào trong bán kính " + radius + "m");
                 return ResponseEntity.ok(error);
             }
-            
+
             // Trích xuất ID các trạm
             List<Integer> stopIds = new ArrayList<>();
             for (Map<String, Object> stop : nearbyStops) {
@@ -227,17 +247,17 @@ public class ApiRouteController {
                     }
                 }
             }
-            
+
             // Tìm các tuyến đi qua các trạm này
             List<Routes> routes = routeService.findRoutesByStops(stopIds);
-            
+
             if (routes.isEmpty()) {
                 Map<String, Object> error = new HashMap<>();
                 error.put("status", "NO_ROUTES_FOUND");
                 error.put("message", "Không tìm thấy tuyến nào đi qua khu vực này");
                 return ResponseEntity.ok(error);
             }
-            
+
             // Format kết quả đơn giản
             List<Map<String, Object>> result = new ArrayList<>();
             for (Routes route : routes) {
@@ -245,23 +265,46 @@ public class ApiRouteController {
                 routeInfo.put("id", route.getId());
                 routeInfo.put("name", route.getName());
                 routeInfo.put("route", route.getStartLocation() + " - " + route.getEndLocation());
-                
+
                 // Thông tin về loại tuyến
                 RouteTypes routeType = route.getRouteType();
                 if (routeType != null) {
                     routeInfo.put("icon", routeType.getIconUrl());
                     routeInfo.put("color", routeType.getColorCode());
                 }
-                
+
                 result.add(routeInfo);
             }
-            
+
             return ResponseEntity.ok(result);
-            
+
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Đã xảy ra lỗi khi tìm kiếm tuyến: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @GetMapping("/walking-path")
+    public ResponseEntity<?> getWalkingPath(
+            @RequestParam Double fromLat,
+            @RequestParam Double fromLng,
+            @RequestParam Double toLat,
+            @RequestParam Double toLng,
+            @RequestParam(required = false) String pathType) {
+
+        try {
+            // Sử dụng các service đã có để tính toán đường đi bộ
+            List<List<Double>> path = routeService.calculateOptimalWalkingPath(fromLat, fromLng, toLat, toLng);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("path", path);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("error", "Lỗi khi tính đường đi bộ: " + e.getMessage()));
         }
     }
 
@@ -276,13 +319,13 @@ public class ApiRouteController {
 
         // Lấy thông tin route_stops để biết thứ tự các trạm
         List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
-        
+
         // Tạo map từ ID trạm đến thứ tự trạm
         Map<Integer, Integer> stopOrderMap = new HashMap<>();
         for (RouteStop rs : routeStops) {
             stopOrderMap.put(rs.getStop().getId(), rs.getStopOrder());
         }
-        
+
         // Định dạng danh sách trạm với thứ tự
         List<Map<String, Object>> formattedStops = new ArrayList<>();
         for (Stops stop : stops) {
@@ -293,19 +336,19 @@ public class ApiRouteController {
             stopMap.put("lng", stop.getLongitude());
             stopMap.put("address", stop.getAddress());
             stopMap.put("isAccessible", stop.getIsAccessible());
-            
+
             // Thêm thứ tự trạm nếu có
             Integer order = stopOrderMap.get(stop.getId());
             if (order != null) {
                 stopMap.put("stopOrder", order);
             }
-            
+
             formattedStops.add(stopMap);
         }
-        
+
         // Sắp xếp theo thứ tự trạm
         formattedStops.sort(Comparator.comparingInt(s -> (Integer) s.getOrDefault("stopOrder", Integer.MAX_VALUE)));
-        
+
         return formattedStops;
     }
 

@@ -24,6 +24,7 @@ import java.sql.Time;
 import java.util.Calendar;
 import java.util.Collections;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 public class RoutesServiceImpl implements RouteService {
@@ -870,5 +871,353 @@ public class RoutesServiceImpl implements RouteService {
             }
         }
         return null;
+    }
+
+    @Override
+    public Map<String, Object> findJourneyOptions(
+            Double fromLat, Double fromLng, Double toLat, Double toLng,
+            Integer maxWalkDistance, String priority) {
+
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> options = new ArrayList<>();
+
+        try {
+            // 1. Tìm các trạm gần điểm đi
+            List<Stops> nearbyFromStops = stopService.findNearbyStops(fromLat, fromLng, maxWalkDistance);
+            if (nearbyFromStops.isEmpty()) {
+                result.put("error", "Không tìm thấy trạm nào gần điểm xuất phát");
+                result.put("options", Collections.emptyList());
+                return result;
+            }
+
+            // 2. Tìm các trạm gần điểm đến
+            List<Stops> nearbyToStops = stopService.findNearbyStops(toLat, toLng, maxWalkDistance);
+            if (nearbyToStops.isEmpty()) {
+                result.put("error", "Không tìm thấy trạm nào gần điểm đến");
+                result.put("options", Collections.emptyList());
+                return result;
+            }
+
+            // 3. Tìm các tuyến đường phù hợp
+            List<Map<String, Object>> journeyOptions = findJourneyOptionsForStops(
+                    nearbyFromStops, nearbyToStops, fromLat, fromLng, toLat, toLng);
+
+            // 4. Sắp xếp kết quả theo priority
+            sortJourneyOptions(journeyOptions, priority);
+
+            result.put("status", "success");
+            result.put("options", journeyOptions);
+            result.put("count", journeyOptions.size());
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("error", "Lỗi tìm phương án di chuyển: " + e.getMessage());
+            result.put("options", Collections.emptyList());
+        }
+
+        return result;
+    }
+
+    /**
+     * Tìm các phương án di chuyển giữa các cặp trạm
+     */
+    private List<Map<String, Object>> findJourneyOptionsForStops(
+            List<Stops> fromStops, List<Stops> toStops,
+            Double fromLat, Double fromLng, Double toLat, Double toLng) {
+
+        List<Map<String, Object>> journeyOptions = new ArrayList<>();
+        int optionId = 1;
+
+        // Xem xét từng cặp trạm đi/đến
+        for (Stops fromStop : fromStops) {
+            for (Stops toStop : toStops) {
+                // Tìm các tuyến đi qua cả hai trạm
+                List<Routes> routes = findDirectRoutesForStops(fromStop.getId(), toStop.getId());
+
+                for (Routes route : routes) {
+                    // Lấy thông tin chi tiết về trạm trên tuyến
+                    List<RouteStop> routeStops = routeStopRepository.findByRouteIdOrderByStopOrder(route.getId());
+
+                    // Tìm vị trí của fromStop và toStop trên tuyến
+                    RouteStop fromStopOnRoute = findRouteStopByStopId(routeStops, fromStop.getId());
+                    RouteStop toStopOnRoute = findRouteStopByStopId(routeStops, toStop.getId());
+
+                    // Nếu trạm đi phải nằm trước trạm đến trên tuyến đường
+                    if (fromStopOnRoute != null && toStopOnRoute != null
+                            && fromStopOnRoute.getStopOrder() < toStopOnRoute.getStopOrder()) {
+
+                        // Tạo phương án di chuyển
+                        Map<String, Object> option = createJourneyOption(
+                                optionId++, route, fromStop, toStop, fromStopOnRoute, toStopOnRoute,
+                                fromLat, fromLng, toLat, toLng
+                        );
+
+                        journeyOptions.add(option);
+                    }
+                }
+            }
+        }
+
+        return journeyOptions;
+    }
+
+    /**
+     * Tìm các tuyến đi qua cả trạm đi và trạm đến theo thứ tự
+     */
+    private List<Routes> findDirectRoutesForStops(Integer fromStopId, Integer toStopId) {
+        List<Routes> result = new ArrayList<>();
+
+        // Tìm các tuyến đi qua trạm xuất phát
+        List<Routes> fromRoutes = routesRepository.findByStopId(fromStopId);
+
+        // Kiểm tra từng tuyến xem có đi qua trạm đến không
+        for (Routes route : fromRoutes) {
+            List<Stops> routeStops = routesRepository.findStopsByRouteId(route.getId());
+
+            // Kiểm tra xem tuyến có đi qua trạm đến không
+            boolean containsToStop = routeStops.stream()
+                    .anyMatch(stop -> stop.getId().equals(toStopId));
+
+            if (containsToStop) {
+                result.add(route);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Tạo thông tin chi tiết một phương án di chuyển
+     */
+    private Map<String, Object> createJourneyOption(
+            int optionId, Routes route, Stops fromStop, Stops toStop,
+            RouteStop fromStopOnRoute, RouteStop toStopOnRoute,
+            Double originLat, Double originLng, Double destLat, Double destLng) {
+
+        Map<String, Object> option = new HashMap<>();
+
+        // Thông tin cơ bản
+        option.put("id", optionId);
+        option.put("name", "Tuyến " + route.getName());
+        option.put("routeId", route.getId());
+
+        // Tính số trạm phải đi qua
+        int numStops = toStopOnRoute.getStopOrder() - fromStopOnRoute.getStopOrder();
+        option.put("numStops", numStops);
+
+        // Tính thời gian di chuyển (3 phút mỗi trạm)
+        int busTime = numStops * 3;
+
+        // Tính khoảng cách và thời gian đi bộ
+        double walkToFirstStop = calculateDistance(originLat, originLng, fromStop.getLatitude(), fromStop.getLongitude());
+        double walkFromLastStop = calculateDistance(toStop.getLatitude(), toStop.getLongitude(), destLat, destLng);
+
+        double walkDistanceMeters = (walkToFirstStop + walkFromLastStop) * 1000; // Đổi sang mét
+        int walkTimeMinutes = (int) Math.ceil(walkDistanceMeters / 80); // Tốc độ đi bộ ~80m/phút
+
+        option.put("totalTime", busTime + walkTimeMinutes);
+        option.put("walkingDistance", walkDistanceMeters);
+        option.put("transfers", 0); // Không có chuyển tuyến
+
+        // Thông tin chi tiết các chặng hành trình
+        List<Map<String, Object>> legs = new ArrayList<>();
+
+        // Chặng 1: Đi bộ đến trạm đầu
+        Map<String, Object> walkToStopLeg = new HashMap<>();
+        walkToStopLeg.put("type", "WALK");
+        walkToStopLeg.put("distance", walkToFirstStop * 1000);
+        walkToStopLeg.put("duration", (int) Math.ceil(walkToFirstStop * 1000 / 80));
+        walkToStopLeg.put("from", Map.of(
+                "name", "Vị trí của bạn",
+                "lat", originLat,
+                "lng", originLng
+        ));
+        walkToStopLeg.put("to", Map.of(
+                "name", fromStop.getStopName(),
+                "lat", fromStop.getLatitude(),
+                "lng", fromStop.getLongitude(),
+                "id", fromStop.getId()
+        ));
+        legs.add(walkToStopLeg);
+
+        // Chặng 2: Đi xe buýt
+        Map<String, Object> busLeg = new HashMap<>();
+        busLeg.put("type", "BUS");
+        busLeg.put("routeId", route.getId());
+        busLeg.put("routeNumber", route.getName());
+        busLeg.put("routeName", route.getName());
+        busLeg.put("duration", busTime);
+        busLeg.put("stops", numStops);
+        busLeg.put("from", Map.of(
+                "name", fromStop.getStopName(),
+                "lat", fromStop.getLatitude(),
+                "lng", fromStop.getLongitude(),
+                "id", fromStop.getId()
+        ));
+        busLeg.put("to", Map.of(
+                "name", toStop.getStopName(),
+                "lat", toStop.getLatitude(),
+                "lng", toStop.getLongitude(),
+                "id", toStop.getId()
+        ));
+        legs.add(busLeg);
+
+        // Chặng 3: Đi bộ từ trạm đến điểm đích
+        Map<String, Object> walkFromStopLeg = new HashMap<>();
+        walkFromStopLeg.put("type", "WALK");
+        walkFromStopLeg.put("distance", walkFromLastStop * 1000);
+        walkFromStopLeg.put("duration", (int) Math.ceil(walkFromLastStop * 1000 / 80));
+        walkFromStopLeg.put("from", Map.of(
+                "name", toStop.getStopName(),
+                "lat", toStop.getLatitude(),
+                "lng", toStop.getLongitude(),
+                "id", toStop.getId()
+        ));
+        walkFromStopLeg.put("to", Map.of(
+                "name", "Điểm đến của bạn",
+                "lat", destLat,
+                "lng", destLng
+        ));
+        legs.add(walkFromStopLeg);
+
+        option.put("legs", legs);
+
+        return option;
+    }
+
+    /**
+     * Tìm RouteStop cho một stopId cụ thể
+     */
+    private RouteStop findRouteStopByStopId(List<RouteStop> routeStops, Integer stopId) {
+        return routeStops.stream()
+                .filter(rs -> rs.getStop().getId().equals(stopId))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Tính khoảng cách giữa hai điểm địa lý sử dụng công thức Haversine
+     *
+     * @return Khoảng cách tính bằng km
+     */
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Radius of the Earth in km
+        final int R = 6371;
+
+        // Convert degrees to radians
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+
+        // Haversine formula
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        // Distance in km
+        return R * c;
+    }
+
+    /**
+     * Sắp xếp các phương án di chuyển theo tiêu chí người dùng chọn
+     */
+    private void sortJourneyOptions(List<Map<String, Object>> options, String priority) {
+        if (priority == null || priority.isEmpty()) {
+            priority = "LEAST_TIME";
+        }
+
+        Comparator<Map<String, Object>> comparator;
+
+        switch (priority.toUpperCase()) {
+            case "LEAST_WALKING":
+                comparator = Comparator.comparingDouble(o -> ((Number) o.get("walkingDistance")).doubleValue());
+                break;
+            case "LEAST_STOPS":
+                comparator = Comparator.comparingInt(o -> ((Number) o.get("numStops")).intValue());
+                break;
+            case "LEAST_TIME":
+            default:
+                comparator = Comparator.comparingInt(o -> ((Number) o.get("totalTime")).intValue());
+                break;
+        }
+
+        options.sort(comparator);
+    }
+
+    @Override
+    public List<List<Double>> calculateOptimalWalkingPath(Double fromLat, Double fromLng, Double toLat, Double toLng) {
+        List<List<Double>> path = new ArrayList<>();
+
+        try {
+            // Tính khoảng cách trực tiếp
+            double directDistance = calculateDistance(fromLat, fromLng, toLat, toLng);
+
+            // Nếu khoảng cách nhỏ (< 300m), tạo đường thẳng
+            if (directDistance < 0.3) {
+                path.add(List.of(fromLat, fromLng));
+                path.add(List.of(toLat, toLng));
+                return path;
+            }
+
+            // Đối với khoảng cách xa hơn, sử dụng OSRM API để tính đường đi tối ưu
+            String url = String.format(
+                    "https://router.project-osrm.org/route/v1/foot/%f,%f;%f,%f?overview=full&geometries=geojson&alternatives=true",
+                    fromLng, fromLat, toLng, toLat
+            );
+
+            // Sử dụng RestTemplate để gọi API
+            RestTemplate restTemplate = new RestTemplate();
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+
+            if (response != null && "Ok".equals(response.get("code")) && response.containsKey("routes")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> routes = (List<Map<String, Object>>) response.get("routes");
+
+                if (!routes.isEmpty()) {
+                    // Chọn đường đi ngắn nhất
+                    Map<String, Object> shortestRoute = routes.get(0);
+                    Double shortestDistance = (Double) shortestRoute.get("distance");
+
+                    for (int i = 1; i < routes.size(); i++) {
+                        Double distance = (Double) routes.get(i).get("distance");
+                        if (distance < shortestDistance) {
+                            shortestRoute = routes.get(i);
+                            shortestDistance = distance;
+                        }
+                    }
+
+                    // So sánh với đường thẳng - nếu đường OSRM dài hơn 30% -> dùng đường thẳng
+                    if (shortestDistance > directDistance * 1300) { // Convert km to m for comparison
+                        path.add(List.of(fromLat, fromLng));
+                        path.add(List.of(toLat, toLng));
+                    } else {
+                        // Extract coordinates from GeoJSON
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> geometry = (Map<String, Object>) shortestRoute.get("geometry");
+
+                        @SuppressWarnings("unchecked")
+                        List<List<Double>> coordinates = (List<List<Double>>) geometry.get("coordinates");
+
+                        // Chuyển đổi format [lng, lat] từ GeoJSON thành [lat, lng] cho frontend
+                        for (List<Double> coord : coordinates) {
+                            path.add(List.of(coord.get(1), coord.get(0)));
+                        }
+                    }
+                }
+            } else {
+                // Fallback - direct path
+                path.add(List.of(fromLat, fromLng));
+                path.add(List.of(toLat, toLng));
+            }
+        } catch (Exception e) {
+            // Log exception
+            e.printStackTrace();
+
+            // Fallback - direct path
+            path.add(List.of(fromLat, fromLng));
+            path.add(List.of(toLat, toLng));
+        }
+
+        return path;
     }
 }

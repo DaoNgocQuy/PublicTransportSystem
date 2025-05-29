@@ -44,4 +44,9 @@ public interface RouteService {
     List<Stops> getStopsByRouteIdAndDirection(Integer routeId, Integer direction);
 
     void recalculateRoute(Integer routeId);
+
+    Map<String, Object> findJourneyOptions(
+            Double fromLat, Double fromLng, Double toLat, Double toLng,
+            Integer maxWalkDistance, String priority);
+    List<List<Double>> calculateOptimalWalkingPath(Double fromLat, Double fromLng, Double toLat, Double toLng);
 }

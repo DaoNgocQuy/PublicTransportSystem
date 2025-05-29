@@ -57,31 +57,37 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
         if (selectedRouteOption !== option || !routeDetails) {
             setSelectedRouteOption(option);
             setLoadingDetails(true);
-            setRouteDetails(null); // Clear previous details
+            setRouteDetails(null);
 
             try {
-                // Get detailed information about the selected route option
                 const detailedOption = await getRouteLegsDetails(option);
-                console.log("Detailed route option received:", detailedOption);
-                if (detailedOption && detailedOption.legs) {
-                    console.log("Number of legs:", detailedOption.legs.length);
-                    detailedOption.legs.forEach((leg, index) => {
-                        console.log(`Leg ${index} details:`, leg);
-                    });
-                }
                 setRouteDetails(detailedOption);
 
-                // If we need to display the route on the map
+                // Tìm chặng đi bằng xe buýt
                 const busLegs = option.legs?.filter(leg => leg.type === 'BUS') || [];
+
                 if (busLegs.length > 0 && busLegs[0].routeId && onRouteFound) {
                     try {
                         const routeDetail = await getRouteDetails(busLegs[0].routeId);
+
                         if (routeDetail) {
-                            onRouteFound(routeDetail);
+                            // Thêm thông tin trạm lên xe và xuống xe vào routeDetail
+                            const enhancedRoute = {
+                                ...routeDetail,
+                                journeySegment: {
+                                    // Chỉ gửi các thông tin cần thiết
+                                    routeId: busLegs[0].routeId,
+                                    boardStop: busLegs[0].from,
+                                    alightStop: busLegs[0].to,
+                                    boardStopOrder: busLegs[0].boardStopOrder,
+                                    alightStopOrder: busLegs[0].alightStopOrder
+                                }
+                            };
+
+                            onRouteFound(enhancedRoute);
                         }
                     } catch (err) {
                         console.error('Error loading route for map display:', err);
-                        // Continue showing details even if map route can't be loaded
                     }
                 }
             } catch (err) {
@@ -91,7 +97,9 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 setLoadingDetails(false);
             }
         }
+
     };
+
     const showRouteDirections = (routeDetails) => {
         console.log("Route details for directions:", routeDetails);
 
@@ -369,77 +377,61 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
         setLoading(true);
         setError(null);
         setRouteOptions([]);
-        setSearchResults([]);
 
         try {
-            console.log('Searching with origin:', origin);
-            console.log('Searching with destination:', destination);
-
-            if (typeof origin !== 'object' || typeof destination !== 'object') {
-                setError('Vui lòng chọn địa điểm từ danh sách gợi ý hoặc trên bản đồ');
-                setLoading(false);
-                return;
-            }
-
-            // Format input data to ensure all required properties are present
-            console.log('Original origin data:', origin);
-            console.log('Original destination data:', destination);
-
             const cleanOrigin = formatLocationForSearch(origin);
             const cleanDestination = formatLocationForSearch(destination);
 
-            console.log('Clean origin data:', cleanOrigin);
-            console.log('Clean destination data:', cleanDestination);
-
-            // Validate coordinates before proceeding
             if (!cleanOrigin.latitude || !cleanOrigin.longitude ||
                 !cleanDestination.latitude || !cleanDestination.longitude) {
-                setError('Địa điểm không có tọa độ hợp lệ. Vui lòng chọn lại địa điểm.');
+                setError('Địa điểm không có tọa độ hợp lệ');
                 setLoading(false);
                 return;
             }
-            try {
-                // Use the updated service with clean data
-                const result = await findRoutes(cleanOrigin, cleanDestination, routePreferences);
-                console.log('Route finding result:', result);
 
-                if (result.error) {
-                    setError(result.error);
-                    return;
+            // Gọi API tìm đường
+            const response = await authApi.get('/api/routes/find-journey', {
+                params: {
+                    fromLat: cleanOrigin.latitude,
+                    fromLng: cleanOrigin.longitude,
+                    toLat: cleanDestination.latitude,
+                    toLng: cleanDestination.longitude,
+                    maxWalkDistance: 500,
+                    priority: 'LEAST_TIME'
                 }
+            });
 
-                if (result && Array.isArray(result.options) && result.options.length > 0) {
-                    setRouteOptions(result.options);
-                    setSelectedRouteOption(result.options[0]);
+            console.log('Server response:', response.data);
 
-                    // Thêm code để hiển thị tuyến đường trên bản đồ nếu cần
-                    const firstRoute = result.options[0];
-                    if (firstRoute && firstRoute.legs) {
-                        const busLegs = firstRoute.legs.filter(leg => leg.type === 'BUS');
-                        if (busLegs.length > 0 && busLegs[0].routeId) {
-                            // Gọi API để lấy chi tiết tuyến đường để hiển thị
-                            const routeDetail = await getRouteDetails(busLegs[0].routeId);
-                            if (routeDetail && onRouteFound) {
-                                onRouteFound(routeDetail);
-                            }
+            if (response.data.error) {
+                setError(response.data.error);
+                setLoading(false);
+                return;
+            }
+
+            // Xử lý kết quả
+            const options = response.data.options;
+            if (options && options.length > 0) {
+                setRouteOptions(options);
+                setSelectedRouteOption(options[0]);
+
+                // Hiển thị tuyến đầu tiên trên bản đồ
+                const firstRoute = options[0];
+                if (firstRoute && firstRoute.legs) {
+                    const busLegs = firstRoute.legs.filter(leg => leg.type === 'BUS');
+                    if (busLegs.length > 0 && busLegs[0].routeId) {
+                        const routeDetail = await getRouteDetails(busLegs[0].routeId);
+                        if (routeDetail && onRouteFound) {
+                            onRouteFound(routeDetail);
                         }
                     }
-                } else {
-                    setError('Không tìm thấy tuyến đường phù hợp giữa hai điểm đã chọn.');
                 }
-            } catch (err) {
-                console.error('Error with route search:', err);
-
-                if (err.message === 'AUTH_REQUIRED') {
-                    handleAuthError();
-                    return;
-                }
-
-                setError('Không thể tìm kiếm tuyến. Vui lòng thử lại sau.');
+            } else {
+                setError('Không tìm thấy tuyến đường phù hợp');
             }
-        } catch (generalErr) {
-            console.error('General search error:', generalErr);
-            setError('Đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.');
+        } catch (err) {
+            console.error('Search error:', err);
+            setError('Đã xảy ra lỗi khi tìm kiếm');
         } finally {
             setLoading(false);
         }
@@ -461,35 +453,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 (location.landmarkData && location.landmarkData.id ? location.landmarkData.id : null)
         };
     };
-    const buildLegacySearchParams = (origin, destination) => {
-        const params = {};
 
-        if (typeof origin === 'object') {
-            if (origin.suggestionType === 'LANDMARK') {
-                params.fromLandmarkId = origin.landmark_id;
-                params.fromLat = origin.latitude;
-                params.fromLng = origin.longitude;
-            } else {
-                params.fromStopId = origin.id;
-            }
-        } else {
-            params.fromQuery = origin;
-        }
-
-        if (typeof destination === 'object') {
-            if (destination.suggestionType === 'LANDMARK') {
-                params.toLandmarkId = destination.landmark_id;
-                params.toLat = destination.latitude;
-                params.toLng = destination.longitude;
-            } else {
-                params.toStopId = destination.id;
-            }
-        } else {
-            params.toQuery = destination;
-        }
-
-        return params;
-    };
     return (
         <div className="route-search">
             <div className="search-container">

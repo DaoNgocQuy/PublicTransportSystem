@@ -28,7 +28,7 @@ public interface StopService {
 
     List<Stops> searchStops(String keyword);
 
-    List<Stops> findNearbyStops(double lat, double lng, double radiusMeters);
+    List<Stops> findNearbyStops(double lat, double lng, int radiusInMeters);
 
     List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radiusMeters);
 

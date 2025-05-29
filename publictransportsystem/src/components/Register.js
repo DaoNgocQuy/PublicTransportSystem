@@ -97,12 +97,11 @@ const Register = () => {
       const response = await authApi.post(endpoints.register, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
-      toast.success("Đăng ký thành công!");
+        toast.success("Đăng ký thành công!");
       
       setTimeout(() => {
         navigate('/login');
-      }, 1500);
+      }, 3500);
       
     } catch (error) {
       console.error("Đăng ký lỗi:", error);
@@ -293,11 +292,10 @@ const Register = () => {
               }}>
                 Đăng nhập
               </a>
-            </p>
-          </div>
+            </p>          </div>
         </form>
       </div>
-      <ToastContainer position="top-right" autoClose={2000} />
+      {/* Đã loại bỏ ToastContainer riêng lẻ và sử dụng cấu hình chung từ App.js */}
     </div>
   );
 };

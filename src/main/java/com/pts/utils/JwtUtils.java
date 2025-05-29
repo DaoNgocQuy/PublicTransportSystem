@@ -14,11 +14,22 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import java.util.Date;
 
+/**
+ * Tiện ích xử lý JWT token
+ * Tạo và xác thực token cho xác thực API
+ */
 public class JwtUtils {
     // SECRET nên được lưu bằng biến môi trường,
     private static final String SECRET = "12345678901234567890123456789012"; // 32 ký tự (AES key)
     private static final long EXPIRATION_MS = 86400000; // 1 ngày
 
+    /**
+     * Tạo JWT token cho người dùng dựa trên username
+     * 
+     * @param username Tên người dùng cần tạo token
+     * @return JWT token dạng chuỗi
+     * @throws Exception Nếu có lỗi trong quá trình tạo token
+     */
     public static String generateToken(String username) throws Exception {
         JWSSigner signer = new MACSigner(SECRET);
 
@@ -36,8 +47,13 @@ public class JwtUtils {
         signedJWT.sign(signer);
 
         return signedJWT.serialize();
-    }
-
+    }    /**
+     * Xác thực JWT token và trích xuất username
+     * 
+     * @param token JWT token cần xác thực
+     * @return username nếu token hợp lệ và chưa hết hạn, null nếu token không hợp lệ
+     * @throws Exception Nếu có lỗi trong quá trình xác thực
+     */
     public static String validateTokenAndGetUsername(String token) throws Exception {
         SignedJWT signedJWT = SignedJWT.parse(token);
         JWSVerifier verifier = new MACVerifier(SECRET);

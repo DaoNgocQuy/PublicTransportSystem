@@ -77,11 +77,9 @@ const AppContent = () => {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </UserDispatchContext.Provider>
-      </UserContext.Provider>
-
-      <ToastContainer
+      </UserContext.Provider>      <ToastContainer
         position="top-right"
-        autoClose={1000}  
+        autoClose={3000}  
         hideProgressBar={false}
         newestOnTop
         closeOnClick

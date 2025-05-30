@@ -42,3 +42,36 @@
         max-width: 150px;
     }
 }
+
+.admin-form-container {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+
+.map-container {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* Cần thêm CSS này để hiển thị marker đúng cách */
+.leaflet-container {
+    height: 400px;
+    width: 100%;
+    border-radius: 4px;
+}
+
+/* Thêm style cho thông báo hướng dẫn */
+.map-instruction {
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 8px;
+    border-radius: 4px;
+    position: absolute;
+    top: 10px;
+    left: 50px;
+    z-index: 1000;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}

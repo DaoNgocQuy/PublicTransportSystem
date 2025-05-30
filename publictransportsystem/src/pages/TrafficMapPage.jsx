@@ -10,18 +10,14 @@ const TrafficMapPage = () => {
     return (
         <>
             <Container className="py-4">                <Row className="mb-3">
-                    <Col md={8}>
-                        <h1>Tình trạng giao thông</h1>
-                        <p className="lead">
-                            Xem thông tin kẹt xe và các sự cố giao thông theo thời gian thực.
-                        </p>
-                    </Col>
-                    <Col md={4} className="text-end d-flex align-items-center justify-content-end">
-                        <Link to="/traffic-admin" className="btn btn-primary">
-                            Quản lý tình trạng giao thông
-                        </Link>
-                    </Col>
-                </Row>
+                <Col md={8}>
+                    <h1>Tình trạng giao thông</h1>
+                    <p className="lead">
+                        Xem thông tin kẹt xe và các sự cố giao thông theo thời gian thực.
+                    </p>
+                </Col>
+
+            </Row>
                 <Row>
                     <Col>
                         <TrafficMap />

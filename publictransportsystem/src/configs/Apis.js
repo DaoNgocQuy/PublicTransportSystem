@@ -43,7 +43,7 @@ authApi.interceptors.request.use(config => {
                 console.log("Không tìm thấy token trong user object");
             }
         } else {
-            console.log("Không tìm thấy user trong sessionStorage");
+
         }
     } catch (error) {
         console.error('Lỗi khi xử lý thông tin user:', error);

@@ -21,7 +21,6 @@ export const getTrafficConditions = async () => {
     try {
         const q = query(
             collection(db, "trafficConditions"),
-            where("status", "==", "active"),
             orderBy("timestamp", "desc"),
             limit(20)
         );
@@ -37,7 +36,17 @@ export const getTrafficConditions = async () => {
             });
         });
 
-        return trafficData;
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Kiểm tra và chuyển đổi timestamp nếu cần
+                timestamp: data.timestamp
+                    ? (data.timestamp.toDate ? data.timestamp : new Date(data.timestamp.seconds * 1000))
+                    : new Date()
+            };
+        });
     } catch (error) {
         console.error("Lỗi khi lấy thông tin tình trạng giao thông:", error);
         throw error;
@@ -54,15 +63,18 @@ export const subscribeToTrafficConditions = (callback) => {
     );
 
     return onSnapshot(q, (querySnapshot) => {
-        const trafficData = [];
-        querySnapshot.forEach((doc) => {
-            trafficData.push({
+        const conditions = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
                 id: doc.id,
-                ...doc.data(),
-                timestamp: doc.data().timestamp?.toDate()
-            });
+                ...data,
+                // Kiểm tra và chuyển đổi timestamp nếu cần
+                timestamp: data.timestamp
+                    ? (data.timestamp.toDate ? data.timestamp : new Date(data.timestamp.seconds * 1000))
+                    : new Date()
+            };
         });
-        callback(trafficData);
+        callback(conditions);
     });
 };
 

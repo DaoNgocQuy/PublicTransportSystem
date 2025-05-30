@@ -1,7 +1,7 @@
 <!doctype html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <title>Danh sách tuyến</title>
+<head>
+    <title>Danh sách tuyến</title>
     <th:block th:replace="base :: bootstrap"></th:block>
 </head>
 <body>
@@ -13,7 +13,9 @@
         <div class="row mb-3">
             <div class="col-md-8 mx-auto">
                 <form th:action="@{/routes}" method="get" class="d-flex">
-                    <input type="text" name="keyword" th:value="${keyword}" class="form-control me-2" placeholder="Nhập tên tuyến cần tìm...">
+                    <input type="text" name="keyword" th:value="${keyword}" class="form-control me-2" placeholder="Tìm kiếm tuyến...">
+                    <input type="hidden" name="page" value="0">
+                    <input type="hidden" name="size" th:value="${pageSize}">
                     <button type="submit" class="btn btn-primary">Tìm kiếm</button>
                     <a th:href="@{/routes}" class="btn btn-secondary ms-2">Reset</a>
                 </form>
@@ -23,10 +25,10 @@
         <!-- Nút thêm mới -->
         <div class="mb-3">
             <a th:href="@{/routes/add}" class="btn btn-primary">Thêm tuyến mới</a>
-            <span class="badge bg-info float-end py-2 px-3">Tổng số: <span th:text="${routes != null ? routes.size() : 0}">0</span> tuyến</span>
+            <span class="badge bg-info float-end py-2 px-3">Tổng số: <span th:text="${totalItems}">0</span> tuyến</span>
         </div>
 
-        <!-- Hiển thị danh sách tuyến -->
+        <!-- Bảng danh sách tuyến -->
         <table class="table table-striped">
             <thead class="table-dark">
                 <tr>
@@ -34,7 +36,7 @@
                     <th>Tên tuyến</th>
                     <th>Điểm bắt đầu</th>
                     <th>Điểm kết thúc</th>
-                    <th>Tần suất</th> <!-- Đổi từ "Số trạm" thành "Tần suất" -->
+                    <th>Tần suất</th>
                     <th>Loại</th>
                     <th>Trạng thái</th>
                     <th>Hành động</th>
@@ -49,12 +51,10 @@
                     <td th:text="${route.name}"></td>
                     <td th:text="${route.startLocation}"></td>
                     <td th:text="${route.endLocation}"></td>
-                    <!-- Thay thế route.totalStops bằng route.frequencyMinutes -->
                     <td>
                         <span th:if="${route.frequencyMinutes != null}" th:text="${route.frequencyMinutes + ' phút'}"></span>
                         <span th:unless="${route.frequencyMinutes != null}">-</span>
                     </td>
-                    <!-- Sửa lỗi truy cập routeType -->
                     <td>
                         <span th:if="${route.routeType != null}" th:text="${route.routeType.typeName}"></span>
                         <span th:unless="${route.routeType != null}">-</span>
@@ -65,17 +65,73 @@
                         <span th:if="${route.active == null}" class="badge bg-warning">Chưa xác định</span>
                     </td>
                     <td>
-                        <!-- Thêm nút xem chi tiết -->
-                        <a class="btn btn-info btn-sm me-1" th:href="@{/routes/view/{id}(id=${route.id})}" title="Xem chi tiết">
-                            <i class="bi bi-eye"></i>Chi tiết
-                        </a>
-                        <a class="btn btn-primary btn-sm me-1" th:href="@{/routes/edit/{id}(id=${route.id})}">Sửa</a>
+                        <a class="btn btn-info btn-sm" th:href="@{/routes/view/{id}(id=${route.id})}">Chi tiết</a>
+                        <a class="btn btn-primary btn-sm" th:href="@{/routes/edit/{id}(id=${route.id})}">Sửa</a>
                         <a class="btn btn-danger btn-sm" th:href="@{/routes/delete/{id}(id=${route.id})}" 
                            onclick="return confirm('Bạn có chắc chắn muốn xóa tuyến này?');">Xóa</a>
                     </td>
                 </tr>
             </tbody>
         </table>
+        
+        
+
+        <!-- Thanh phân trang - theo mẫu -->
+        <div class="d-flex justify-content-center mt-3" th:if="${totalPages > 1}">
+            <nav>
+                <ul class="pagination">
+                    <!-- Nút trang đầu tiên -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/routes(page=0, size=${pageSize}, keyword=${keyword})}">
+                            &laquo;&laquo;
+                        </a>
+                    </li>
+                    
+                    <!-- Nút Previous -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/routes(page=${currentPage - 1}, size=${pageSize}, keyword=${keyword})}">
+                            &laquo;
+                        </a>
+                    </li>
+                    
+                    <!-- Các số trang -->
+                    <li class="page-item" th:each="i: ${#numbers.sequence(0, totalPages - 1)}" 
+                        th:classappend="${i == currentPage ? 'active' : ''}">
+                        <a class="page-link" th:href="@{/routes(page=${i}, size=${pageSize}, keyword=${keyword})}" 
+                           th:text="${i + 1}"></a>
+                    </li>
+                    
+                    <!-- Nút Next -->
+                    <li class="page-item" th:classappend="${currentPage + 1 == totalPages ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/routes(page=${currentPage + 1}, size=${pageSize}, keyword=${keyword})}">
+                            &raquo;
+                        </a>
+                    </li>
+                    
+                    <!-- Nút trang cuối -->
+                    <li class="page-item" th:classappend="${currentPage + 1 == totalPages ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/routes(page=${totalPages - 1}, size=${pageSize}, keyword=${keyword})}">
+                            &raquo;&raquo;
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        
+        
+        
+        <script>
+            function changePageSize() {
+                const pageSize = document.getElementById('pageSizeSelect').value;
+                const currentUrl = new URL(window.location.href);
+                const params = new URLSearchParams(currentUrl.search);
+                
+                params.set('page', '0');
+                params.set('size', pageSize);
+                
+                window.location.href = currentUrl.pathname + '?' + params.toString();
+            }
+        </script>
 
         <div th:replace="base :: footer"></div>
     </main>

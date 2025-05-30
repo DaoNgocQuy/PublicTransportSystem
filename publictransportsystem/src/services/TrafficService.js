@@ -114,11 +114,6 @@ export const updateTrafficCondition = async (id, trafficData) => {
 // Xóa tình trạng giao thông (hoặc đánh dấu là không active)
 export const deleteTrafficCondition = async (id) => {
     try {
-        // Phương pháp 1: Xóa hoàn toàn
-        // const trafficRef = doc(db, "trafficConditions", id);
-        // await deleteDoc(trafficRef);
-
-        // Phương pháp 2: Đánh dấu là không hoạt động (soft delete)
         const trafficRef = doc(db, "trafficConditions", id);
         await updateDoc(trafficRef, {
             status: "inactive",

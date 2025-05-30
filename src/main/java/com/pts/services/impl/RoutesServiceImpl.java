@@ -874,6 +874,34 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     @Override
+    public List<Routes> getAllRoutesWithPagination(int page, int size) {
+        int offset = page * size;
+        return routesRepository.findAllWithPagination(offset, size);
+    }
+
+    @Override
+    public int getTotalRoutes() {
+        return routesRepository.countAll();
+    }
+
+    @Override
+    public List<Routes> searchRoutesByNameWithPagination(String keyword, int page, int size) {
+        int offset = page * size;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllRoutesWithPagination(page, size);
+        }
+        return routesRepository.searchRoutesByNameWithPagination(keyword, offset, size);
+    }
+
+    @Override
+    public int getTotalRoutesByKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getTotalRoutes();
+        }
+        return routesRepository.countByNameContaining(keyword);
+    }
+
+    @Override
     public Map<String, Object> findJourneyOptions(
             Double fromLat, Double fromLng, Double toLat, Double toLng,
             Integer maxWalkDistance, String priority) {

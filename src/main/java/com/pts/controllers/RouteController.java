@@ -49,19 +49,40 @@ public class RouteController {
 
     // Hiển thị danh sách tuyến
     @GetMapping
-    public String listRoutes(Model model, @RequestParam(value = "keyword", required = false) String keyword) {
-        List<Routes> routes;
+    public String listRoutes(Model model,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "page", defaultValue = "0") int page) {
 
-        if (keyword != null && !keyword.isEmpty()) {
-            // Tìm kiếm theo keyword
-            routes = routesService.searchRoutesByName(keyword);
-            model.addAttribute("keyword", keyword);
-        } else {
-            // Lấy tất cả tuyến
-            routes = routesService.getAllRoutes();
+        // Cố định số lượng mỗi trang là 5
+        final int size = 5;
+
+        // Validate input params
+        if (page < 0) {
+            page = 0;
         }
 
+        List<Routes> routes;
+        int totalItems;
+        int totalPages;
+
+        if (keyword != null && !keyword.isEmpty()) {
+            // Tìm kiếm với phân trang
+            routes = routesService.searchRoutesByNameWithPagination(keyword, page, size);
+            totalItems = routesService.getTotalRoutesByKeyword(keyword);
+            model.addAttribute("keyword", keyword);
+        } else {
+            // Lấy tất cả với phân trang
+            routes = routesService.getAllRoutesWithPagination(page, size);
+            totalItems = routesService.getTotalRoutes();
+        }
+
+        totalPages = (int) Math.ceil((double) totalItems / (double) size);
+
         model.addAttribute("routes", routes);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalItems", totalItems);
+
         return "routes/listRoute";
     }
 
@@ -72,14 +93,13 @@ public class RouteController {
         try {
             // Lấy thông tin tuyến đường theo ID
             Optional<Routes> routeOptional = routesService.getRouteById(id);
-            
+
             // Kiểm tra tuyến có tồn tại không
             if (routeOptional.isPresent()) {
                 Routes route = routeOptional.get();
-                
-                
+
                 // Kiểm tra nếu bất kỳ trường nào là NULL, tính toán lại
-                if ( route.getFrequencyMinutes() == 0
+                if (route.getFrequencyMinutes() == 0
                         || route.getOperationStartTime() == null
                         || route.getOperationEndTime() == null) {
 

@@ -49,4 +49,11 @@ public interface RouteService {
             Double fromLat, Double fromLng, Double toLat, Double toLng,
             Integer maxWalkDistance, String priority);
     List<List<Double>> calculateOptimalWalkingPath(Double fromLat, Double fromLng, Double toLat, Double toLng);
+    
+    List<Routes> getAllRoutesWithPagination(int page, int size);
+    int getTotalRoutes();
+    
+    // Phân trang cho tìm kiếm
+    List<Routes> searchRoutesByNameWithPagination(String keyword, int page, int size);
+    int getTotalRoutesByKeyword(String keyword);
 }

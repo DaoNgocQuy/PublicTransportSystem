@@ -361,4 +361,42 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             e.printStackTrace();
         }
     }
+
+    @Override
+    public List<Routes> findAllWithPagination(int offset, int limit) {
+        String sql = "SELECT r.*, rt.id as rt_id, rt.type_name, rt.color_code, rt.description "
+                + "FROM routes r "
+                + "LEFT JOIN route_types rt ON r.route_type_id = rt.id "
+                + "ORDER BY r.id LIMIT ? OFFSET ?";
+        System.out.println("SQL for routes pagination: " + sql + ", limit=" + limit + ", offset=" + offset);
+        return jdbcTemplate.query(sql, routesWithTypeRowMapper, limit, offset);
+    }
+
+    @Override
+    public int countAll() {
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM routes", Integer.class);
+        System.out.println("Total routes count: " + count);
+        return count != null ? count : 0;
+    }
+
+    @Override
+    public List<Routes> searchRoutesByNameWithPagination(String keyword, int offset, int limit) {
+        String searchParam = "%" + keyword + "%";
+        String sql = "SELECT r.*, rt.id as rt_id, rt.type_name, rt.color_code, rt.description "
+                + "FROM routes r "
+                + "LEFT JOIN route_types rt ON r.route_type_id = rt.id "
+                + "WHERE r.name LIKE ? OR r.start_location LIKE ? OR r.end_location LIKE ? "
+                + "ORDER BY r.id LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, routesWithTypeRowMapper, searchParam, searchParam, searchParam, limit, offset);
+    }
+
+    @Override
+    public int countByNameContaining(String keyword) {
+        String searchParam = "%" + keyword + "%";
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM routes "
+                + "WHERE name LIKE ? OR start_location LIKE ? OR end_location LIKE ?",
+                Integer.class, searchParam, searchParam, searchParam);
+        return count != null ? count : 0;
+    }
 }

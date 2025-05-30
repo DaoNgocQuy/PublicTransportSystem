@@ -1,13 +1,16 @@
 // c:\PTS\PublicTransportSystem\publictransportsystem\src\pages\TrafficAdminPage.jsx
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Table, Alert, Badge, Modal } from 'react-bootstrap'; import {
+import { Container, Row, Col, Form, Button, Table, Alert, Badge, Modal } from 'react-bootstrap';
+import {
     getTrafficConditions,
     addTrafficCondition,
     deleteTrafficCondition,
     updateTrafficCondition
 } from '../services/TrafficService';
 import './TrafficAdminPage.css';
-
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 const TrafficAdminPage = () => {
     // State cho form thêm mới
     const [formData, setFormData] = useState({
@@ -22,16 +25,164 @@ const TrafficAdminPage = () => {
     const [trafficConditions, setTrafficConditions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [alert, setAlert] = useState({ show: false, variant: '', message: '' });
+    const [position, setPosition] = useState(null);
 
     // State cho modal xác nhận xóa
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedConditionId, setSelectedConditionId] = useState(null);
+    const defaultPosition = [10.762622, 106.660172];
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editPosition, setEditPosition] = useState(null);
+    const [editFormData, setEditFormData] = useState({
+        id: '',
+        latitude: '',
+        longitude: '',
+        type: 'congestion',
+        severity: 'medium',
+        description: ''
+    });
+
+    // Thêm hàm xử lý khi nhấn nút Sửa
+    const handleEdit = (condition) => {
+        setEditFormData({
+            id: condition.id,
+            latitude: condition.latitude,
+            longitude: condition.longitude,
+            type: condition.type,
+            severity: condition.severity,
+            description: condition.description
+        });
+        setShowEditModal(true);
+    };
+
+    // Hàm xử lý thay đổi giá trị trong form sửa
+    const handleEditInputChange = (e) => {
+        const { name, value } = e.target;
+        setEditFormData(prevData => ({
+            ...prevData,
+            [name]: value
+        }));
+    };
+
+    // Hàm xử lý submit form sửa
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+
+        try {
+            // Chuyển đổi latitude và longitude thành số
+            const trafficData = {
+                ...editFormData,
+                latitude: parseFloat(editFormData.latitude),
+                longitude: parseFloat(editFormData.longitude)
+            };
+
+            // Loại bỏ id khỏi dữ liệu cập nhật
+            const { id, ...dataToUpdate } = trafficData;
+
+            await updateTrafficCondition(id, dataToUpdate);
+            setAlert({
+                show: true,
+                variant: 'success',
+                message: 'Cập nhật tình trạng giao thông thành công.'
+            });
+
+            // Đóng modal và tải lại dữ liệu
+            setShowEditModal(false);
+            loadTrafficConditions();
+        } catch (error) {
+            console.error("Lỗi khi cập nhật tình trạng giao thông:", error);
+            setAlert({
+                show: true,
+                variant: 'danger',
+                message: 'Có lỗi xảy ra khi cập nhật tình trạng giao thông.'
+            });
+        }
+    };
+    useEffect(() => {
+        if (showEditModal && editFormData.latitude && editFormData.longitude) {
+            setEditPosition({
+                lat: parseFloat(editFormData.latitude),
+                lng: parseFloat(editFormData.longitude)
+            });
+        }
+    }, [showEditModal, editFormData.latitude, editFormData.longitude]);
+
+    useEffect(() => {
+        if (editPosition) {
+            setEditFormData(prevData => ({
+                ...prevData,
+                latitude: editPosition.lat.toFixed(6),
+                longitude: editPosition.lng.toFixed(6)
+            }));
+        }
+    }, [editPosition]);
+
+    const EditLocationMarker = ({ position, setPosition }) => {
+        const map = useMapEvents({
+            dblclick(e) {
+                const { lat, lng } = e.latlng;
+                setPosition({ lat, lng });
+                map.flyTo(e.latlng, map.getZoom());
+            },
+        });
+
+        return position ? (
+            <Marker
+                position={position}
+                icon={new L.Icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })}
+            />
+        ) : null;
+    };
 
     // Tải dữ liệu khi component mount
     useEffect(() => {
         loadTrafficConditions();
     }, []);
+    // Tải dữ liệu khi component mount
+    useEffect(() => {
+        loadTrafficConditions();
+    }, []);
+    const LocationMarker = ({ position, setPosition }) => {
+        const map = useMapEvents({
+            dblclick(e) {
+                const { lat, lng } = e.latlng;
+                setPosition({ lat, lng });
+                map.flyTo(e.latlng, map.getZoom());
+            },
+        });
 
+        return position ? (
+            <Marker
+                position={position}
+                icon={new L.Icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })}
+            />
+        ) : null;
+    };
+    // cập nhật form khi position thay đổi
+
+    useEffect(() => {
+        if (position) {
+            setFormData(prevData => ({
+                ...prevData,
+                latitude: position.lat.toFixed(6),
+                longitude: position.lng.toFixed(6)
+            }));
+        }
+    }, [position]);
     // Hàm tải dữ liệu tình trạng giao thông
     const loadTrafficConditions = async () => {
         try {
@@ -96,6 +247,7 @@ const TrafficAdminPage = () => {
                 severity: 'medium',
                 description: ''
             });
+            setPosition(null);
 
             loadTrafficConditions();
         } catch (error) {
@@ -227,7 +379,26 @@ const TrafficAdminPage = () => {
                                     </Form.Group>
                                 </Col>
                             </Row>
+                            <div className="mb-4">
+                                <p><strong>Hoặc double-click để chọn vị trí trên bản đồ:</strong></p>
+                                <div className="map-container">
+                                    <MapContainer
+                                        center={defaultPosition}
+                                        zoom={13}
+                                        style={{ height: "400px", width: "100%" }}
+                                    >
+                                        <TileLayer
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                        />
+                                        <LocationMarker position={position} setPosition={setPosition} />
+                                    </MapContainer>
+                                </div>
 
+                                <div className="text-muted mt-2">
+                                    Double-click vào bản đồ để chọn vị trí. Tọa độ sẽ tự động cập nhật vào form.
+                                </div>
+                            </div>
                             <Row>
                                 <Col md={6}>
                                     <Form.Group className="mb-3">
@@ -328,13 +499,22 @@ const TrafficAdminPage = () => {
                                                 {condition.timestamp?.toLocaleString() || 'N/A'}
                                             </td>
                                             <td>
-                                                <Button
-                                                    variant="danger"
-                                                    size="sm"
-                                                    onClick={() => handleDelete(condition.id)}
-                                                >
-                                                    Xóa
-                                                </Button>
+                                                <div className="d-flex gap-2">
+                                                    <Button
+                                                        variant="primary"
+                                                        size="sm"
+                                                        onClick={() => handleEdit(condition)}
+                                                    >
+                                                        Sửa
+                                                    </Button>
+                                                    <Button
+                                                        variant="danger"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(condition.id)}
+                                                    >
+                                                        Xóa
+                                                    </Button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}
@@ -344,7 +524,116 @@ const TrafficAdminPage = () => {
                     )}
                 </Col>
             </Row>
+            {/* Modal chỉnh sửa tình trạng giao thông */}
+            <Modal show={showEditModal} onHide={() => setShowEditModal(false)} size="lg">
+                <Modal.Header closeButton>
+                    <Modal.Title>Sửa tình trạng giao thông</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Form onSubmit={handleEditSubmit}>
+                        <Row>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Vĩ độ (Latitude) *</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        step="0.000001"
+                                        name="latitude"
+                                        value={editFormData.latitude}
+                                        onChange={handleEditInputChange}
+                                        required
+                                    />
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Kinh độ (Longitude) *</Form.Label>
+                                    <Form.Control
+                                        type="number"
+                                        step="0.000001"
+                                        name="longitude"
+                                        value={editFormData.longitude}
+                                        onChange={handleEditInputChange}
+                                        required
+                                    />
+                                </Form.Group>
+                            </Col>
+                        </Row>
+                        <div className="mb-4">
+                            <p><strong>Hoặc double-click để chọn vị trí trên bản đồ:</strong></p>
+                            <div className="map-container">
+                                <MapContainer
+                                    center={editPosition ? [editPosition.lat, editPosition.lng] : defaultPosition}
+                                    zoom={13}
+                                    style={{ height: "300px", width: "100%" }}
+                                    key={`edit-map-${showEditModal}`} // Cần key để re-render bản đồ khi modal mở
+                                >
+                                    <TileLayer
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                    />
+                                    <EditLocationMarker position={editPosition} setPosition={setEditPosition} />
+                                </MapContainer>
+                            </div>
+                            <div className="text-muted mt-2">
+                                Double-click vào bản đồ để chọn vị trí mới. Tọa độ sẽ tự động cập nhật.
+                            </div>
+                        </div>
+                        <Row>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Loại sự cố</Form.Label>
+                                    <Form.Select
+                                        name="type"
+                                        value={editFormData.type}
+                                        onChange={handleEditInputChange}
+                                    >
+                                        <option value="congestion">Kẹt xe</option>
+                                        <option value="accident">Tai nạn</option>
+                                        <option value="roadblock">Đường bị chặn</option>
+                                        <option value="construction">Công trình đang thi công</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Mức độ nghiêm trọng</Form.Label>
+                                    <Form.Select
+                                        name="severity"
+                                        value={editFormData.severity}
+                                        onChange={handleEditInputChange}
+                                    >
+                                        <option value="low">Nhẹ</option>
+                                        <option value="medium">Trung bình</option>
+                                        <option value="high">Nghiêm trọng</option>
+                                    </Form.Select>
+                                </Form.Group>
+                            </Col>
+                        </Row>
 
+                        <Form.Group className="mb-3">
+                            <Form.Label>Mô tả chi tiết *</Form.Label>
+                            <Form.Control
+                                as="textarea"
+                                rows={3}
+                                name="description"
+                                value={editFormData.description}
+                                onChange={handleEditInputChange}
+                                required
+                            />
+                        </Form.Group>
+
+                        <div className="d-flex justify-content-end gap-2">
+                            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+                                Hủy
+                            </Button>
+                            <Button variant="primary" type="submit">
+                                Lưu thay đổi
+                            </Button>
+                        </div>
+                    </Form>
+                </Modal.Body>
+            </Modal>
             {/* Modal xác nhận xóa */}
             <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
                 <Modal.Header closeButton>

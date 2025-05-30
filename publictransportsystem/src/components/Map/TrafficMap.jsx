@@ -1,55 +1,89 @@
-// c:\PTS\PublicTransportSystem\publictransportsystem\src\components\Map\TrafficMap.jsx
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import { MapContainer, TileLayer, Circle, Popup, useMapEvents, useMap } from 'react-leaflet';
 import { subscribeToTrafficConditions } from '../../services/TrafficService';
-import './TrafficMap.css';
 import { Button, Modal } from 'react-bootstrap';
 import TrafficReportForm from '../Traffic/TrafficReportForm';
-import { useMapEvents } from 'react-leaflet/hooks';
-// Khắc phục vấn đề với icon mặc định
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
-    iconUrl: require("leaflet/dist/images/marker-icon.png"),
-    shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
-});
-
-// Custom icon cho điểm kẹt xe
-const trafficCongestionIcon = new L.Icon({
-    iconUrl: require('../../assets/icons/red_pin.png'),
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
-
-// Custom icon cho tai nạn
-const accidentIcon = new L.Icon({
-    iconUrl: require('../../assets/icons/blue_pin.png'),
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+import './TrafficMap.css';
 
 const TrafficMap = () => {
     const [trafficConditions, setTrafficConditions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showReportForm, setShowReportForm] = useState(false);
-    const [userLocation, setUserLocation] = useState(null);
     const [clickedLocation, setClickedLocation] = useState(null);
-    useEffect(() => {
-        // Đăng ký lắng nghe tình trạng giao thông theo thời gian thực
-        const unsubscribe = subscribeToTrafficConditions((conditions) => {
-            setTrafficConditions(conditions);
-            setLoading(false);
-        });
 
-        // Hủy đăng ký khi component unmount
-        return () => {
-            unsubscribe();
-        };
-    }, []);
+    // Mặc định hiển thị khu vực HCM
+    const DEFAULT_LOCATION = [10.762622, 106.660172];
+
+
+    const formatTimestamp = (timestamp) => {
+        if (!timestamp) return 'N/A';
+
+        // Kiểm tra nếu timestamp là Firestore Timestamp (có phương thức toDate())
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toLocaleString();
+        }
+
+        // Nếu timestamp đã là Date object
+        if (timestamp instanceof Date) {
+            return timestamp.toLocaleString();
+        }
+
+        // Nếu timestamp là seconds (số)
+        if (typeof timestamp === 'number') {
+            return new Date(timestamp * 1000).toLocaleString();
+        }
+
+        // Nếu timestamp là object với seconds và nanoseconds (định dạng Firestore)
+        if (timestamp.seconds) {
+            return new Date(timestamp.seconds * 1000).toLocaleString();
+        }
+
+        // Trường hợp khác, chuyển về string
+        return String(timestamp);
+    };
+    // Lấy màu dựa trên severity
+    const getSeverityColor = (severity, type) => {
+        // Màu sắc dựa trên loại sự cố
+        switch (type) {
+            case 'congestion':
+                return { color: '#ff0000', fillColor: '#ff3333' }; // Đỏ cho kẹt xe
+            case 'accident':
+                return { color: '#ff9900', fillColor: '#ffcc00' }; // Cam cho tai nạn
+            case 'roadblock':
+                return { color: '#3366ff', fillColor: '#6699ff' }; // Xanh dương cho đường bị chặn
+            case 'construction':
+                return { color: '#9933ff', fillColor: '#b366ff' }; // Tím cho công trình
+            default:
+                // Nếu không xác định loại, dựa vào severity
+                switch (severity) {
+                    case 'high':
+                        return { color: '#ff0000', fillColor: '#ff3333' };
+                    case 'medium':
+                        return { color: '#ff9900', fillColor: '#ffcc00' };
+                    case 'low':
+                        return { color: '#33cc33', fillColor: '#66ff66' };
+                    default:
+                        return { color: '#3388ff', fillColor: '#3388ff' };
+                }
+        }
+    };
+
+    // Lấy kích thước dựa trên loại và severity
+    const getCircleSize = (type, severity) => {
+
+        switch (severity) {
+            case 'high':
+                return 80;
+            case 'medium':
+                return 60;
+            case 'low':
+                return 30;
+            default:
+                return 40;
+        }
+    };
+
+    // Component để bắt sự kiện click trên bản đồ
     const MapClickHandler = () => {
         const map = useMapEvents({
             click(e) {
@@ -58,75 +92,75 @@ const TrafficMap = () => {
         });
         return null;
     };
+
+    useEffect(() => {
+        // Đăng ký theo dõi dữ liệu tình trạng giao thông
+        const unsubscribe = subscribeToTrafficConditions((data) => {
+            setTrafficConditions(data);
+            setLoading(false);
+        });
+
+        // Hủy đăng ký khi component unmount
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+
+    // Xử lý khi người dùng gửi báo cáo thành công
     const handleReportSubmitted = () => {
         setShowReportForm(false);
-        // Có thể thêm action refresh dữ liệu ở đây nếu cần
+        // Dữ liệu sẽ tự động được cập nhật nhờ subscribeToTrafficConditions
     };
-    // Chọn icon phù hợp dựa trên loại sự cố
-    const getTrafficIcon = (type) => {
+
+    // Lấy tên loại sự cố để hiển thị
+    const getTypeName = (type) => {
         switch (type) {
-            case 'accident':
-                return accidentIcon;
-            case 'construction':
-            case 'roadblock':
             case 'congestion':
+                return 'Kẹt xe';
+            case 'accident':
+                return 'Tai nạn';
+            case 'roadblock':
+                return 'Đường bị chặn';
+            case 'construction':
+                return 'Công trình';
             default:
-                return trafficCongestionIcon;
+                return 'Sự cố';
         }
     };
 
-    // Chọn màu hiển thị dựa trên mức độ nghiêm trọng
-    const getSeverityColor = (severity) => {
-        switch (severity) {
-            case 'high':
-                return '#d32f2f'; // Đỏ đậm
-            case 'medium':
-                return '#ff9800'; // Cam
-            case 'low':
-                return '#ffc107'; // Vàng
-            default:
-                return '#d32f2f'; // Mặc định là đỏ
-        }
-    };
-
-    // Format tên loại sự cố
-    const getConditionTypeName = (type) => {
-        switch (type) {
-            case 'congestion': return 'Kẹt xe';
-            case 'accident': return 'Tai nạn';
-            case 'roadblock': return 'Đường bị chặn';
-            case 'construction': return 'Công trình đang thi công';
-            default: return 'Sự cố giao thông';
-        }
-    };
-
-    // Format mức độ nghiêm trọng
+    // Lấy tên mức độ nghiêm trọng để hiển thị
     const getSeverityName = (severity) => {
         switch (severity) {
-            case 'low': return 'Nhẹ';
-            case 'medium': return 'Trung bình';
-            case 'high': return 'Nghiêm trọng';
-            default: return 'Không xác định';
+            case 'high':
+                return 'Nghiêm trọng';
+            case 'medium':
+                return 'Trung bình';
+            case 'low':
+                return 'Nhẹ';
+            default:
+                return 'Không xác định';
         }
     };
-
-    // Tọa độ mặc định cho TP.HCM
-    const DEFAULT_LOCATION = [10.762622, 106.660172];
 
     return (
         <div className="traffic-map-container">
             <div className="map-legend">
+                <h6>Chú thích</h6>
                 <div className="legend-item">
-                    <div className="legend-color high"></div>
-                    <span>Nghiêm trọng</span>
+                    <div className="legend-color congestion"></div>
+                    <span>Kẹt xe</span>
                 </div>
                 <div className="legend-item">
-                    <div className="legend-color medium"></div>
-                    <span>Trung bình</span>
+                    <div className="legend-color accident"></div>
+                    <span>Tai nạn</span>
                 </div>
                 <div className="legend-item">
-                    <div className="legend-color low"></div>
-                    <span>Nhẹ</span>
+                    <div className="legend-color roadblock"></div>
+                    <span>Đường bị chặn</span>
+                </div>
+                <div className="legend-item">
+                    <div className="legend-color construction"></div>
+                    <span>Công trình</span>
                 </div>
             </div>
 
@@ -136,62 +170,57 @@ const TrafficMap = () => {
                 style={{ height: '500px', width: '100%' }}
             >
                 <MapClickHandler />
+
                 <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
 
-                {/* Hiển thị các điểm kẹt xe và sự cố giao thông */}
-                {trafficConditions.map((condition) => (
-                    <React.Fragment key={condition.id}>
-                        {/* Vòng tròn hiển thị phạm vi ảnh hưởng */}
-                        <CircleMarker
+                {/* Hiển thị tình trạng giao thông bằng CircleMarker */}
+                {trafficConditions.map((condition) => {
+                    const colors = getSeverityColor(condition.severity, condition.type);
+                    const radius = getCircleSize(condition.type, condition.severity);
+
+                    return (
+                        <Circle
+                            key={condition.id}
                             center={[condition.latitude, condition.longitude]}
-                            radius={30 + (condition.severity === 'high' ? 20 : condition.severity === 'medium' ? 10 : 0)}
+                            radius={radius}
                             pathOptions={{
-                                color: getSeverityColor(condition.severity),
-                                fillColor: getSeverityColor(condition.severity),
-                                fillOpacity: 0.3,
+                                color: colors.color,
+                                fillColor: colors.fillColor,
+                                fillOpacity: 0.6,
                                 weight: 2
                             }}
-                        />
-
-                        {/* Marker chính thể hiện vị trí sự cố */}
-                        <Marker
-                            position={[condition.latitude, condition.longitude]}
-                            icon={getTrafficIcon(condition.type)}
                         >
-                            <Popup className="traffic-popup">
-                                <div>
-                                    <h4>{getConditionTypeName(condition.type)}</h4>
+                            <Popup>
+                                <div className="traffic-popup">
+                                    <h5>{getTypeName(condition.type)}</h5>
                                     <p><strong>Mức độ:</strong> {getSeverityName(condition.severity)}</p>
-                                    <p>{condition.description}</p>
-                                    <p className="timestamp">
-                                        <small>Cập nhật: {condition.timestamp?.toLocaleString()}</small>
-                                    </p>
+                                    <p><strong>Mô tả:</strong> {condition.description}</p>
                                     {condition.imageUrl && (
-                                        <img
-                                            src={condition.imageUrl}
-                                            alt="Tình trạng giao thông"
-                                            style={{ maxWidth: '200px', maxHeight: '150px' }}
-                                        />
+                                        <div className="traffic-image">
+                                            <img src={condition.imageUrl} alt="Traffic condition" />
+                                        </div>
                                     )}
+                                    <p><small>Cập nhật: {formatTimestamp(condition.timestamp)}</small></p>
                                 </div>
                             </Popup>
-                        </Marker>
-                    </React.Fragment>
-                ))}
+                        </Circle>
+                    );
+                })}
             </MapContainer>
+
+            {/* Nút báo cáo */}
             <Button
                 className="report-button"
-                onClick={() => {
-                    setUserLocation(clickedLocation);
-                    setShowReportForm(true);
-                }}
+                onClick={() => setShowReportForm(true)}
                 variant="primary"
             >
-                <i className="bi bi-plus-circle"></i> Báo cáo kẹt xe
+                <i className="bi bi-plus-circle"></i> Báo cáo tình trạng
             </Button>
+
+            {/* Modal form báo cáo */}
             <Modal
                 show={showReportForm}
                 onHide={() => setShowReportForm(false)}
@@ -203,18 +232,23 @@ const TrafficMap = () => {
                 </Modal.Header>
                 <Modal.Body>
                     <TrafficReportForm
-                        userLocation={userLocation}
+                        userLocation={clickedLocation}
                         onReportSubmitted={handleReportSubmitted}
                     />
                 </Modal.Body>
             </Modal>
-            {loading ? (
-                <div className="loading-indicator">Đang tải dữ liệu tình trạng giao thông...</div>
-            ) : trafficConditions.length === 0 ? (
-                <div className="no-data">Không có dữ liệu về tình trạng kẹt xe hoặc sự cố giao thông hiện tại.</div>
-            ) : (
-                <div className="traffic-data-info">
-                    Hiển thị {trafficConditions.length} điểm giao thông hiện tại.
+
+            {loading && (
+                <div className="loading-overlay">
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Đang tải...</span>
+                    </div>
+                </div>
+            )}
+
+            {!loading && trafficConditions.length === 0 && (
+                <div className="no-data-message">
+                    <p>Không có thông tin tình trạng giao thông nào.</p>
                 </div>
             )}
         </div>

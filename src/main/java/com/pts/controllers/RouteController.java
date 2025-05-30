@@ -266,8 +266,10 @@ public class RouteController {
     @PostMapping("/{routeId}/stops/add")
     public String addStopToRoute(@PathVariable("routeId") Integer routeId,
             @RequestParam("stopId") Integer stopId,
-            @RequestParam(value = "direction", required = false, defaultValue = "1") Integer direction) {
-        routeStopService.addStopToRoute(routeId, stopId, direction);
+            @RequestParam(value = "direction", required = false, defaultValue = "1") Integer direction,
+            @RequestParam(value = "stopOrder", required = false) Integer stopOrder) { // Thêm tham số stopOrder
+
+        routeStopService.addStopToRoute(routeId, stopId, direction, stopOrder);
         return "redirect:/routes/view/" + routeId + "?direction=" + direction;
     }
 

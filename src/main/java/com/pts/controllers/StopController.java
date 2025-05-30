@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Controller
@@ -65,44 +66,53 @@ public class StopController {
     public String createStop(@ModelAttribute("stop") Stops stop,
             @RequestParam(required = false) Integer routeId,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
+            @RequestParam(required = false, defaultValue = "0") Integer stopOrder,
             BindingResult result,
             RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             return "stops/create";
         }
 
-        // Lưu trạm dừng mới
-        Stops savedStop = stopService.saveStop(stop);
+        // Log thông tin đầu vào
+        System.out.println("===== DEBUG CREATE STOP =====");
+        System.out.println("routeId: " + routeId);
+        System.out.println("direction: " + direction);
+        System.out.println("stopOrder: " + stopOrder);
+        System.out.println("Tên trạm: " + stop.getStopName());
+        System.out.println("Vĩ độ: " + stop.getLatitude());
+        System.out.println("Kinh độ: " + stop.getLongitude());
 
-        // Nếu có routeId được truyền vào từ request param, sử dụng nó thay vì từ đối tượng stop
-        if (routeId != null) {
-            // Sử dụng addStopToRoute từ service
-            RouteStop addedRouteStop = routeStopService.addStopToRoute(routeId, savedStop.getId(), direction);
+        try {
+            // Lưu trạm dừng mới
+            Stops savedStop = stopService.saveStop(stop);
+            System.out.println("Đã lưu trạm, ID: " + savedStop.getId());
 
-            if (addedRouteStop != null) {
-                redirectAttributes.addFlashAttribute("successMessage",
-                        "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
-                return "redirect:/routes/view/" + routeId + "?direction=" + direction;
+            // Nếu có routeId, thêm vào tuyến
+            if (routeId != null && routeId > 0) {
+                System.out.println("Thêm trạm vào tuyến: " + savedStop.getId() + " -> " + routeId);
+                RouteStop addedRouteStop = routeStopService.addStopToRoute(routeId, savedStop.getId(), direction, stopOrder);
+
+                if (addedRouteStop != null) {
+                    System.out.println("Thêm thành công, RouteStop ID: " + addedRouteStop.getId());
+                    redirectAttributes.addFlashAttribute("successMessage",
+                            "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
+                    return "redirect:/routes/view/" + routeId + "?direction=" + direction;
+                } else {
+                    System.err.println("Lỗi: Không thể thêm trạm vào tuyến (addedRouteStop is null)");
+                    redirectAttributes.addFlashAttribute("warningMessage",
+                            "Trạm dừng đã được tạo nhưng không thể thêm vào tuyến. Vui lòng thêm thủ công.");
+                }
             }
-        } // Kiểm tra nếu có routeId trong đối tượng stop
-        else if (stop.getRouteId() != null && stop.getRouteId().getId() != null) {
-            Integer stopRouteId = stop.getRouteId().getId();
-            // Sử dụng addStopToRoute từ service
-            RouteStop addedRouteStop = routeStopService.addStopToRoute(
-                    stopRouteId,
-                    savedStop.getId(),
-                    stop.getDirection() != null ? stop.getDirection() : direction
-            );
 
-            if (addedRouteStop != null) {
-                redirectAttributes.addFlashAttribute("successMessage",
-                        "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
-                return "redirect:/routes/view/" + stopRouteId + "?direction=" + direction;
-            }
+            redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được tạo thành công!");
+            return "redirect:/stops";
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tạo trạm hoặc thêm vào tuyến: " + e.getMessage());
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Lỗi khi tạo trạm: " + e.getMessage());
+            return "stops/create";
         }
-
-        redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được tạo thành công!");
-        return "redirect:/stops";
     }
 
     // Hiển thị form chỉnh sửa
@@ -155,6 +165,7 @@ public class StopController {
             @ModelAttribute("stop") Stops stop,
             @RequestParam(value = "routesToAdd", required = false) List<Integer> routesToAdd,
             @RequestParam(value = "directionsToAdd", required = false) List<Integer> directionsToAdd,
+            @RequestParam(value = "stopOrdersToAdd", required = false) List<Integer> stopOrdersToAdd, // Thêm tham số này
             BindingResult result,
             RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
@@ -174,19 +185,69 @@ public class StopController {
                 Integer routeId = routesToAdd.get(i);
                 Integer direction = directionsToAdd.get(i);
 
+                // Lấy stopOrder nếu có, nếu không đặt là null
+                Integer stopOrder = (stopOrdersToAdd != null && i < stopOrdersToAdd.size())
+                        ? stopOrdersToAdd.get(i) : null;
+
                 // Kiểm tra xem đã có trạm trong tuyến và chiều này chưa
                 boolean exists = routeStopService.findByRouteIdAndDirection(routeId, direction).stream()
                         .anyMatch(rs -> rs.getStop().getId().equals(id));
 
-                // Nếu chưa có, thêm trạm vào tuyến với chiều tương ứng
+                // Nếu chưa có, thêm trạm vào tuyến với chiều tương ứng và thứ tự nếu có
                 if (!exists) {
-                    routeStopService.addStopToRoute(routeId, id, direction);
+                    // Sử dụng phương thức addStopToRoute với đầy đủ tham số
+                    routeStopService.addStopToRoute(routeId, id, direction, stopOrder);
                 }
             }
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được cập nhật thành công!");
         return "redirect:/stops/view/" + id;
+    }
+
+    @GetMapping("/route/{routeId}/ajax")
+    @ResponseBody
+    public List<Map<String, Object>> getStopsByRouteAjax(
+            @PathVariable("routeId") Integer routeId,
+            @RequestParam(required = false, defaultValue = "1") Integer direction) {
+        try {
+            // Lấy danh sách trạm dừng theo tuyến và chiều
+            List<Stops> stops = stopService.findStopsByRouteIdAndDirection(routeId, direction);
+
+            // Fallback nếu không có dữ liệu cho chiều cụ thể
+            if (stops == null || stops.isEmpty()) {
+                stops = stopService.findStopsByRouteId(routeId);
+            }
+
+            // Lấy thông tin thứ tự từng trạm trong tuyến và chiều
+            List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
+            Map<Integer, Integer> stopOrderMap = routeStops.stream()
+                    .collect(Collectors.toMap(
+                            rs -> rs.getStop().getId(),
+                            RouteStop::getStopOrder,
+                            (existing, replacement) -> existing // Trong trường hợp trùng lặp, giữ giá trị đầu tiên
+                    ));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Stops stop : stops) {
+                Map<String, Object> stopData = new HashMap<>();
+                stopData.put("id", stop.getId());
+                stopData.put("stopName", stop.getStopName());
+                stopData.put("address", stop.getAddress());
+                stopData.put("latitude", stop.getLatitude());
+                stopData.put("longitude", stop.getLongitude());
+                stopData.put("stopOrder", stopOrderMap.getOrDefault(stop.getId(), 0));
+                result.add(stopData);
+            }
+
+            // Sắp xếp theo thứ tự
+            result.sort(Comparator.comparing(m -> (Integer) m.get("stopOrder")));
+
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
 
     // Xem chi tiết trạm dừng
@@ -307,8 +368,12 @@ public class StopController {
     public String addStopToRoute(@PathVariable("stopId") Integer stopId,
             @RequestParam("routeId") Integer routeId,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
+            @RequestParam(required = false) Integer stopOrder, // Thêm tham số stopOrder
             RedirectAttributes redirectAttributes) {
-        routeStopService.addStopToRoute(routeId, stopId, direction);
+
+        // Sử dụng phương thức addStopToRoute với đầy đủ các tham số
+        RouteStop routeStop = routeStopService.addStopToRoute(routeId, stopId, direction, stopOrder);
+
         redirectAttributes.addFlashAttribute("successMessage",
                 "Trạm đã được thêm vào tuyến (chiều " + (direction == 1 ? "đi" : "về") + ") thành công!");
         return "redirect:/stops/view/" + stopId;

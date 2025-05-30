@@ -18,6 +18,7 @@ import com.pts.repositories.RoutesRepository;
 import com.pts.repositories.RouteStopRepository;
 import com.pts.repositories.StopRepository;
 import com.pts.services.RouteStopService;
+import java.util.Comparator;
 
 @Service
 public class RouteStopServiceImpl implements RouteStopService {
@@ -206,51 +207,90 @@ public class RouteStopServiceImpl implements RouteStopService {
     }
 
     @Override
-    public RouteStop addStopToRoute(Integer routeId, Integer stopId) {
-        return addStopToRoute(routeId, stopId, 1); // Mặc định là chiều đi (1)
-    }
-
-    @Override
-    public RouteStop addStopToRoute(Integer routeId, Integer stopId, Integer direction) {
+    @Transactional
+    public RouteStop addStopToRoute(Integer routeId, Integer stopId, Integer direction, Integer stopOrder) {
         try {
+            System.out.println("Thêm trạm vào tuyến: " + stopId + " -> " + routeId);
+            System.out.println("Yêu cầu thứ tự trạm: " + stopOrder);
+
+            // Lấy route và stop
             Optional<Routes> routeOpt = routeRepository.findById(routeId);
             Optional<Stops> stopOpt = stopRepository.findById(stopId);
 
             if (!routeOpt.isPresent() || !stopOpt.isPresent()) {
-                System.err.println("Không tìm thấy tuyến hoặc trạm dừng");
+                System.err.println("Route hoặc Stop không tồn tại");
                 return null;
             }
 
-            // Kiểm tra xem trạm đã tồn tại trong tuyến và chiều này chưa
-            List<RouteStop> existingStops = findByRouteIdAndDirection(routeId, direction);
-            for (RouteStop rs : existingStops) {
-                if (rs.getStop().getId().equals(stopId)) {
-                    System.out.println("Trạm đã tồn tại trong tuyến và chiều này");
-                    return rs; // Trạm đã tồn tại
-                }
+            Routes route = routeOpt.get();
+            Stops stop = stopOpt.get();
+
+            // Nếu stopOrder là null, tìm stopOrder lớn nhất và + 1
+            if (stopOrder == null) {
+                Integer maxOrder = findMaxStopOrderByRouteIdAndDirection(routeId, direction);
+                stopOrder = (maxOrder != null) ? maxOrder + 1 : 1;
+                System.out.println("Thứ tự trạm mới: " + stopOrder);
+            } else {
+                // Dời các trạm có stop_order >= stopOrder lên 1 đơn vị
+                shiftStopOrders(routeId, direction, stopOrder);
             }
 
-            // Tính toán stopOrder mới
-            int newOrder = 1;
-            if (!existingStops.isEmpty()) {
-                // Lấy stopOrder lớn nhất + 1
-                newOrder = existingStops.stream()
-                        .mapToInt(RouteStop::getStopOrder)
-                        .max()
-                        .orElse(0) + 1;
-            }
-
+            // Tạo RouteStop mới
             RouteStop routeStop = new RouteStop();
-            routeStop.setRoute(routeOpt.get());
-            routeStop.setStop(stopOpt.get());
+            routeStop.setRoute(route);
+            routeStop.setStop(stop);
             routeStop.setDirection(direction);
-            routeStop.setStopOrder(newOrder);
+            routeStop.setStopOrder(stopOrder);
 
-            return save(routeStop);
+            return routeStopRepository.save(routeStop);
         } catch (Exception e) {
             System.err.println("Lỗi khi thêm trạm vào tuyến: " + e.getMessage());
             e.printStackTrace();
-            return null;
+            throw e; // Ném lại ngoại lệ để transaction được rollback
+        }
+    }
+
+    /**
+     * Tìm stopOrder lớn nhất cho một tuyến và chiều
+     */
+    public Integer findMaxStopOrderByRouteIdAndDirection(Integer routeId, Integer direction) {
+        List<RouteStop> routeStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(routeId, direction);
+        if (routeStops == null || routeStops.isEmpty()) {
+            return 0;
+        }
+
+        return routeStops.stream()
+                .mapToInt(RouteStop::getStopOrder)
+                .max()
+                .orElse(0);
+    }
+
+    /**
+     * Dời thứ tự các trạm để tạo chỗ cho trạm mới
+     */
+    @Transactional
+    public void shiftStopOrders(Integer routeId, Integer direction, Integer fromOrder) {
+        try {
+            System.out.println("Dời thứ tự các trạm từ vị trí " + fromOrder);
+
+            // Lấy danh sách các trạm cần dời (có thứ tự >= fromOrder), sắp xếp giảm dần
+            List<RouteStop> routeStopsToShift = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(routeId, direction)
+                    .stream()
+                    .filter(rs -> rs.getStopOrder() >= fromOrder)
+                    .sorted(Comparator.comparing(RouteStop::getStopOrder).reversed())
+                    .collect(Collectors.toList());
+
+            // Dời từng trạm lên 1 đơn vị, bắt đầu từ trạm có thứ tự lớn nhất
+            for (RouteStop rs : routeStopsToShift) {
+                rs.setStopOrder(rs.getStopOrder() + 1);
+                routeStopRepository.update(rs);
+            }
+
+            System.out.println("Đã dời " + routeStopsToShift.size() + " trạm");
+        } catch (Exception e) {
+            System.err.println("Lỗi khi dời thứ tự các trạm: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Ném lại ngoại lệ để transaction được rollback
         }
     }
 

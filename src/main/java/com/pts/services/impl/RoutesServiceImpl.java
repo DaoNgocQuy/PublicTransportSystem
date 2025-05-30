@@ -1016,6 +1016,7 @@ public class RoutesServiceImpl implements RouteService {
 
         option.put("totalTime", busTime + walkTimeMinutes);
         option.put("walkingDistance", walkDistanceMeters);
+
         option.put("transfers", 0); // Không có chuyển tuyến
 
         // Thông tin chi tiết các chặng hành trình
@@ -1041,6 +1042,21 @@ public class RoutesServiceImpl implements RouteService {
 
         // Chặng 2: Đi xe buýt
         Map<String, Object> busLeg = new HashMap<>();
+        double busDistanceKm = 0;
+// Calculate bus distance between fromStop and toStop based on route path
+// Simplified: use straight-line distance between stops
+        busDistanceKm = calculateDistance(
+                fromStop.getLatitude(), fromStop.getLongitude(),
+                toStop.getLatitude(), toStop.getLongitude()
+        );
+        double busDistanceMeters = busDistanceKm * 1000;
+
+// Set distance on the bus leg
+        busLeg.put("distance", busDistanceMeters);
+
+// Calculate and set total distance
+        double totalDistance = walkDistanceMeters + busDistanceMeters;
+        option.put("totalDistance", totalDistance);
         busLeg.put("type", "BUS");
         busLeg.put("routeId", route.getId());
         busLeg.put("routeNumber", route.getName());

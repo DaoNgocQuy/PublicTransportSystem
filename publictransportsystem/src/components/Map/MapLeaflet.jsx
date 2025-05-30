@@ -367,125 +367,90 @@ const JourneySegment = React.memo(({ busStops, selectedRoute, direction, journey
             setRouteCoordinates([]);
             return;
         }
-        // Log để debug
+
         console.log("Journey Segment:", journeySegment);
         console.log("Bus Stops:", busStops);
 
+        let boardIndex = -1;
+        let alightIndex = -1;
 
-        // Lấy thông tin trạm lên và xuống từ journeySegment
-        const boardStopId = journeySegment.boardStop?.id;
-        const alightStopId = journeySegment.alightStop?.id;
-        let boardStop = null;
-        let alightStop = null;
-
-        // Cách 1: Thử tìm bằng ID
-        if (journeySegment.boardStop?.id) {
-            boardStop = busStops.find(stop =>
-                stop.id === journeySegment.boardStop.id ||
-                stop.stopId === journeySegment.boardStop.id
-            );
-        }
-
-        if (journeySegment.alightStop?.id) {
-            alightStop = busStops.find(stop =>
-                stop.id === journeySegment.alightStop.id ||
-                stop.stopId === journeySegment.alightStop.id
-            );
-        }
-
-        // Cách 2: Thử tìm bằng tọa độ
-        if (!boardStop && journeySegment.boardStop?.lat) {
-            boardStop = busStops.find(stop =>
-                Math.abs(stop.latitude - journeySegment.boardStop.lat) < 0.0001 &&
-                Math.abs(stop.longitude - journeySegment.boardStop.lng) < 0.0001
-            );
-        }
-
-        if (!alightStop && journeySegment.alightStop?.lat) {
-            alightStop = busStops.find(stop =>
-                Math.abs(stop.latitude - journeySegment.alightStop.lat) < 0.0001 &&
-                Math.abs(stop.longitude - journeySegment.alightStop.lng) < 0.0001
-            );
-        }
-
-        // Cách 3: Thử tìm bằng tên
-        if (!boardStop && journeySegment.boardStop?.name) {
-            boardStop = busStops.find(stop =>
-                (stop.name && stop.name.includes(journeySegment.boardStop.name)) ||
-                (stop.stopName && stop.stopName.includes(journeySegment.boardStop.name))
-            );
-        }
-
-        if (!alightStop && journeySegment.alightStop?.name) {
-            alightStop = busStops.find(stop =>
-                (stop.name && stop.name.includes(journeySegment.alightStop.name)) ||
-                (stop.stopName && stop.stopName.includes(journeySegment.alightStop.name))
-            );
-        }
-
-        // Xác định vị trí trong mảng
-        let boardIndex = boardStop ? busStops.indexOf(boardStop) : -1;
-        let alightIndex = alightStop ? busStops.indexOf(alightStop) : -1;
-
-        // Bây giờ có thể gán lại giá trị
+        // Phương pháp 1: Tìm dựa trên stopOrder
         if (journeySegment.boardStopOrder !== undefined &&
             journeySegment.alightStopOrder !== undefined) {
 
-            boardIndex = busStops.findIndex(stop => {
-                return stop.stopOrder === journeySegment.boardStopOrder;
-            });
+            boardIndex = busStops.findIndex(stop =>
+                stop.stopOrder === journeySegment.boardStopOrder);
 
-            alightIndex = busStops.findIndex(stop => {
-                return stop.stopOrder === journeySegment.alightStopOrder;
-            });
-        }
-        // Nếu không có thông tin trực tiếp về stopOrder, tìm theo ID trạm
-        else {
-            boardIndex = busStops.findIndex(stop => stop.id === boardStopId);
-            alightIndex = busStops.findIndex(stop => stop.id === alightStopId);
-        }
+            alightIndex = busStops.findIndex(stop =>
+                stop.stopOrder === journeySegment.alightStopOrder);
 
-        // Nếu không tìm thấy trạm lên hoặc xuống, thử so sánh tọa độ
-        if (boardIndex === -1 && journeySegment.boardStop) {
-            boardIndex = busStops.findIndex(stop => {
-                return Math.abs(stop.latitude - journeySegment.boardStop.lat) < 0.0001 &&
-                    Math.abs(stop.longitude - journeySegment.boardStop.lng) < 0.0001;
-            });
-        }
-
-        if (alightIndex === -1 && journeySegment.alightStop) {
-            alightIndex = busStops.findIndex(stop => {
-                return Math.abs(stop.latitude - journeySegment.alightStop.lat) < 0.0001 &&
-                    Math.abs(stop.longitude - journeySegment.alightStop.lng) < 0.0001;
-            });
-        }
-
-        // Nếu vẫn không tìm thấy, vẽ toàn bộ tuyến
-        if (boardIndex === -1 || alightIndex === -1) {
-            console.warn("Không tìm thấy trạm lên/xuống trong danh sách trạm", {
-                boardStopId, alightStopId, busStopsCount: busStops.length
-            });
-
-            // Trường hợp đặc biệt: Nếu tìm thấy trạm lên nhưng không tìm thấy trạm xuống
-            if (boardIndex !== -1) {
-                alightIndex = busStops.length - 1; // Giả định đi đến trạm cuối
+            if (boardIndex !== -1 && alightIndex !== -1) {
+                console.log("Tìm thấy trạm theo stopOrder:", { boardIndex, alightIndex });
             }
-            // Trường hợp đặc biệt: Nếu tìm thấy trạm xuống nhưng không tìm thấy trạm lên
-            else if (alightIndex !== -1) {
-                boardIndex = 0; // Giả định bắt đầu từ trạm đầu tiên
-            }
-            // Trường hợp không tìm thấy cả hai, vẽ toàn bộ tuyến
-            else {
-                boardIndex = 0;
-                alightIndex = busStops.length - 1;
-            }
+        }
+
+        // Phương pháp 2: Tìm dựa trên ID
+        if (boardIndex === -1 && journeySegment.boardStop?.id) {
+            boardIndex = busStops.findIndex(stop =>
+                stop.id === journeySegment.boardStop.id ||
+                stop.stopId === journeySegment.boardStop.id);
+        }
+
+        if (alightIndex === -1 && journeySegment.alightStop?.id) {
+            alightIndex = busStops.findIndex(stop =>
+                stop.id === journeySegment.alightStop.id ||
+                stop.stopId === journeySegment.alightStop.id);
+        }
+
+        // Phương pháp 3: Tìm dựa trên tọa độ
+        if (boardIndex === -1 && journeySegment.boardStop?.lat) {
+            boardIndex = busStops.findIndex(stop =>
+                Math.abs(stop.latitude - journeySegment.boardStop.lat) < 0.0001 &&
+                Math.abs(stop.longitude - journeySegment.boardStop.lng) < 0.0001);
+        }
+
+        if (alightIndex === -1 && journeySegment.alightStop?.lat) {
+            alightIndex = busStops.findIndex(stop =>
+                Math.abs(stop.latitude - journeySegment.alightStop.lat) < 0.0001 &&
+                Math.abs(stop.longitude - journeySegment.alightStop.lng) < 0.0001);
+        }
+
+        // Phương pháp 4: Tìm dựa trên tên
+        if (boardIndex === -1 && journeySegment.boardStop?.name) {
+            boardIndex = busStops.findIndex(stop =>
+                (stop.name && stop.name.includes(journeySegment.boardStop.name)) ||
+                (stop.stopName && stop.stopName.includes(journeySegment.boardStop.name)));
+        }
+
+        if (alightIndex === -1 && journeySegment.alightStop?.name) {
+            alightIndex = busStops.findIndex(stop =>
+                (stop.name && stop.name.includes(journeySegment.alightStop.name)) ||
+                (stop.stopName && stop.stopName.includes(journeySegment.alightStop.name)));
+        }
+
+        // Thêm log chi tiết để debug
+        console.log(`[boardStopId: ${journeySegment.boardStop?.id}, alightStopId: ${journeySegment.alightStop?.id}, busStopsCount: ${busStops.length}]`);
+
+        // Nếu vẫn không tìm thấy hoặc chỉ tìm thấy một trạm
+        if (boardIndex === -1 && alightIndex === -1) {
+            console.warn("Không tìm thấy cả hai trạm lên/xuống, sử dụng trạm đầu và cuối");
+            boardIndex = 0;
+            alightIndex = busStops.length - 1;
+        } else if (boardIndex === -1 && alightIndex !== -1) {
+            console.warn("Không tìm thấy trạm lên, sử dụng trạm đầu tiên");
+            boardIndex = 0;
+        } else if (boardIndex !== -1 && alightIndex === -1) {
+            console.warn("Không tìm thấy trạm xuống, sử dụng trạm cuối cùng");
+            alightIndex = busStops.length - 1;
         }
 
         // Đảm bảo đi đúng chiều (boardIndex < alightIndex)
         if (boardIndex > alightIndex) {
-            // Nếu người dùng đi ngược chiều tuyến, đổi chỗ trạm lên và xuống
+            console.log("Đảo ngược trạm lên/xuống vì boardIndex > alightIndex");
             [boardIndex, alightIndex] = [alightIndex, boardIndex];
         }
+
+        console.log("Kết quả tìm trạm:", { boardIndex, alightIndex, totalStops: busStops.length });
 
         // Lấy danh sách các trạm cần đi qua
         const relevantStops = busStops.slice(boardIndex, alightIndex + 1);
@@ -514,6 +479,8 @@ const JourneySegment = React.memo(({ busStops, selectedRoute, direction, journey
                     stop => `${stop.longitude},${stop.latitude}`
                 ).join(';');
 
+                console.log("Fetching route geometry with coordinates:", coordinates);
+
                 // Sử dụng OSRM API
                 const response = await fetch(
                     `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson`
@@ -527,6 +494,7 @@ const JourneySegment = React.memo(({ busStops, selectedRoute, direction, journey
                     setRouteCoordinates(latLngs);
                 } else {
                     // Fallback sang đường thẳng nếu API thất bại
+                    console.log("OSRM API thất bại, sử dụng đường thẳng");
                     const straightLinePositions = relevantStops.map(
                         stop => [stop.latitude, stop.longitude]
                     );
@@ -599,6 +567,7 @@ const WalkingPath = React.memo(({ origin, destination, type }) => {
     const [walkPath, setWalkPath] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [apiSource, setApiSource] = useState('none'); // Thêm state để theo dõi nguồn API
 
     const validOrigin = useMemo(() => {
         return Array.isArray(origin) && origin.length === 2 &&
@@ -610,16 +579,16 @@ const WalkingPath = React.memo(({ origin, destination, type }) => {
             !isNaN(destination[0]) && !isNaN(destination[1]);
     }, [destination]);
 
-    // Only create cache key if both coordinates are valid
+    // Cache key for storing paths
     const cacheKey = useMemo(() => {
         if (!validOrigin || !validDestination) return null;
         return `walk_${origin[0]},${origin[1]}_${destination[0]},${destination[1]}`;
     }, [origin, destination, validOrigin, validDestination]);
 
-    // Use a ref for path cache to persist between renders
+    // Path cache to avoid redundant API calls
     const pathCacheRef = React.useRef({});
 
-    // Determine path color based on type
+    // Path color based on type
     const pathColor = type === 'origin' ? '#4CAF50' :
         type === 'destination' ? '#e91e63' : '#2196F3';
 
@@ -630,80 +599,140 @@ const WalkingPath = React.memo(({ origin, destination, type }) => {
             return;
         }
 
-        // Check if path is already in cache
+        // Use cached path if available
         if (cacheKey && pathCacheRef.current[cacheKey]) {
+            console.log(`[WalkingPath] Sử dụng đường đi từ cache cho ${type}`, {
+                origin,
+                destination,
+                pathLength: pathCacheRef.current[cacheKey].length
+            });
             setWalkPath(pathCacheRef.current[cacheKey]);
+            setApiSource('cache');
             return;
         }
+
+        console.log(`[WalkingPath] Bắt đầu tìm đường đi cho ${type}`, {
+            origin,
+            destination
+        });
 
         const fetchWalkingPath = async () => {
             setIsLoading(true);
             setError(null);
 
             try {
-                // Create straight path as fallback
-                const straightPath = [origin, destination];
+                // Sử dụng OSRM API với profile "foot" để lấy đường đi bộ
+                const url = `https://router.project-osrm.org/route/v1/foot/${origin[1]},${origin[0]};${destination[1]},${destination[0]}?overview=full&geometries=geojson`;
 
-                try {
-                    // Try OSRM foot API first
-                    const osmrResponse = await fetch(
-                        `https://router.project-osrm.org/route/v1/foot/${origin[1]},${origin[0]};${destination[1]},${destination[0]}?overview=full&geometries=geojson`
-                    );
+                console.log(`[WalkingPath] Đang gọi OSRM API cho ${type}...`, url);
+                const response = await fetch(url);
 
-                    if (!osmrResponse.ok) {
-                        throw new Error(`OSRM API error: ${osmrResponse.status}`);
-                    }
-
-                    const osmrData = await osmrResponse.json();
-
-                    if (osmrData.code === 'Ok' && osmrData.routes && osmrData.routes.length > 0) {
-                        const coords = osmrData.routes[0].geometry.coordinates;
-                        const latLngs = coords.map(coord => [coord[1], coord[0]]);
-
-                        // Save to cache and set state
-                        if (cacheKey) {
-                            pathCacheRef.current[cacheKey] = latLngs;
-                        }
-                        setWalkPath(latLngs);
-                        setIsLoading(false);
-                        return;
-                    }
-                } catch (osmrError) {
-                    console.error("OSRM API error:", osmrError);
-                    // Continue with fallback options
+                if (!response.ok) {
+                    throw new Error(`OSRM API error: ${response.status}`);
                 }
 
-                // If OSRM fails, fall back to straight line
-                console.log("Using straight line path as fallback");
-                setWalkPath(straightPath);
+                const data = await response.json();
 
-                // Store fallback in cache
-                if (cacheKey) {
-                    pathCacheRef.current[cacheKey] = straightPath;
+                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                    // Lấy tọa độ từ kết quả API và chuyển đổi định dạng
+                    const coords = data.routes[0].geometry.coordinates;
+                    const latLngs = coords.map(coord => [coord[1], coord[0]]);
+
+                    console.log(`[WalkingPath] OSRM API thành công cho ${type}`, {
+                        pointCount: latLngs.length,
+                        distance: data.routes[0].distance,
+                        duration: data.routes[0].duration
+                    });
+
+                    // Lưu vào cache và cập nhật state
+                    if (cacheKey) {
+                        pathCacheRef.current[cacheKey] = latLngs;
+                    }
+                    setWalkPath(latLngs);
+                    setApiSource('osrm');
+                    return;
+                } else {
+                    // Nếu không lấy được từ OSM, sử dụng backend API
+                    console.warn(`[WalkingPath] OSRM API không trả về kết quả hợp lệ cho ${type}, chuyển sang backend API`);
+                    await fetchFromBackend();
                 }
             } catch (error) {
-                console.error("Error fetching walking path:", error);
-                setError(error.message);
-                // Fall back to straight line
-                setWalkPath([origin, destination]);
+                console.error(`[WalkingPath] Lỗi khi gọi OSRM API cho ${type}:`, error);
+                // Nếu OSRM thất bại, sử dụng backend API
+                await fetchFromBackend();
             } finally {
                 setIsLoading(false);
             }
         };
 
-        // Add small delay to prevent too many API calls
+        // Phương thức gọi API backend để lấy đường đi bộ
+        const fetchFromBackend = async () => {
+            try {
+                const backendUrl = `/api/routes/walking-path?fromLat=${origin[0]}&fromLng=${origin[1]}&toLat=${destination[0]}&toLng=${destination[1]}`;
+                console.log(`[WalkingPath] Đang gọi Backend API cho ${type}...`, backendUrl);
+
+                const response = await fetch(backendUrl);
+
+                if (!response.ok) {
+                    throw new Error(`Backend API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data && data.path && data.path.length > 0) {
+                    // API trả về định dạng [[lat, lng], [lat, lng],...]
+                    console.log(`[WalkingPath] Backend API thành công cho ${type}`, {
+                        pointCount: data.path.length,
+                        firstPoint: data.path[0],
+                        lastPoint: data.path[data.path.length - 1]
+                    });
+
+                    if (cacheKey) {
+                        pathCacheRef.current[cacheKey] = data.path;
+                    }
+                    setWalkPath(data.path);
+                    setApiSource('backend');
+                } else {
+                    throw new Error("Backend API didn't return valid path");
+                }
+            } catch (backendError) {
+                console.error(`[WalkingPath] Lỗi khi gọi Backend API cho ${type}:`, backendError);
+                // Phương án cuối cùng: vẽ đường thẳng đơn giản
+                const straightPath = [origin, destination];
+                console.log(`[WalkingPath] Sử dụng đường thẳng đơn giản cho ${type}`);
+
+                setWalkPath(straightPath);
+                setApiSource('fallback');
+
+                if (cacheKey) {
+                    pathCacheRef.current[cacheKey] = straightPath;
+                }
+                setError("Không thể lấy đường đi chính xác");
+            }
+        };
+
+        // Thêm delay nhỏ để tránh gọi API quá nhiều lần
         const timeoutId = setTimeout(() => {
             fetchWalkingPath();
         }, 300);
 
         return () => clearTimeout(timeoutId);
-    }, [origin, destination, cacheKey, validOrigin, validDestination]);
-    //không render nếu tọa độ không hợp lệ hoặc không có đường đi bộ
+    }, [origin, destination, cacheKey, validOrigin, validDestination, type]);
+
+    // Log khi render để xem đường đi từ nguồn nào
+    useEffect(() => {
+        if (walkPath.length > 0) {
+            console.log(`[WalkingPath] Hiển thị đường đi bộ ${type} từ nguồn: ${apiSource}`, {
+                pointCount: walkPath.length
+            });
+        }
+    }, [walkPath, apiSource, type]);
+
     if (!validOrigin || !validDestination || walkPath.length === 0) {
         return null;
     }
 
-    // Render đường đi bộ (nét đứt)
+    // Render walking path with dashed line
     return (
         <Polyline
             positions={walkPath}
@@ -715,6 +744,16 @@ const WalkingPath = React.memo(({ origin, destination, type }) => {
             lineCap="round"
         >
             {error && <Popup>Không thể tải đường đi chính xác</Popup>}
+            <Popup>
+                <div>
+                    <strong>{type === 'origin' ? 'Đường đi bộ đến trạm' :
+                        type === 'destination' ? 'Đường đi bộ từ trạm' : 'Đường đi bộ'}</strong>
+                    <p>Nguồn dữ liệu: {apiSource === 'osrm' ? 'OpenStreetMap' :
+                        apiSource === 'backend' ? 'Backend API' :
+                            apiSource === 'cache' ? 'Cache' : 'Đường thẳng'}</p>
+                    <p>Số điểm: {walkPath.length}</p>
+                </div>
+            </Popup>
         </Polyline>
     );
 });

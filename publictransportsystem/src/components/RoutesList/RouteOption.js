@@ -12,9 +12,65 @@ const RouteOption = ({ option, onClick, isSelected = false }) => {
     const busLegs = option.legs ? option.legs.filter(leg => leg.type === 'BUS') : [];
     const firstBusLeg = busLegs.length > 0 ? busLegs[0] : null;
 
+    // Calculate total walking and bus distances from all legs
+    const calculateDistances = () => {
+        if (!option.legs) return { walkingDistance: 0, busDistance: 0 };
+
+        // Get walking distance directly from API response
+        const walkingDistance = Math.abs(parseFloat(option.walkingDistance) || 0);
+
+        // Calculate total distance from legs if available
+        let totalDistance = 0;
+        let calculatedBusDistance = 0;
+
+        if (option.legs && option.legs.length > 0) {
+            option.legs.forEach(leg => {
+                const legDistance = Math.abs(parseFloat(leg.distance) || 0);
+                totalDistance += legDistance;
+
+                if (leg.type === 'BUS') {
+                    calculatedBusDistance += legDistance;
+                }
+            });
+        } else {
+            // Fallback to option's total distance if available
+            totalDistance = Math.abs(parseFloat(option.totalDistance) || 0);
+        }
+
+        // If totalDistance is still 0 or less than walkingDistance, use walking distance as base
+        if (totalDistance === 0 || totalDistance < walkingDistance) {
+            // If this is a walking route, just use walking distance
+            if (isWalkingOnly) {
+                totalDistance = walkingDistance;
+            } else {
+                // For bus routes, estimate - assume bus distance is at least equal to walking
+                totalDistance = walkingDistance * 2;
+            }
+        }
+
+        // Calculate bus distance as the difference (if not already calculated from legs)
+        let busDistance = calculatedBusDistance;
+        if (busDistance === 0 && !isWalkingOnly) {
+            busDistance = totalDistance - walkingDistance;
+        }
+
+        // Ensure bus distance is never negative
+        busDistance = Math.max(0, busDistance);
+
+        console.log("Walking:", walkingDistance, "Bus:", busDistance, "Total:", totalDistance);
+
+        return { walkingDistance, busDistance };
+    };
+
+    const { walkingDistance, busDistance } = calculateDistances();
+
     // Format khoảng cách
     const formatDistance = (meters) => {
         if (!meters && meters !== 0) return "";
+
+        // Ensure meters is a positive number
+        meters = Math.abs(parseFloat(meters));
+
         if (meters < 1000) {
             return `${Math.round(meters)} m`;
         }
@@ -24,6 +80,9 @@ const RouteOption = ({ option, onClick, isSelected = false }) => {
     // Format thời gian phút sang giờ:phút nếu cần
     const formatTime = (minutes) => {
         if (!minutes && minutes !== 0) return "? phút";
+
+        // Ensure minutes is a positive number
+        minutes = Math.abs(parseInt(minutes));
 
         if (minutes < 60) {
             return `${minutes} phút`;
@@ -69,7 +128,7 @@ const RouteOption = ({ option, onClick, isSelected = false }) => {
                 <div className="route-distances walking-only">
                     <div className="walk-distance full-width">
                         <FaWalking className="distance-icon" />
-                        <span>Đi bộ {formatDistance(option.totalDistance || 0)}</span>
+                        <span>Đi bộ {formatDistance(walkingDistance)}</span>
                     </div>
                 </div>
             ) : (
@@ -77,12 +136,11 @@ const RouteOption = ({ option, onClick, isSelected = false }) => {
                 <div className="route-distances">
                     <div className="walk-distance">
                         <FaWalking className="distance-icon" />
-                        {formatDistance(option.walkingDistance || 0)}
+                        {formatDistance(walkingDistance)}
                     </div>
                     <FaArrowRight className="arrow-icon" />
                     <div className="bus-distance">
-                        <FaBus className="distance-icon" />
-                        {formatDistance((option.totalDistance - option.walkingDistance) || 0)}
+                        <FaBus className="distance-icon" /> {formatDistance(busDistance)}
                     </div>
                 </div>
             )}

@@ -125,7 +125,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         if (route.getId() == null) {
             String sql = "INSERT INTO routes (name, route_type_id, start_location, end_location, total_stops, "
                     + "operation_start_time, operation_end_time, frequency_minutes, is_walking_route, is_active) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
@@ -134,11 +134,12 @@ public class RoutesRepositoryImpl implements RoutesRepository {
                 ps.setObject(2, route.getRouteTypeIdValue());
                 ps.setString(3, route.getStartLocation());
                 ps.setString(4, route.getEndLocation());
+                ps.setObject(5, route.getTotalStops());
                 ps.setObject(6, route.getOperationStartTime());
                 ps.setObject(7, route.getOperationEndTime());
                 ps.setObject(8, route.getFrequencyMinutes());
-                ps.setObject(10, route.getIsWalkingRoute());
-                ps.setObject(11, route.getActive());
+                ps.setObject(9, route.getIsWalkingRoute());
+                ps.setObject(10, route.getActive());
                 return ps;
             }, keyHolder);
 
@@ -148,12 +149,13 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         } else {
             String sql = "UPDATE routes SET name = ?, route_type_id = ?, start_location = ?, end_location = ?, "
                     + "total_stops = ?, operation_start_time = ?, operation_end_time = ?, frequency_minutes = ?, "
-                    + " is_walking_route = ?, is_active = ? WHERE id = ?";
+                    + "is_walking_route = ?, is_active = ? WHERE id = ?";
             jdbcTemplate.update(sql,
                     route.getName(),
                     route.getRouteTypeIdValue(),
                     route.getStartLocation(),
                     route.getEndLocation(),
+                    route.getTotalStops(), // Thêm dòng này
                     route.getOperationStartTime(),
                     route.getOperationEndTime(),
                     route.getFrequencyMinutes(),

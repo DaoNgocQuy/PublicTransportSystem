@@ -17,6 +17,7 @@
     "@testing-library/dom": "^10.4.0",
     "axios": "^1.8.4",
     "bootstrap": "^5.3.5",
+    "firebase": "^11.8.1",
     "framer-motion": "^12.9.2",
     "leaflet": "^1.9.4",
     "react": "^19.1.0",

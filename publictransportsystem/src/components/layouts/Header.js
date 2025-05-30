@@ -20,7 +20,7 @@ const Header = () => {
       sessionStorage.removeItem('isLoggedIn');
       // Các hành động đăng xuất khác nếu cần
     }
-    
+
     navigate('/login');
   };
 
@@ -29,10 +29,10 @@ const Header = () => {
       <Container>
         <Navbar.Brand as={Link} to="/">Public Transport System</Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
-        <Navbar.Collapse id="basic-navbar-nav">
-          <Nav className="me-auto">
+        <Navbar.Collapse id="basic-navbar-nav">          <Nav className="me-auto">
             <Nav.Link as={Link} to="/">Trang chủ</Nav.Link>
-            <Nav.Link as={Link} to="/map">Bản đồ</Nav.Link>
+            <Nav.Link as={Link} to="/traffic">Tình trạng giao thông</Nav.Link>
+            <Nav.Link as={Link} to="/traffic-admin">Quản lý giao thông</Nav.Link>
           </Nav>
 
           {currentUser && (

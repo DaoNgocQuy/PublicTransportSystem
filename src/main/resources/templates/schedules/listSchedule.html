@@ -99,9 +99,6 @@
     <!-- Hiển thị số lượng kết quả -->
     <div class="d-flex justify-content-between mb-3">
         <div>
-            <span class="badge bg-info" th:text="'Tổng số: ' + ${#lists.size(schedules)} + ' lịch trình'"></span>
-        </div>
-        <div>
             <a th:href="@{/schedules/add}" class="btn btn-success">
                 <i class="bi bi-plus-circle"></i> Thêm lịch trình mới
             </a>
@@ -147,6 +144,90 @@
             </tr>
             </tbody>
         </table>
+    </div>
+
+    <!-- Pagination controls -->
+    <div th:if="${totalItems > 0}" class="d-flex justify-content-center mt-4" style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
+        <nav aria-label="Phân trang" style="width: 100%;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <span class="text-muted">Hiển thị trang <span th:text="${currentPage + 1}"></span> trên <span th:text="${totalPages}"></span></span>
+                </div>
+                <div>
+                    <span class="text-muted">Tổng số: <span th:text="${totalItems}"></span> lịch trình</span>
+                </div>
+            </div>
+            <ul class="pagination justify-content-center">                <!-- First page button -->
+                <li th:class="${currentPage == 0} ? 'page-item disabled' : 'page-item'">
+                    <a class="page-link" th:href="@{${searchUrl}(
+                        page=0, 
+                        size=${pageSize}, 
+                        routeId=${routeId}, 
+                        vehicleId=${vehicleId}, 
+                        startTime=${startTime}, 
+                        endTime=${endTime}
+                    )}" aria-label="First">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                    </a>
+                </li>
+                
+                <!-- Previous page button -->
+                <li th:class="${currentPage == 0} ? 'page-item disabled' : 'page-item'">
+                    <a class="page-link" th:href="@{${searchUrl}(
+                        page=${currentPage - 1}, 
+                        size=${pageSize}, 
+                        routeId=${routeId}, 
+                        vehicleId=${vehicleId}, 
+                        startTime=${startTime}, 
+                        endTime=${endTime}
+                    )}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+
+                <!-- Page numbers -->
+                <li th:each="i : ${#numbers.sequence(0, totalPages - 1)}" 
+                    th:if="${i >= currentPage - 2 && i <= currentPage + 2}"
+                    th:class="${i == currentPage} ? 'page-item active' : 'page-item'">
+                    <a class="page-link" th:href="@{${searchUrl}(
+                        page=${i}, 
+                        size=${pageSize}, 
+                        routeId=${routeId}, 
+                        vehicleId=${vehicleId}, 
+                        startTime=${startTime}, 
+                        endTime=${endTime}
+                    )}" th:text="${i + 1}"></a>
+                </li>
+
+                <!-- Next page button -->
+                <li th:class="${currentPage + 1 >= totalPages} ? 'page-item disabled' : 'page-item'">
+                    <a class="page-link" th:href="@{${searchUrl}(
+                        page=${currentPage + 1}, 
+                        size=${pageSize}, 
+                        routeId=${routeId}, 
+                        vehicleId=${vehicleId}, 
+                        startTime=${startTime}, 
+                        endTime=${endTime}
+                    )}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+                
+                <!-- Last page button -->
+                <li th:class="${currentPage + 1 >= totalPages} ? 'page-item disabled' : 'page-item'">
+                    <a class="page-link" th:href="@{${searchUrl}(
+                        page=${totalPages - 1 > 0 ? totalPages - 1 : 0}, 
+                        size=${pageSize}, 
+                        routeId=${routeId}, 
+                        vehicleId=${vehicleId}, 
+                        startTime=${startTime}, 
+                        endTime=${endTime}
+                    )}" aria-label="Last">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
     </div>
 
     <div th:replace="base :: footer"></div>

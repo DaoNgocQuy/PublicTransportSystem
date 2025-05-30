@@ -82,12 +82,28 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
     public List<Schedules> findAll() {
         return jdbcTemplate.query(BASE_SELECT_SQL, fullScheduleRowMapper);
     }
+      @Override
+    public List<Schedules> findAllWithPagination(int offset, int limit) {
+        String sql = BASE_SELECT_SQL + " ORDER BY s.id LIMIT ? OFFSET ?";
+        System.out.println("SQL for pagination: " + sql + ", limit=" + limit + ", offset=" + offset);
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, limit, offset);
+    }
+      @Override
+    public int countAll() {
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM schedules", Integer.class);
+        System.out.println("Total count: " + count);
+        return count != null ? count : 0;
+    }
 
     @Override
     public Optional<Schedules> findById(Integer id) {
-        String sql = BASE_SELECT_SQL + " WHERE s.id = ?";
-        List<Schedules> schedules = jdbcTemplate.query(sql, fullScheduleRowMapper, id);
-        return schedules.isEmpty() ? Optional.empty() : Optional.of(schedules.get(0));
+        try {
+            String sql = BASE_SELECT_SQL + " WHERE s.id = ?";
+            Schedules schedule = jdbcTemplate.queryForObject(sql, fullScheduleRowMapper, id);
+            return Optional.ofNullable(schedule);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     @Override
@@ -95,25 +111,79 @@ public class ScheduleRepositoryImpl implements ScheduleRepository {
         String sql = BASE_SELECT_SQL + " WHERE s.vehicle_id = ?";
         return jdbcTemplate.query(sql, fullScheduleRowMapper, vehicleId.getId());
     }
+    
+    @Override
+    public List<Schedules> findByVehicleIdWithPagination(Vehicles vehicleId, int offset, int limit) {
+        String sql = BASE_SELECT_SQL + " WHERE s.vehicle_id = ? ORDER BY id LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, vehicleId.getId(), limit, offset);
+    }
+      @Override
+    public int countByVehicleId(Vehicles vehicleId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM schedules WHERE vehicle_id = ?", 
+                Integer.class, 
+                vehicleId.getId());
+        return count != null ? count : 0;
+    }
 
     @Override
     public List<Schedules> findByRouteId(Routes routeId) {
         String sql = BASE_SELECT_SQL + " WHERE s.route_id = ?";
         return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId.getId());
     }
+    
+    @Override
+    public List<Schedules> findByRouteIdWithPagination(Routes routeId, int offset, int limit) {
+        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ? ORDER BY id LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId.getId(), limit, offset);
+    }
+      @Override
+    public int countByRouteId(Routes routeId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM schedules WHERE route_id = ?", 
+                Integer.class, 
+                routeId.getId());
+        return count != null ? count : 0;
+    }
 
     @Override
     public List<Schedules> findByRouteId(Integer routeId) {
-        
         String sql = BASE_SELECT_SQL + " WHERE s.route_id = ?";
         return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId);
-
+    }
+    
+    @Override
+    public List<Schedules> findByRouteIdWithPagination(Integer routeId, int offset, int limit) {
+        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ? ORDER BY id LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId, limit, offset);
+    }
+      @Override
+    public int countByRouteId(Integer routeId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM schedules WHERE route_id = ?", 
+                Integer.class, 
+                routeId);
+        return count != null ? count : 0;
     }
 
     @Override
     public List<Schedules> findByDepartureTimeBetween(Time startTime, Time endTime) {
         String sql = BASE_SELECT_SQL + " WHERE s.departure_time BETWEEN ? AND ?";
         return jdbcTemplate.query(sql, fullScheduleRowMapper, startTime, endTime);
+    }
+    
+    @Override
+    public List<Schedules> findByDepartureTimeBetweenWithPagination(Time startTime, Time endTime, int offset, int limit) {
+        String sql = BASE_SELECT_SQL + " WHERE s.departure_time BETWEEN ? AND ? ORDER BY departure_time LIMIT ? OFFSET ?";
+        return jdbcTemplate.query(sql, fullScheduleRowMapper, startTime, endTime, limit, offset);
+    }
+      @Override
+    public int countByDepartureTimeBetween(Time startTime, Time endTime) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM schedules WHERE departure_time BETWEEN ? AND ?", 
+                Integer.class, 
+                startTime, endTime);
+        return count != null ? count : 0;
     }
 
     @Override

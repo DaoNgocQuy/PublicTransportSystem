@@ -5,8 +5,6 @@ import com.pts.pojo.Vehicles;
 import com.pts.pojo.Routes;
 import com.pts.repositories.NotificationRepository;
 import com.pts.services.EmailService;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Map;
 import com.pts.services.ScheduleService;
 import com.pts.services.VehicleService;
@@ -36,16 +34,34 @@ public class ScheduleController {
     private RouteService routeService;
 
     @Autowired
-    private NotificationRepository notificationRepository;
-
-    @Autowired
-    private EmailService emailService;
-
-    @GetMapping
-    public String listSchedules(Model model) {
-        model.addAttribute("schedules", scheduleService.getAllSchedules());
+    private NotificationRepository notificationRepository;    @Autowired
+    private EmailService emailService;    @GetMapping
+    public String listSchedules(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
+            Model model) {
+        
+        Map<String, Object> response = scheduleService.getSchedulesWithPagination(page, size);
+        
+        model.addAttribute("schedules", response.get("schedules"));
+        model.addAttribute("currentPage", response.get("currentPage"));
+        model.addAttribute("totalItems", response.get("totalItems"));
+        model.addAttribute("totalPages", response.get("totalPages"));
+        model.addAttribute("pageSize", size);
+        
+        // Debug print for pagination info
+        System.out.println("Pagination Info:");
+        System.out.println("Current Page: " + response.get("currentPage"));
+        System.out.println("Total Items: " + response.get("totalItems"));
+        System.out.println("Total Pages: " + response.get("totalPages"));
+        System.out.println("Page Size: " + size);
+        
         model.addAttribute("vehicles", vehicleService.getAllVehicles());
         model.addAttribute("routes", routeService.getAllRoutes());
+        
+        // Add the base URL for pagination
+        model.addAttribute("searchUrl", "/schedules");
+        
         return "schedules/listSchedule";
     }
 
@@ -178,18 +194,18 @@ public class ScheduleController {
     public String deleteSchedule(@PathVariable Integer id) {
         scheduleService.deleteSchedule(id);
         return "redirect:/schedules";
-    }
-
-    @GetMapping("/search")
+    }    @GetMapping("/search")
     public String searchSchedules(
             @RequestParam(required = false) Integer routeId,
             @RequestParam(required = false) Integer vehicleId,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size,
             Model model) {
 
         try {
-            List<Schedules> schedules;
+            Map<String, Object> response;
 
             // Chuyển đổi startTime và endTime từ String thành Time nếu có
             Time startTimeObj = null;
@@ -207,27 +223,73 @@ public class ScheduleController {
             if (routeId != null) {
                 Routes route = new Routes();
                 route.setId(routeId);
-                schedules = scheduleService.getSchedulesByRoute(route);
+                response = scheduleService.getSchedulesByRouteWithPagination(route, page, size);
+                
+                // Debug log
+                System.out.println("Search by route: " + routeId);
             } else if (vehicleId != null) {
                 Vehicles vehicle = new Vehicles();
                 vehicle.setId(vehicleId);
-                schedules = scheduleService.getSchedulesByVehicle(vehicle);
+                response = scheduleService.getSchedulesByVehicleWithPagination(vehicle, page, size);
+                
+                // Debug log
+                System.out.println("Search by vehicle: " + vehicleId);
             } else if (startTimeObj != null && endTimeObj != null) {
-                schedules = scheduleService.getSchedulesByTimeRange(startTimeObj, endTimeObj);
+                response = scheduleService.getSchedulesByTimeRangeWithPagination(startTimeObj, endTimeObj, page, size);
+                
+                // Debug log
+                System.out.println("Search by time range: " + startTime + " - " + endTime);
             } else {
-                schedules = scheduleService.getAllSchedules();
+                response = scheduleService.getSchedulesWithPagination(page, size);
+                
+                // Debug log
+                System.out.println("No search criteria, showing all with pagination");
             }
 
-            model.addAttribute("schedules", schedules);
+            model.addAttribute("schedules", response.get("schedules"));
+            model.addAttribute("currentPage", response.get("currentPage"));
+            model.addAttribute("totalItems", response.get("totalItems"));
+            model.addAttribute("totalPages", response.get("totalPages"));
+            model.addAttribute("pageSize", size);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
+            
+            // Add search parameters for pagination links
+            if (routeId != null) {
+                model.addAttribute("routeId", routeId);
+                System.out.println("Added routeId to model: " + routeId);
+            }
+            if (vehicleId != null) {
+                model.addAttribute("vehicleId", vehicleId);
+                System.out.println("Added vehicleId to model: " + vehicleId);
+            }
+            if (startTime != null) {
+                model.addAttribute("startTime", startTime);
+                System.out.println("Added startTime to model: " + startTime);
+            }
+            if (endTime != null) {
+                model.addAttribute("endTime", endTime);
+                System.out.println("Added endTime to model: " + endTime);
+            }
+            
+            // Add the search URL for pagination
+            model.addAttribute("searchUrl", "/schedules/search");
+            
             return "schedules/listSchedule";
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("error", e.getMessage());
-            model.addAttribute("schedules", scheduleService.getAllSchedules());
+            
+            // In case of error, fallback to regular pagination
+            Map<String, Object> response = scheduleService.getSchedulesWithPagination(page, size);
+            model.addAttribute("schedules", response.get("schedules"));
+            model.addAttribute("currentPage", response.get("currentPage"));
+            model.addAttribute("totalItems", response.get("totalItems"));
+            model.addAttribute("totalPages", response.get("totalPages"));
+            model.addAttribute("pageSize", size);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
+            
             return "schedules/listSchedule";
         }
     }

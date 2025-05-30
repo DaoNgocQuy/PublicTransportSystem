@@ -89,99 +89,60 @@ public class StopServiceImpl implements StopService {
     }
 
     @Override
-    public List<Stops> findNearbyStops(double lat, double lng, double radiusMeters) {
-        // Giới hạn bán kính tìm kiếm là 1000m
-        double effectiveRadius = Math.min(radiusMeters, 1000);
-
-        // Lấy tất cả trạm từ repository
+    public List<Stops> findNearbyStops(double lat, double lng, int radiusInMeters) {
+        // Tìm tất cả các trạm
         List<Stops> allStops = stopRepository.findAll();
 
-        // Lọc ra các trạm trong bán kính
-        return allStops.stream().filter(stop -> {
-            if (stop.getLatitude() == null || stop.getLongitude() == null) {
-                return false;
-            }
-
-            double stopLat = stop.getLatitude();
-            double stopLng = stop.getLongitude();
-
-            // Tính khoảng cách bằng công thức Haversine
-            double distance = calculateHaversineDistance(lat, lng, stopLat, stopLng);
-
-            // Chuyển km thành m và so sánh với bán kính
-            return (distance * 1000) <= effectiveRadius;
-        }).collect(Collectors.toList());
+        // Lọc các trạm trong bán kính
+        double radiusInKm = radiusInMeters / 1000.0;
+        return allStops.stream()
+                .filter(stop -> {
+                    double distance = calculateDistance(lat, lng, stop.getLatitude(), stop.getLongitude());
+                    return distance <= radiusInKm;
+                })
+                .sorted((s1, s2) -> {
+                    double d1 = calculateDistance(lat, lng, s1.getLatitude(), s1.getLongitude());
+                    double d2 = calculateDistance(lat, lng, s2.getLatitude(), s2.getLongitude());
+                    return Double.compare(d1, d2);
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radiusMeters) {
         // Giới hạn bán kính tối đa là 1000m
-        double effectiveRadius = Math.min(radiusMeters, 1000);
-
-        List<Stops> nearbyStops = findNearbyStops(lat, lng, effectiveRadius);
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (Stops stop : nearbyStops) {
-            Map<String, Object> stopMap = new HashMap<>();
-            stopMap.put("id", stop.getId());
-            stopMap.put("name", stop.getStopName());
-            stopMap.put("address", stop.getAddress());
-            stopMap.put("latitude", stop.getLatitude());
-            stopMap.put("longitude", stop.getLongitude());
-
-            // Tính khoảng cách chính xác từ vị trí người dùng đến trạm
-            double distance = calculateHaversineDistance(lat, lng, stop.getLatitude(), stop.getLongitude()) * 1000; // Chuyển km -> m
-            stopMap.put("distance", Math.round(distance)); // Làm tròn khoảng cách
-
-            // Lấy danh sách các tuyến đi qua điểm dừng này thông qua bảng route_stops
-            List<RouteStop> routeStops = routeStopRepository.findByStopId(stop.getId());
-            if (!routeStops.isEmpty()) {
-                List<Map<String, Object>> routeInfos = new ArrayList<>();
-
-                for (RouteStop rs : routeStops) {
-                    Routes route = rs.getRoute();
-                    Map<String, Object> routeMap = new HashMap<>();
-                    routeMap.put("id", route.getId());
-                    routeMap.put("name", route.getName());
-                    routeMap.put("color", route.getRouteColor());
-                    routeMap.put("stopOrder", rs.getStopOrder());
-
-                    // Thêm thông tin chiều
-                    if (rs.getDirection() != null) {
-                        routeMap.put("direction", rs.getDirection());
-                    }
-
-                    routeInfos.add(routeMap);
-                }
-
-                stopMap.put("routes", routeInfos);
-            }
-
-            result.add(stopMap);
-        }
-
-        // Sắp xếp kết quả theo khoảng cách gần nhất
-        result.sort(Comparator.comparingDouble(stop -> ((Number) stop.get("distance")).doubleValue()));
-
-        return result;
+        
+        return null;
     }
 
-    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
-        // Bán kính trái đất trong km
+    @Override
+    public List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder) {
+        try {
+            return stopRepository.findStopsByRouteIdAndStopOrderRange(routeId, startOrder, endOrder);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tìm trạm theo khoảng thứ tự: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    
+
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        // Radius of the Earth in km
         final int R = 6371;
 
-        // Chuyển đổi độ sang radian
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
+        // Convert degrees to radians
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
 
-        // Công thức Haversine
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+        // Haversine formula
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-        // Khoảng cách theo km
+        // Distance in km
         return R * c;
     }
 }

@@ -60,7 +60,7 @@ public class ApiScheduleController {
 
         if (schedules == null || schedules.size() < 2) {
             return ResponseEntity.ok(Map.of(
-                    "frequency", null,
+                    "frequency", 0,
                     "formattedFrequency", "N/A",
                     "message", "Không đủ dữ liệu lịch trình để tính giãn cách"
             ));

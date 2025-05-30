@@ -150,16 +150,42 @@ export const getRouteLegsDetails = async (routeOption) => {
             busLegs.map(async (leg) => {
                 if (leg.routeId) {
                     try {
-                        const details = await authApi.get(`/api/routes/${leg.routeId}/stops`);
+                        console.log(`Fetching route details for route ${leg.routeId}`);
+
+                        // Use the correct endpoint - this endpoint returns complete route details including stops
+                        const details = await authApi.get(`api/routes/${leg.routeId}`);
+
+                        // Extract stops from the route details response
+                        const stopsData = details.data?.stopsInbound || details.data?.stopsOutbound || [];
+                        console.log(`Got ${stopsData.length} stops for route ${leg.routeId}`);
+
                         return {
                             ...leg,
-                            stops: details.data,
+                            stops: stopsData,
                             detailsFetched: true
                         };
                     } catch (err) {
-                        console.log(`Không thể tải trạm cho tuyến ${leg.routeId}, sử dụng dữ liệu có sẵn`);
-                        // Continue with existing data if we can't fetch stops
-                        return leg;
+                        console.log(`Không thể tải trạm cho tuyến ${leg.routeId}, sử dụng dữ liệu có sẵn`, err);
+                        console.error("API Error details:", {
+                            status: err.response?.status,
+                            statusText: err.response?.statusText,
+                            data: err.response?.data,
+                            url: err.config?.url
+                        });
+
+                        // Fall back to trying the stops endpoint via a different controller
+                        try {
+                            console.log(`Trying to get stops through stop controller for route ${leg.routeId}`);
+                            const fallbackResponse = await authApi.get(`api/stops/route/${leg.routeId}`);
+                            return {
+                                ...leg,
+                                stops: fallbackResponse.data,
+                                detailsFetched: true
+                            };
+                        } catch (fallbackErr) {
+                            console.error("Fallback also failed:", fallbackErr.message);
+                            return leg;
+                        }
                     }
                 }
                 return leg;

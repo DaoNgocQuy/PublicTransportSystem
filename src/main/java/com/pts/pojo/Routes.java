@@ -41,7 +41,6 @@ import java.sql.Time;
     @NamedQuery(name = "Routes.findByOperationStartTime", query = "SELECT r FROM Routes r WHERE r.operationStartTime = :operationStartTime"),
     @NamedQuery(name = "Routes.findByOperationEndTime", query = "SELECT r FROM Routes r WHERE r.operationEndTime = :operationEndTime"),
     @NamedQuery(name = "Routes.findByFrequencyMinutes", query = "SELECT r FROM Routes r WHERE r.frequencyMinutes = :frequencyMinutes"),
-    @NamedQuery(name = "Routes.findByRouteColor", query = "SELECT r FROM Routes r WHERE r.routeColor = :routeColor"),
     @NamedQuery(name = "Routes.findByIsWalkingRoute", query = "SELECT r FROM Routes r WHERE r.isWalkingRoute = :isWalkingRoute"),
     @NamedQuery(name = "Routes.findByIsActive", query = "SELECT r FROM Routes r WHERE r.isActive = :isActive"),
     @NamedQuery(name = "Routes.findByCreatedAt", query = "SELECT r FROM Routes r WHERE r.createdAt = :createdAt"),
@@ -59,10 +58,7 @@ public class Routes implements Serializable {
     @Size(max = 255)
     @Column(name = "end_location")
     private String endLocation;
-    @Size(max = 10)
-    @Column(name = "route_color")
-    private String routeColor;
-
+    
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -188,13 +184,7 @@ public class Routes implements Serializable {
         this.frequencyMinutes = frequencyMinutes;
     }
 
-    public String getRouteColor() {
-        return routeColor;
-    }
-
-    public void setRouteColor(String routeColor) {
-        this.routeColor = routeColor;
-    }
+    
 
     public Boolean getIsWalkingRoute() {
         return isWalkingRoute;

@@ -1,0 +1,44 @@
+/* c:\PTS\PublicTransportSystem\publictransportsystem\src\pages\TrafficAdminPage.css */
+.admin-form-container {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-responsive {
+    margin-bottom: 30px;
+}
+
+.traffic-admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.traffic-admin-header h1 {
+    margin-bottom: 0;
+}
+
+/* Styling cho bảng dữ liệu */
+.table th {
+    background-color: #f0f0f0;
+    vertical-align: middle;
+}
+
+/* Tối ưu hiển thị cột chứa mô tả */
+.table td:nth-child(4) {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table td:nth-child(4) {
+        max-width: 150px;
+    }
+}

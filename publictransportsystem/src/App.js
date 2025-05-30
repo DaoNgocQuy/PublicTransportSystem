@@ -13,6 +13,9 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import cookie from "react-cookies";
 import './App.css';
 import { UserContext, UserDispatchContext } from "./configs/MyContexts";
+import TrafficMapPage from './pages/TrafficMapPage';
+import TrafficAdminPage from './pages/TrafficAdminPage';
+
 
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = sessionStorage.getItem('isLoggedIn') === 'true';
@@ -68,16 +71,22 @@ const AppContent = () => {
             } />
             <Route path="/register" element={<Register />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<Reset />} />
-            <Route path="/profile" element={
+            <Route path="/reset-password" element={<Reset />} />            <Route path="/profile" element={
               <ProtectedRoute>
                 <Userinfo />
               </ProtectedRoute>
             } />
+            <Route path="/traffic" element={<TrafficMapPage />} />
+            <Route path="/traffic-admin" element={
+              <ProtectedRoute>
+                <TrafficAdminPage />
+              </ProtectedRoute>
+            } />
+
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>        </UserDispatchContext.Provider>      </UserContext.Provider>      <ToastContainer
         position="top-right"
-        autoClose={1500}  
+        autoClose={1500}
         hideProgressBar={false}
         newestOnTop
         closeOnClick
@@ -85,7 +94,7 @@ const AppContent = () => {
         pauseOnFocusLoss={false}
         draggable
         pauseOnHover={false}
-        limit={5} 
+        limit={5}
       />
 
     </>

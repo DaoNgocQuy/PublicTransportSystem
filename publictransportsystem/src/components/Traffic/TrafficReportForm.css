@@ -1,0 +1,16 @@
+.report-form-card {
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.img-preview {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.form-label {
+    font-weight: 500;
+}

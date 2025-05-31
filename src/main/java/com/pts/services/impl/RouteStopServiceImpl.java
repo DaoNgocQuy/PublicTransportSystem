@@ -339,6 +339,26 @@ public class RouteStopServiceImpl implements RouteStopService {
     }
 
     @Override
+    @Transactional
+    public boolean deleteAllRouteStopsByStopId(Integer stopId) {
+        try {
+            // Lấy danh sách các route_stop liên quan đến trạm
+            List<RouteStop> routeStops = findByStopId(stopId);
+
+            // Xóa từng bản ghi
+            for (RouteStop rs : routeStops) {
+                routeStopRepository.deleteById(rs.getId());
+            }
+
+            return true;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xóa tất cả route_stops của trạm " + stopId + ": " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
     public List<Stops> getAvailableStopsForRoute(Integer routeId, Integer direction) {
         try {
             List<RouteStop> existingRouteStops = findByRouteIdAndDirection(routeId, direction);

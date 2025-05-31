@@ -97,10 +97,46 @@
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         <a th:href="@{/stops/delete/{id}(id=${stop.id})}" 
-                                           onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này?');"
+                                           th:data-bs-toggle="${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0 ? 'modal' : ''}"
+                                           th:data-bs-target="${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0 ? '#deleteModal' + stop.id : ''}"
+                                           onclick="return ${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0} ? true : confirm('Bạn có chắc chắn muốn xóa trạm dừng này?');"
                                            class="btn btn-sm btn-danger" title="Xóa">
                                             <i class="bi bi-trash"></i>
                                         </a>
+                                    </div>
+                                    <div class="modal fade" th:id="${'deleteModal' + stop.id}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title">Cảnh báo xóa trạm</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="alert alert-warning">
+                                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                                        Trạm <strong th:text="${stop.stopName}"></strong> hiện đang thuộc 
+                                                        <strong th:text="${routeCounts.get(stop.id)}"></strong> tuyến.
+                                                    </div>
+                                                    <p>Bạn có các lựa chọn sau:</p>
+                                                    <ol>
+                                                        <li><strong>Xóa khỏi tất cả tuyến:</strong> Xóa trạm khỏi tất cả các tuyến và xóa trạm hoàn toàn.</li>
+                                                        <li><strong>Chỉnh sửa trạm:</strong> Chuyển đến trang chỉnh sửa trạm để xóa từ từng tuyến.</li>
+                                                        <li><strong>Hủy:</strong> Không thực hiện thao tác nào.</li>
+                                                    </ol>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                                                    <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-primary">
+                                                        Chỉnh sửa trạm
+                                                    </a>
+                                                    <a th:href="@{/stops/forceDelete/{id}(id=${stop.id})}" 
+                                                       onclick="return confirm('CẢNH BÁO: Thao tác này sẽ xóa trạm khỏi TẤT CẢ các tuyến. Tiếp tục?');"
+                                                       class="btn btn-danger">
+                                                        Xóa khỏi tất cả tuyến
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>

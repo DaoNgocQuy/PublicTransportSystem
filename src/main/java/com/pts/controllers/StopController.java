@@ -329,23 +329,86 @@ public class StopController {
             @RequestParam(required = false) Integer returnToRoute,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
             RedirectAttributes redirectAttributes) {
-        // Kiểm tra xem trạm có tồn tại không
-        if (!stopService.stopExists(id)) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Trạm dừng không tồn tại!");
+        try {
+            // Kiểm tra xem trạm có tồn tại không
+            Optional<Stops> stopOpt = stopService.getStopById(id);
+            if (!stopOpt.isPresent()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Trạm dừng không tồn tại!");
+                return "redirect:/stops";
+            }
+
+            // Kiểm tra xem trạm có trong tuyến nào không 
+            List<RouteStop> routeStops = routeStopService.findByStopId(id);
+            if (!routeStops.isEmpty()) {
+                // Hiển thị thông tin các tuyến mà trạm thuộc về
+                StringBuilder routeInfo = new StringBuilder("Trạm này hiện thuộc các tuyến: ");
+                Map<Integer, String> routeNames = new HashMap<>();
+
+                for (RouteStop rs : routeStops) {
+                    Integer routeId = rs.getRoute().getId();
+                    String routeName = rs.getRoute().getName();
+                    if (!routeNames.containsKey(routeId)) {
+                        routeNames.put(routeId, routeName);
+                    }
+                }
+
+                boolean first = true;
+                for (Map.Entry<Integer, String> entry : routeNames.entrySet()) {
+                    if (!first) {
+                        routeInfo.append(", ");
+                    }
+                    routeInfo.append(entry.getValue());
+                    first = false;
+                }
+
+                // Cảnh báo người dùng
+                redirectAttributes.addFlashAttribute("warningMessage",
+                        routeInfo.toString() + ". Vui lòng xóa trạm khỏi các tuyến trước khi xóa hoàn toàn.");
+                return "redirect:/stops/edit/" + id;
+            }
+
+            // Nếu không thuộc tuyến nào, xóa trạm
+            stopService.deleteStop(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được xóa thành công!");
+
+            // Điều hướng về trang chi tiết tuyến nếu có yêu cầu
+            if (returnToRoute != null) {
+                return "redirect:/routes/view/" + returnToRoute + "?direction=" + direction;
+            }
+
+            return "redirect:/stops";
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi xóa trạm: " + e.getMessage());
             return "redirect:/stops";
         }
+    }
 
-        // Xóa trạm (điều này cũng sẽ xóa các liên kết trong bảng route_stops)
-        stopService.deleteStop(id);
+    @GetMapping("/forceDelete/{id}")
+    public String forceDeleteStop(@PathVariable("id") Integer id,
+            RedirectAttributes redirectAttributes) {
+        try {
+            // Kiểm tra xem trạm có tồn tại không
+            Optional<Stops> stopOpt = stopService.getStopById(id);
+            if (!stopOpt.isPresent()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Trạm dừng không tồn tại!");
+                return "redirect:/stops";
+            }
 
-        redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được xóa thành công!");
+            // Xóa tất cả các bản ghi route_stop liên quan
+            routeStopService.deleteAllRouteStopsByStopId(id);
 
-        // Điều hướng về trang chi tiết tuyến nếu có yêu cầu
-        if (returnToRoute != null) {
-            return "redirect:/routes/view/" + returnToRoute + "?direction=" + direction;
+            // Sau đó xóa trạm
+            stopService.deleteStop(id);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã xóa trạm dừng và loại bỏ khỏi tất cả các tuyến thành công!");
+
+            return "redirect:/stops";
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi xóa trạm: " + e.getMessage());
+            return "redirect:/stops";
         }
-
-        return "redirect:/stops";
     }
 
     // Hiển thị danh sách trạm dừng theo tuyến và chiều

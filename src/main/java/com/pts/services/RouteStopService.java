@@ -48,4 +48,7 @@ public interface RouteStopService {
     void shiftStopOrders(Integer routeId, Integer direction, Integer fromOrder);
 
     int countRoutesByStopId(Integer stopId);
+
+    boolean deleteAllRouteStopsByStopId(Integer stopId);
+
 }

@@ -99,11 +99,8 @@ const TrafficReportForm = ({ onReportSubmitted, userLocation }) => {
         } finally {
             setLoading(false);
         }
-    };
-
-    return (
+    };    return (
         <Card className="report-form-card">
-            <Card.Header as="h5">Báo cáo tình trạng giao thông</Card.Header>
             <Card.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
                 {success && <Alert variant="success">Gửi báo cáo thành công!</Alert>}

@@ -51,10 +51,14 @@ const TrafficReportForm = ({ onReportSubmitted, userLocation }) => {
             };
             reader.readAsDataURL(file);
         }
-    };
-
-    const handleSubmit = async (e) => {
+    };    const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Nếu đang loading hoặc đã submit thành công, không cho submit nữa
+        if (loading || success) {
+            return;
+        }
+
         setError('');
         setSuccess(false);
         setLoading(true);
@@ -74,6 +78,9 @@ const TrafficReportForm = ({ onReportSubmitted, userLocation }) => {
                 latitude: parseFloat(formData.latitude),
                 longitude: parseFloat(formData.longitude)
             };
+
+            // Thêm id duy nhất cho mỗi báo cáo để tránh trùng lặp
+            reportDataToSubmit.reportId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
             await reportTrafficCondition(reportDataToSubmit, image);
 
@@ -197,19 +204,17 @@ const TrafficReportForm = ({ onReportSubmitted, userLocation }) => {
                                 style={{ maxWidth: '100%', maxHeight: '200px' }}
                             />
                         </div>
-                    )}
-
-                    <Button
+                    )}                    <Button
                         variant="primary"
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || success}
                     >
                         {loading ? (
                             <>
                                 <Spinner animation="border" size="sm" className="me-2" />
                                 Đang gửi...
                             </>
-                        ) : 'Gửi báo cáo'}
+                        ) : success ? 'Đã gửi báo cáo' : 'Gửi báo cáo'}
                     </Button>
                 </Form>
             </Card.Body>

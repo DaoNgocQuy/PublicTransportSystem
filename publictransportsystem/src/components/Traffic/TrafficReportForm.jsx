@@ -110,7 +110,11 @@ const TrafficReportForm = ({ onReportSubmitted, userLocation }) => {
         <Card className="report-form-card">
             <Card.Body>
                 {error && <Alert variant="danger">{error}</Alert>}
-                {success && <Alert variant="success">Gửi báo cáo thành công!</Alert>}
+                {success && (
+                    <Alert variant="success">
+                        Gửi báo cáo thành công! Báo cáo của bạn đang chờ quản trị viên duyệt.
+                    </Alert>
+                )}
 
                 <Form onSubmit={handleSubmit}>
                     <Row>

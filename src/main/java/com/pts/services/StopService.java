@@ -18,10 +18,6 @@ public interface StopService {
 
     boolean stopExists(Integer id);
 
-    List<Stops> findStopsByName(String stopName);
-
-    List<Stops> findStopsByAddress(String address);
-
     List<Stops> findStopsByRouteId(Integer routeId);
 
     List<Stops> findStopsByRouteIdAndDirection(Integer routeId, Integer direction);
@@ -32,6 +28,5 @@ public interface StopService {
 
     List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radiusMeters);
 
-    List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder);
 
 }

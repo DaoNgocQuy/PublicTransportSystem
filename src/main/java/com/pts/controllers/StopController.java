@@ -18,6 +18,7 @@ import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Controller
@@ -36,9 +37,26 @@ public class StopController {
     // Hiển thị danh sách tất cả trạm dừng
     @GetMapping
     public String listAllStops(Model model) {
-        List<Stops> stops = stopService.getAllStops();
-        model.addAttribute("stops", stops);
-        return "stops/list";
+        try {
+            List<Stops> stops = stopService.getAllStops();
+
+            // Tính toán số lượng tuyến đường của mỗi trạm một lần thay vì gọi nhiều lần từ template
+            Map<Integer, Integer> routeCounts = new HashMap<>();
+            for (Stops stop : stops) {
+                int count = routeStopService.countRoutesByStopId(stop.getId());
+                routeCounts.put(stop.getId(), count);
+            }
+
+            model.addAttribute("stops", stops);
+            model.addAttribute("routeCounts", routeCounts);
+
+            return "stops/list";
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.addAttribute("errorMessage", "Lỗi khi tải danh sách trạm: " + e.getMessage());
+            model.addAttribute("stops", new ArrayList<>());
+            return "stops/list";
+        }
     }
 
     // Hiển thị form tạo trạm dừng mới
@@ -65,44 +83,71 @@ public class StopController {
     public String createStop(@ModelAttribute("stop") Stops stop,
             @RequestParam(required = false) Integer routeId,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
+            @RequestParam(required = false, defaultValue = "0") Integer stopOrder,
             BindingResult result,
             RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             return "stops/create";
         }
 
-        // Lưu trạm dừng mới
-        Stops savedStop = stopService.saveStop(stop);
+        // Log thông tin đầu vào
+        System.out.println("===== DEBUG CREATE STOP =====");
+        System.out.println("routeId: " + routeId);
+        System.out.println("direction: " + direction);
+        System.out.println("stopOrder: " + stopOrder);
+        System.out.println("Tên trạm: " + stop.getStopName());
+        System.out.println("Vĩ độ: " + stop.getLatitude());
+        System.out.println("Kinh độ: " + stop.getLongitude());
 
-        // Nếu có routeId được truyền vào từ request param, sử dụng nó thay vì từ đối tượng stop
-        if (routeId != null) {
-            // Sử dụng addStopToRoute từ service
-            RouteStop addedRouteStop = routeStopService.addStopToRoute(routeId, savedStop.getId(), direction);
+        try {
+            // Lưu trạm dừng mới
+            Stops savedStop = stopService.saveStop(stop);
+            System.out.println("Đã lưu trạm, ID: " + savedStop.getId());
 
-            if (addedRouteStop != null) {
-                redirectAttributes.addFlashAttribute("successMessage",
-                        "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
-                return "redirect:/routes/view/" + routeId + "?direction=" + direction;
+            // Nếu có routeId, thêm vào tuyến
+            if (routeId != null && routeId > 0) {
+                System.out.println("Thêm trạm vào tuyến: " + savedStop.getId() + " -> " + routeId);
+                RouteStop addedRouteStop = routeStopService.addStopToRoute(routeId, savedStop.getId(), direction, stopOrder);
+
+                if (addedRouteStop != null) {
+                    System.out.println("Thêm thành công, RouteStop ID: " + addedRouteStop.getId());
+                    redirectAttributes.addFlashAttribute("successMessage",
+                            "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
+                    return "redirect:/routes/view/" + routeId + "?direction=" + direction;
+                } else {
+                    System.err.println("Lỗi: Không thể thêm trạm vào tuyến (addedRouteStop is null)");
+                    redirectAttributes.addFlashAttribute("warningMessage",
+                            "Trạm dừng đã được tạo nhưng không thể thêm vào tuyến. Vui lòng thêm thủ công.");
+                }
             }
-        } // Kiểm tra nếu có routeId trong đối tượng stop
-        else if (stop.getRouteId() != null && stop.getRouteId().getId() != null) {
-            Integer stopRouteId = stop.getRouteId().getId();
-            // Sử dụng addStopToRoute từ service
-            RouteStop addedRouteStop = routeStopService.addStopToRoute(
-                    stopRouteId,
-                    savedStop.getId(),
-                    stop.getDirection() != null ? stop.getDirection() : direction
-            );
 
-            if (addedRouteStop != null) {
-                redirectAttributes.addFlashAttribute("successMessage",
-                        "Trạm dừng đã được tạo và thêm vào tuyến thành công!");
-                return "redirect:/routes/view/" + stopRouteId + "?direction=" + direction;
-            }
+            redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được tạo thành công!");
+            return "redirect:/stops";
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tạo trạm hoặc thêm vào tuyến: " + e.getMessage());
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Lỗi khi tạo trạm: " + e.getMessage());
+            return "stops/create";
         }
+    }
 
-        redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được tạo thành công!");
-        return "redirect:/stops";
+    @GetMapping("/api/nearby")
+    @ResponseBody
+    public List<Map<String, Object>> getNearbyStopsApi(
+            @RequestParam("lat") double lat,
+            @RequestParam("lng") double lng,
+            @RequestParam(defaultValue = "500") int radius) {
+        try {
+            System.out.println("API tìm trạm lân cận: lat=" + lat + ", lng=" + lng + ", radius=" + radius);
+            List<Map<String, Object>> results = stopService.findNearbyStopsFormatted(lat, lng, radius);
+            System.out.println("Tìm thấy " + results.size() + " trạm lân cận");
+            return results;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tìm trạm lân cận: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
 
     // Hiển thị form chỉnh sửa
@@ -118,30 +163,29 @@ public class StopController {
             List<Routes> allRoutes = routeService.getAllRoutes();
             model.addAttribute("routes", allRoutes);
 
-            // Tạo cấu trúc dữ liệu để lưu thông tin về tuyến và chiều
-            Map<Integer, Map<String, Object>> routeDirectionInfo = new HashMap<>();
-
-            // Lấy thông tin từng chiều cho các tuyến mà trạm này thuộc về
+            // Tạo cấu trúc dữ liệu cho routeInfoMap
             List<RouteStop> routeStops = routeStopService.findByStopId(id);
+            Map<Integer, Map<String, Object>> routeInfoMap = new HashMap<>();
+
             for (RouteStop rs : routeStops) {
                 Integer routeId = rs.getRoute().getId();
-                Integer stopDirection = rs.getDirection();
+                Integer direction = rs.getDirection();
+                Integer stopOrder = rs.getStopOrder();
 
-                if (!routeDirectionInfo.containsKey(routeId)) {
-                    Map<String, Object> info = new HashMap<>();
-                    info.put("routeName", rs.getRoute().getName());
-                    info.put("directions", new ArrayList<Integer>());
-                    routeDirectionInfo.put(routeId, info);
+                if (!routeInfoMap.containsKey(routeId)) {
+                    Map<String, Object> routeInfo = new HashMap<>();
+                    routeInfo.put("route", rs.getRoute());
+                    routeInfo.put("directions", new HashMap<Integer, Integer>());
+                    routeInfoMap.put(routeId, routeInfo);
                 }
 
+                // Lưu thông tin thứ tự trạm trong từng chiều của tuyến
                 @SuppressWarnings("unchecked")
-                List<Integer> directions = (List<Integer>) routeDirectionInfo.get(routeId).get("directions");
-                if (!directions.contains(stopDirection)) {
-                    directions.add(stopDirection);
-                }
+                Map<Integer, Integer> directionOrderMap = (Map<Integer, Integer>) routeInfoMap.get(routeId).get("directions");
+                directionOrderMap.put(direction, stopOrder);
             }
 
-            model.addAttribute("routeDirectionInfo", routeDirectionInfo);
+            model.addAttribute("routeInfoMap", routeInfoMap);
 
             return "stops/edit";
         } else {
@@ -155,6 +199,7 @@ public class StopController {
             @ModelAttribute("stop") Stops stop,
             @RequestParam(value = "routesToAdd", required = false) List<Integer> routesToAdd,
             @RequestParam(value = "directionsToAdd", required = false) List<Integer> directionsToAdd,
+            @RequestParam(value = "stopOrdersToAdd", required = false) List<Integer> stopOrdersToAdd, // Thêm tham số này
             BindingResult result,
             RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
@@ -174,19 +219,69 @@ public class StopController {
                 Integer routeId = routesToAdd.get(i);
                 Integer direction = directionsToAdd.get(i);
 
+                // Lấy stopOrder nếu có, nếu không đặt là null
+                Integer stopOrder = (stopOrdersToAdd != null && i < stopOrdersToAdd.size())
+                        ? stopOrdersToAdd.get(i) : null;
+
                 // Kiểm tra xem đã có trạm trong tuyến và chiều này chưa
                 boolean exists = routeStopService.findByRouteIdAndDirection(routeId, direction).stream()
                         .anyMatch(rs -> rs.getStop().getId().equals(id));
 
-                // Nếu chưa có, thêm trạm vào tuyến với chiều tương ứng
+                // Nếu chưa có, thêm trạm vào tuyến với chiều tương ứng và thứ tự nếu có
                 if (!exists) {
-                    routeStopService.addStopToRoute(routeId, id, direction);
+                    // Sử dụng phương thức addStopToRoute với đầy đủ tham số
+                    routeStopService.addStopToRoute(routeId, id, direction, stopOrder);
                 }
             }
         }
 
         redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được cập nhật thành công!");
-        return "redirect:/stops/view/" + id;
+        return "redirect:/stops/edit/" + id;
+    }
+
+    @GetMapping("/route/{routeId}/ajax")
+    @ResponseBody
+    public List<Map<String, Object>> getStopsByRouteAjax(
+            @PathVariable("routeId") Integer routeId,
+            @RequestParam(required = false, defaultValue = "1") Integer direction) {
+        try {
+            // Lấy danh sách trạm dừng theo tuyến và chiều
+            List<Stops> stops = stopService.findStopsByRouteIdAndDirection(routeId, direction);
+
+            // Fallback nếu không có dữ liệu cho chiều cụ thể
+            if (stops == null || stops.isEmpty()) {
+                stops = stopService.findStopsByRouteId(routeId);
+            }
+
+            // Lấy thông tin thứ tự từng trạm trong tuyến và chiều
+            List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
+            Map<Integer, Integer> stopOrderMap = routeStops.stream()
+                    .collect(Collectors.toMap(
+                            rs -> rs.getStop().getId(),
+                            RouteStop::getStopOrder,
+                            (existing, replacement) -> existing // Trong trường hợp trùng lặp, giữ giá trị đầu tiên
+                    ));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Stops stop : stops) {
+                Map<String, Object> stopData = new HashMap<>();
+                stopData.put("id", stop.getId());
+                stopData.put("stopName", stop.getStopName());
+                stopData.put("address", stop.getAddress());
+                stopData.put("latitude", stop.getLatitude());
+                stopData.put("longitude", stop.getLongitude());
+                stopData.put("stopOrder", stopOrderMap.getOrDefault(stop.getId(), 0));
+                result.add(stopData);
+            }
+
+            // Sắp xếp theo thứ tự
+            result.sort(Comparator.comparing(m -> (Integer) m.get("stopOrder")));
+
+            return result;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
     }
 
     // Xem chi tiết trạm dừng
@@ -234,23 +329,86 @@ public class StopController {
             @RequestParam(required = false) Integer returnToRoute,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
             RedirectAttributes redirectAttributes) {
-        // Kiểm tra xem trạm có tồn tại không
-        if (!stopService.stopExists(id)) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Trạm dừng không tồn tại!");
+        try {
+            // Kiểm tra xem trạm có tồn tại không
+            Optional<Stops> stopOpt = stopService.getStopById(id);
+            if (!stopOpt.isPresent()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Trạm dừng không tồn tại!");
+                return "redirect:/stops";
+            }
+
+            // Kiểm tra xem trạm có trong tuyến nào không 
+            List<RouteStop> routeStops = routeStopService.findByStopId(id);
+            if (!routeStops.isEmpty()) {
+                // Hiển thị thông tin các tuyến mà trạm thuộc về
+                StringBuilder routeInfo = new StringBuilder("Trạm này hiện thuộc các tuyến: ");
+                Map<Integer, String> routeNames = new HashMap<>();
+
+                for (RouteStop rs : routeStops) {
+                    Integer routeId = rs.getRoute().getId();
+                    String routeName = rs.getRoute().getName();
+                    if (!routeNames.containsKey(routeId)) {
+                        routeNames.put(routeId, routeName);
+                    }
+                }
+
+                boolean first = true;
+                for (Map.Entry<Integer, String> entry : routeNames.entrySet()) {
+                    if (!first) {
+                        routeInfo.append(", ");
+                    }
+                    routeInfo.append(entry.getValue());
+                    first = false;
+                }
+
+                // Cảnh báo người dùng
+                redirectAttributes.addFlashAttribute("warningMessage",
+                        routeInfo.toString() + ". Vui lòng xóa trạm khỏi các tuyến trước khi xóa hoàn toàn.");
+                return "redirect:/stops/edit/" + id;
+            }
+
+            // Nếu không thuộc tuyến nào, xóa trạm
+            stopService.deleteStop(id);
+            redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được xóa thành công!");
+
+            // Điều hướng về trang chi tiết tuyến nếu có yêu cầu
+            if (returnToRoute != null) {
+                return "redirect:/routes/view/" + returnToRoute + "?direction=" + direction;
+            }
+
+            return "redirect:/stops";
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi xóa trạm: " + e.getMessage());
             return "redirect:/stops";
         }
+    }
 
-        // Xóa trạm (điều này cũng sẽ xóa các liên kết trong bảng route_stops)
-        stopService.deleteStop(id);
+    @GetMapping("/forceDelete/{id}")
+    public String forceDeleteStop(@PathVariable("id") Integer id,
+            RedirectAttributes redirectAttributes) {
+        try {
+            // Kiểm tra xem trạm có tồn tại không
+            Optional<Stops> stopOpt = stopService.getStopById(id);
+            if (!stopOpt.isPresent()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Trạm dừng không tồn tại!");
+                return "redirect:/stops";
+            }
 
-        redirectAttributes.addFlashAttribute("successMessage", "Trạm dừng đã được xóa thành công!");
+            // Xóa tất cả các bản ghi route_stop liên quan
+            routeStopService.deleteAllRouteStopsByStopId(id);
 
-        // Điều hướng về trang chi tiết tuyến nếu có yêu cầu
-        if (returnToRoute != null) {
-            return "redirect:/routes/view/" + returnToRoute + "?direction=" + direction;
+            // Sau đó xóa trạm
+            stopService.deleteStop(id);
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã xóa trạm dừng và loại bỏ khỏi tất cả các tuyến thành công!");
+
+            return "redirect:/stops";
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi xóa trạm: " + e.getMessage());
+            return "redirect:/stops";
         }
-
-        return "redirect:/stops";
     }
 
     // Hiển thị danh sách trạm dừng theo tuyến và chiều
@@ -307,11 +465,175 @@ public class StopController {
     public String addStopToRoute(@PathVariable("stopId") Integer stopId,
             @RequestParam("routeId") Integer routeId,
             @RequestParam(required = false, defaultValue = "1") Integer direction,
+            @RequestParam(required = false) Integer stopOrder, // Thêm tham số stopOrder
             RedirectAttributes redirectAttributes) {
-        routeStopService.addStopToRoute(routeId, stopId, direction);
+
+        // Sử dụng phương thức addStopToRoute với đầy đủ các tham số
+        RouteStop routeStop = routeStopService.addStopToRoute(routeId, stopId, direction, stopOrder);
+
         redirectAttributes.addFlashAttribute("successMessage",
                 "Trạm đã được thêm vào tuyến (chiều " + (direction == 1 ? "đi" : "về") + ") thành công!");
         return "redirect:/stops/view/" + stopId;
+    }
+
+    @PostMapping("/updateOrder")
+    public String updateStopOrder(
+            @RequestParam("routeId") Integer routeId,
+            @RequestParam("stopId") Integer stopId,
+            @RequestParam("direction") Integer direction,
+            @RequestParam("stopOrder") Integer newStopOrder,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            System.out.println("Cập nhật thứ tự trạm: Route=" + routeId + ", Stop=" + stopId
+                    + ", Direction=" + direction + ", NewOrder=" + newStopOrder);
+
+            // Kiểm tra giá trị đầu vào
+            if (newStopOrder <= 0) {
+                redirectAttributes.addFlashAttribute("errorMessage",
+                        "Thứ tự trạm phải lớn hơn 0");
+                return "redirect:/stops/edit/" + stopId;
+            }
+
+            // Tìm RouteStop cần cập nhật
+            List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
+            RouteStop targetRouteStop = null;
+
+            for (RouteStop rs : routeStops) {
+                if (rs.getStop().getId().equals(stopId)) {
+                    targetRouteStop = rs;
+                    break;
+                }
+            }
+
+            if (targetRouteStop != null) {
+                // Lấy thứ tự hiện tại của trạm
+                Integer currentOrder = targetRouteStop.getStopOrder();
+
+                // Kiểm tra nếu thứ tự mới giống thứ tự cũ
+                if (currentOrder.equals(newStopOrder)) {
+                    // Không cần thay đổi gì
+                    return "redirect:/stops/edit/" + stopId;
+                }
+
+                // Kiểm tra giới hạn thứ tự
+                int maxOrder = routeStops.stream()
+                        .mapToInt(RouteStop::getStopOrder)
+                        .max()
+                        .orElse(0);
+
+                if (newStopOrder > maxOrder) {
+                    newStopOrder = maxOrder;
+                }
+
+                System.out.println("Thay đổi thứ tự từ " + currentOrder + " sang " + newStopOrder);
+
+                // Lưu thứ tự hiện tại để dùng sau
+                int oldOrder = currentOrder;
+
+                // Tạo giá trị tạm thời âm để tránh vi phạm unique key
+                int tempOrder = -1 * oldOrder;
+                targetRouteStop.setStopOrder(tempOrder);
+                routeStopService.update(targetRouteStop);
+
+                if (oldOrder < newStopOrder) {
+                    // Di chuyển xuống: Giảm thứ tự các trạm ở giữa
+                    for (RouteStop rs : routeStops) {
+                        int order = rs.getStopOrder();
+                        if (order > oldOrder && order <= newStopOrder && !rs.getId().equals(targetRouteStop.getId())) {
+                            rs.setStopOrder(order - 1);
+                            routeStopService.update(rs);
+                        }
+                    }
+                } else {
+                    // Di chuyển lên: Tăng thứ tự các trạm ở giữa
+                    for (RouteStop rs : routeStops) {
+                        int order = rs.getStopOrder();
+                        if (order >= newStopOrder && order < oldOrder && !rs.getId().equals(targetRouteStop.getId())) {
+                            rs.setStopOrder(order + 1);
+                            routeStopService.update(rs);
+                        }
+                    }
+                }
+
+                // Cập nhật thứ tự mới cho trạm đích
+                targetRouteStop.setStopOrder(newStopOrder);
+                routeStopService.update(targetRouteStop);
+
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "Đã cập nhật thứ tự trạm thành công!");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage",
+                        "Không tìm thấy thông tin liên kết trạm-tuyến");
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi khi cập nhật thứ tự trạm: " + e.getMessage());
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Lỗi khi cập nhật thứ tự trạm: " + e.getMessage());
+        }
+
+        return "redirect:/stops/edit/" + stopId;
+    }
+
+    @GetMapping("/moveUp")
+    public String moveStopUp(
+            @RequestParam("routeId") Integer routeId,
+            @RequestParam("stopId") Integer stopId,
+            @RequestParam("direction") Integer direction,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            // Tìm RouteStop
+            List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
+            RouteStop targetRouteStop = null;
+
+            for (RouteStop rs : routeStops) {
+                if (rs.getStop().getId().equals(stopId)) {
+                    targetRouteStop = rs;
+                    break;
+                }
+            }
+
+            if (targetRouteStop != null && routeStopService.moveStopUp(targetRouteStop.getId())) {
+                redirectAttributes.addFlashAttribute("successMessage", "Đã di chuyển trạm lên thành công!");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Lỗi khi di chuyển trạm: " + e.getMessage());
+        }
+
+        return "redirect:/stops/edit/" + stopId;
+    }
+
+    @GetMapping("/moveDown")
+    public String moveStopDown(
+            @RequestParam("routeId") Integer routeId,
+            @RequestParam("stopId") Integer stopId,
+            @RequestParam("direction") Integer direction,
+            RedirectAttributes redirectAttributes) {
+
+        try {
+            // Tìm RouteStop
+            List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
+            RouteStop targetRouteStop = null;
+
+            for (RouteStop rs : routeStops) {
+                if (rs.getStop().getId().equals(stopId)) {
+                    targetRouteStop = rs;
+                    break;
+                }
+            }
+
+            if (targetRouteStop != null && routeStopService.moveStopDown(targetRouteStop.getId())) {
+                redirectAttributes.addFlashAttribute("successMessage", "Đã di chuyển trạm xuống thành công!");
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage",
+                    "Lỗi khi di chuyển trạm: " + e.getMessage());
+        }
+
+        return "redirect:/stops/edit/" + stopId;
     }
 
     // Xóa trạm khỏi tuyến
@@ -343,9 +665,27 @@ public class StopController {
     // Tìm kiếm trạm dừng
     @GetMapping("/search")
     public String searchStops(@RequestParam("keyword") String keyword, Model model) {
-        List<Stops> stops = stopService.searchStops(keyword);
-        model.addAttribute("stops", stops);
-        model.addAttribute("keyword", keyword);
-        return "stops/list";
+        try {
+            List<Stops> stops = stopService.searchStops(keyword);
+
+            // Tính toán số lượng tuyến đường của mỗi trạm một lần
+            Map<Integer, Integer> routeCounts = new HashMap<>();
+            for (Stops stop : stops) {
+                int count = routeStopService.countRoutesByStopId(stop.getId());
+                routeCounts.put(stop.getId(), count);
+            }
+
+            model.addAttribute("stops", stops);
+            model.addAttribute("routeCounts", routeCounts);
+            model.addAttribute("keyword", keyword);
+
+            return "stops/list";
+        } catch (Exception e) {
+            e.printStackTrace();
+            model.addAttribute("errorMessage", "Lỗi khi tìm kiếm trạm: " + e.getMessage());
+            model.addAttribute("stops", new ArrayList<>());
+            model.addAttribute("keyword", keyword);
+            return "stops/list";
+        }
     }
 }

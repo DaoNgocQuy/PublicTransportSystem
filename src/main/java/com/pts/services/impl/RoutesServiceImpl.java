@@ -60,9 +60,7 @@ public class RoutesServiceImpl implements RouteService {
             route.setActive(true);
         }
 
-        if (route.getIsWalkingRoute() == null) {
-            route.setIsWalkingRoute(false);
-        }
+        
 
         // Save route without calculated fields first
         Routes savedRoute = routesRepository.save(route);
@@ -101,26 +99,16 @@ public class RoutesServiceImpl implements RouteService {
         return routesRepository.findByName(name);
     }
 
-    @Override
-    public List<Routes> findRoutesByStartLocation(String startLocation) {
-        return routesRepository.findByStartLocation(startLocation);
-    }
+    
 
-    @Override
-    public List<Routes> findRoutesByEndLocation(String endLocation) {
-        return routesRepository.findByEndLocation(endLocation);
-    }
+   
 
     @Override
     public List<Routes> findActiveRoutes() {
         return routesRepository.findByIsActive(true);
     }
 
-    @Override
-    public List<Routes> findWalkingRoutes() {
-        return routesRepository.findByIsWalkingRoute(true);
-    }
-
+  
     @Override
     public List<Routes> findRoutesByRouteType(Integer routeTypeId) {
         return routesRepository.findByRouteTypeId(routeTypeId);
@@ -173,39 +161,7 @@ public class RoutesServiceImpl implements RouteService {
         return routesRepository.findStopsByRouteIdAndDirection(routeId, direction);
     }
 
-    @Override
-    public List<Map<String, Object>> findRoutesWithStops(double fromLat, double fromLng,
-            double toLat, double toLng, double maxWalkDistance,
-            int maxTransfers, String routePriority) {
-
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        try {
-            double effectiveMaxDistance = Math.min(maxWalkDistance, 1000);
-
-            // 1. Find stops near start and end points
-            List<Map<String, Object>> fromStops = stopService.findNearbyStopsFormatted(fromLat, fromLng, effectiveMaxDistance);
-            List<Map<String, Object>> toStops = stopService.findNearbyStopsFormatted(toLat, toLng, effectiveMaxDistance);
-
-            // 2. Find routes that go from start to end
-            List<Routes> directRoutes = findDirectRoutes(fromStops, toStops);
-
-            // 3. If maxTransfers > 0, find routes that require transfers
-            List<List<Routes>> transferRoutes = new ArrayList<>();
-            if (maxTransfers > 0) {
-                transferRoutes = findTransferRoutes(fromStops, toStops, maxTransfers);
-            }
-
-            // 4. Format results
-            result = formatRoutesResult(directRoutes, transferRoutes, fromStops, toStops,
-                    fromLat, fromLng, toLat, toLng, routePriority);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        return result;
-    }
+    
 
     // Find direct routes (no transfers needed)
     private List<Routes> findDirectRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
@@ -871,6 +827,34 @@ public class RoutesServiceImpl implements RouteService {
             }
         }
         return null;
+    }
+
+    @Override
+    public List<Routes> getAllRoutesWithPagination(int page, int size) {
+        int offset = page * size;
+        return routesRepository.findAllWithPagination(offset, size);
+    }
+
+    @Override
+    public int getTotalRoutes() {
+        return routesRepository.countAll();
+    }
+
+    @Override
+    public List<Routes> searchRoutesByNameWithPagination(String keyword, int page, int size) {
+        int offset = page * size;
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getAllRoutesWithPagination(page, size);
+        }
+        return routesRepository.searchRoutesByNameWithPagination(keyword, offset, size);
+    }
+
+    @Override
+    public int getTotalRoutesByKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getTotalRoutes();
+        }
+        return routesRepository.countByNameContaining(keyword);
     }
 
     @Override

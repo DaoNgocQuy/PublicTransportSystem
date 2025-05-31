@@ -61,16 +61,6 @@ public class StopServiceImpl implements StopService {
     }
 
     @Override
-    public List<Stops> findStopsByName(String stopName) {
-        return stopRepository.findByStopName(stopName);
-    }
-
-    @Override
-    public List<Stops> findStopsByAddress(String address) {
-        return stopRepository.findByAddress(address);
-    }
-
-    @Override
     public List<Stops> findStopsByRouteId(Integer routeId) {
         return stopRepository.findByRouteId(routeId);
     }
@@ -111,18 +101,34 @@ public class StopServiceImpl implements StopService {
     @Override
     public List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radiusMeters) {
         // Giới hạn bán kính tối đa là 1000m
-        
-        return null;
-    }
-
-    @Override
-    public List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder) {
-        try {
-            return stopRepository.findStopsByRouteIdAndStopOrderRange(routeId, startOrder, endOrder);
-        } catch (Exception e) {
-            System.err.println("Lỗi khi tìm trạm theo khoảng thứ tự: " + e.getMessage());
-            return new ArrayList<>();
+        if (radiusMeters > 1000) {
+            radiusMeters = 1000;
         }
+
+        List<Stops> nearbyStops = findNearbyStops(lat, lng, (int) radiusMeters);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Stops stop : nearbyStops) {
+            // Bỏ qua trạm hiện tại nếu có
+            if (stop.getLatitude() == lat && stop.getLongitude() == lng) {
+                continue;
+            }
+
+            Map<String, Object> stopData = new HashMap<>();
+            stopData.put("id", stop.getId());
+            stopData.put("name", stop.getStopName());
+            stopData.put("address", stop.getAddress());
+            stopData.put("lat", stop.getLatitude());
+            stopData.put("lng", stop.getLongitude());
+
+            // Tính khoảng cách từ điểm hiện tại
+            double distance = calculateDistance(lat, lng, stop.getLatitude(), stop.getLongitude());
+            stopData.put("distance", Math.round(distance * 1000)); // Chuyển sang mét và làm tròn
+
+            result.add(stopData);
+        }
+
+        return result;
     }
 
     

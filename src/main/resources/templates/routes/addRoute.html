@@ -55,7 +55,18 @@
 <body>
     <main class="container">
         <div th:replace="base :: header"></div>
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
 
+        <!-- Hiển thị thông báo lỗi -->
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
         <div class="row">
             <div class="col-md-10 mx-auto">
                 <div class="card mt-4">
@@ -83,40 +94,19 @@
                                 </div>
 
                                 <div class="col-md-6">
-                                    <div class="mb-3">
-                                        <label for="operationStartTime" class="form-label">Giờ bắt đầu hoạt động</label>
-                                        <input type="time" class="form-control" id="operationStartTime" name="operationStartTime">
-                                    </div>
 
-                                    <div class="mb-3">
-                                        <label for="operationEndTime" class="form-label">Giờ kết thúc hoạt động</label>
-                                        <input type="time" class="form-control" id="operationEndTime" name="operationEndTime">
-                                    </div>
 
-                                    <div class="mb-3">
-                                        <label for="frequencyMinutes" class="form-label">Tần suất (phút/chuyến)</label>
-                                        <input type="number" class="form-control" id="frequencyMinutes" name="frequencyMinutes" min="1">
-                                    </div>
-                                </div>
 
-                                <div class="col-md-12">
-                                    <div class="mb-3">
-                                        <label for="routeColor" class="form-label">Màu tuyến</label>
-                                        <input type="color" class="form-control form-control-color" id="routeColor" name="routeColor" value="#4CAF50">
-                                    </div>
-                                </div>
 
-                                <div class="col-md-6">
-                                    <div class="mb-3 form-check">
-                                        <input type="checkbox" class="form-check-input" id="isWalkingRoute" name="isWalkingRoute">
-                                        <label class="form-check-label" for="isWalkingRoute">Là tuyến đi bộ</label>
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
                                     <div class="mb-3 form-check">
                                         <input type="checkbox" class="form-check-input" id="active" name="active" checked>
                                         <label class="form-check-label" for="active">Hoạt động</label>
+                                    </div>
+
+                                    <!-- Nếu muốn, thêm thông báo giải thích -->
+                                    <div class="alert alert-info mb-3">
+                                        <i class="bi bi-info-circle-fill me-2"></i>
+                                        Thông tin về giờ hoạt động và tần suất sẽ được tự động tính toán dựa trên lịch trình.
                                     </div>
                                 </div>
                             </div>
@@ -181,10 +171,8 @@
                                         <div class="mt-3">
                                             <label class="form-label">Thứ tự điểm dừng (Kéo để sắp xếp)</label>
                                             <div id="stopListOutbound" class="stop-list">
-                                                <!-- Điểm dừng sẽ được thêm vào bằng JavaScript -->
                                             </div>
                                         </div>
-                                        <!-- Input ẩn lưu trữ ID của tất cả điểm dừng theo thứ tự -->
                                         <input type="hidden" name="selectedStopsOutbound" id="selectedStopsOutboundField">
                                     </div>
                                 </div>
@@ -203,7 +191,6 @@
                 </div>
             </div>
         </div>
-
         <div th:replace="base :: footer"></div>
     </main>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -212,8 +199,13 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
     <script th:inline="javascript">
         $(document).ready(function () {
-            // Khởi tạo select2
-            $('.select2').select2();
+            // Khởi tạo select2 với cấu hình nâng cao hơn
+            $('.select2').select2({
+                width: '100%',
+                placeholder: 'Chọn các trạm dừng',
+                allowClear: true,
+                closeOnSelect: false
+            });
 
             // Lấy dữ liệu từ server
             var allStops = /*[[${allStops}]]*/ [];
@@ -256,19 +248,22 @@
             updateSelectedStopsInbound();
             updateSelectedStopsOutbound();
 
+            // Debug: Hiển thị log khi khởi tạo select
+            console.log('Inbound select initialized:', $('#stopSelectInbound').length);
+            console.log('Outbound select initialized:', $('#stopSelectOutbound').length);
+
             // Xử lý khi select thay đổi cho chiều đi
             $('#stopSelectInbound').on('change', function () {
-                var selectedIds = $(this).val();
+                console.log('Inbound selection changed:', $(this).val());
+                var selectedIds = $(this).val() || [];  // Đảm bảo luôn là mảng
 
                 // Xóa tất cả điểm dừng hiện tại
                 $(stopListInbound).empty();
 
                 // Thêm lại các điểm dừng đã chọn
-                if (selectedIds) {
-                    selectedIds.forEach(function (stopId) {
-                        addStopToList(stopId, stopListInbound);
-                    });
-                }
+                selectedIds.forEach(function (stopId) {
+                    addStopToList(stopId, stopListInbound);
+                });
 
                 // Cập nhật trường ẩn
                 updateSelectedStopsInbound();
@@ -276,26 +271,40 @@
 
             // Xử lý khi select thay đổi cho chiều về
             $('#stopSelectOutbound').on('change', function () {
-                var selectedIds = $(this).val();
+                console.log('Outbound selection changed:', $(this).val());
+                var selectedIds = $(this).val() || [];  // Đảm bảo luôn là mảng
 
                 // Xóa tất cả điểm dừng hiện tại
                 $(stopListOutbound).empty();
 
                 // Thêm lại các điểm dừng đã chọn
-                if (selectedIds) {
-                    selectedIds.forEach(function (stopId) {
-                        addStopToList(stopId, stopListOutbound);
-                    });
-                }
+                selectedIds.forEach(function (stopId) {
+                    addStopToList(stopId, stopListOutbound);
+                });
 
                 // Cập nhật trường ẩn
                 updateSelectedStopsOutbound();
             });
 
+            // XÓA: phần thêm nút tạo chiều về đảo ngược
+
             // Xử lý submit form
-            $('#routeForm').on('submit', function () {
+            $('#routeForm').on('submit', function (e) {
+                // Đảm bảo cập nhật các trường ẩn trước khi submit
                 updateSelectedStopsInbound();
                 updateSelectedStopsOutbound();
+
+                // Kiểm tra dữ liệu trước khi submit
+                var routeName = $('#name').val();
+                if (!routeName || routeName.trim() === '') {
+                    e.preventDefault();
+                    alert('Vui lòng nhập tên tuyến!');
+                    return false;
+                }
+
+                // XÓA: phần thêm trường routeColor
+
+                // Nếu không có lỗi, cho phép form submit
                 return true;
             });
 
@@ -310,13 +319,13 @@
                 stopItem.dataset.id = stop.id;
 
                 stopItem.innerHTML = `
-                    <div>
-                        <span class="stop-handle me-2"><i class="bi bi-grip-vertical"></i></span>
-                        <span>${stop.name}</span>
-                        <small class="text-muted ms-2">${stop.address}</small>
-                    </div>
-                    <span class="stop-remove"><i class="bi bi-x-circle"></i></span>
-                `;
+                <div>
+                    <span class="stop-handle me-2"><i class="bi bi-grip-vertical"></i></span>
+                    <span>${stop.name}</span>
+                    <small class="text-muted ms-2">${stop.address}</small>
+                </div>
+                <span class="stop-remove"><i class="bi bi-x-circle"></i></span>
+            `;
 
                 // Xử lý sự kiện xóa
                 stopItem.querySelector('.stop-remove').addEventListener('click', function () {
@@ -325,14 +334,14 @@
 
                     // Cập nhật select2 tương ứng
                     if (containerElement.id === 'stopListInbound') {
-                        var values = $('#stopSelectInbound').val();
+                        var values = $('#stopSelectInbound').val() || [];
                         values = values.filter(function (value) {
                             return value !== stopId;
                         });
                         $('#stopSelectInbound').val(values).trigger('change');
                         updateSelectedStopsInbound();
-                    } else {
-                        var values = $('#stopSelectOutbound').val();
+                    } else if (containerElement.id === 'stopListOutbound') {
+                        var values = $('#stopSelectOutbound').val() || [];
                         values = values.filter(function (value) {
                             return value !== stopId;
                         });
@@ -351,6 +360,7 @@
                     selectedIds.push($(this).data('id'));
                 });
                 $('#selectedStopsInboundField').val(selectedIds.join(','));
+                console.log('Inbound stops updated:', selectedIds.join(','));
             }
 
             // Cập nhật trường ẩn chứa thứ tự các điểm dừng cho chiều về
@@ -360,32 +370,10 @@
                     selectedIds.push($(this).data('id'));
                 });
                 $('#selectedStopsOutboundField').val(selectedIds.join(','));
+                console.log('Outbound stops updated:', selectedIds.join(','));
             }
 
-            // Chức năng tạo ngược chiều về từ chiều đi
-            $('#createReverseRoute').on('click', function (e) {
-                e.preventDefault();
-
-                // Lấy danh sách điểm dừng từ chiều đi
-                var inboundStops = [];
-                $('#stopListInbound .stop-item').each(function () {
-                    inboundStops.push($(this).data('id').toString());
-                });
-
-                if (inboundStops.length === 0) {
-                    alert('Vui lòng thêm điểm dừng cho chiều đi trước');
-                    return;
-                }
-
-                // Đảo ngược thứ tự
-                inboundStops.reverse();
-
-                // Cập nhật select chiều về
-                $('#stopSelectOutbound').val(inboundStops).trigger('change');
-
-                // Chuyển sang tab chiều về
-                $('#outbound-tab').tab('show');
-            });
+            // XÓA: phần thêm trường màu sắc tuyến vào form
         });
     </script>
 </body>

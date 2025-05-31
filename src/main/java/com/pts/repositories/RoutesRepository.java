@@ -27,8 +27,6 @@ public interface RoutesRepository {
 
     List<Routes> findByTotalStops(Integer totalStops);
 
-    List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute);
-
     List<Routes> findByIsActive(Boolean isActive);
 
     List<Routes> findByRouteTypeId(Integer routeTypeId);
@@ -50,4 +48,10 @@ public interface RoutesRepository {
     void updateTotalStops(Integer routeId);
 
     void updateRouteOperationDetails(Integer routeId, Time startTime, Time endTime, Integer frequencyMinutes);
+    List<Routes> findAllWithPagination(int offset, int limit);
+    int countAll();
+    
+    // Phân trang cho tìm kiếm
+    List<Routes> searchRoutesByNameWithPagination(String keyword, int offset, int limit);
+    int countByNameContaining(String keyword);
 }

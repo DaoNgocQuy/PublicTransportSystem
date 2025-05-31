@@ -21,26 +21,27 @@
                         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                             <li class="nav-item"><a class="nav-link" th:href="@{/schedules}">Danh sách lịch trình</a></li>
                             <li class="nav-item"><a class="nav-link" th:href="@{/routes}">Danh sách tuyến</a></li>
+                            <li class="nav-item"><a class="nav-link" th:href="@{/stops}">Danh sách trạm</a></li>
                         </ul>
-                        
+
                         <!-- User Avatar and Dropdown Menu -->
                         <div class="d-flex" sec:authorize="isAuthenticated()">
                             <div class="dropdown">
                                 <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <span class="me-2 text-white" sec:authentication="name">Username</span>
                                     <img th:src="${#authentication.principal.avatarUrl != null ? 
-                                                #authentication.principal.avatarUrl : 
-                                                'https://res.cloudinary.com/dxxwcby8l/image/upload/v1747244986/default-avatar-facebook_evhtfg.png'}" 
-                                        class="rounded-circle" 
-                                        alt="Avatar" 
-                                        style="width: 35px; height: 35px; object-fit: cover; border: 2px solid #fff;">
+                                         #authentication.principal.avatarUrl : 
+                                         'https://res.cloudinary.com/dxxwcby8l/image/upload/v1747244986/default-avatar-facebook_evhtfg.png'}" 
+                                         class="rounded-circle" 
+                                         alt="Avatar" 
+                                         style="width: 35px; height: 35px; object-fit: cover; border: 2px solid #fff;">
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                     <li><a class="dropdown-item" th:href="@{/logout}">Đăng xuất</a></li>
                                 </ul>
                             </div>
                         </div>
-                        
+
                         <div class="d-flex" sec:authorize="!isAuthenticated()">
                             <a th:href="@{/login}" class="btn btn-outline-light">Đăng nhập</a>
                         </div>
@@ -54,10 +55,10 @@
 
         <!-- Footer -->
         <footer th:fragment="footer">
-        <div class="mt-4 p-5 bg-primary text-white rounded">
-            <h1>Public Transport System</h1>
-            <p>&copy; 2025</p>
-        </div>
-    </footer>
+            <div class="mt-4 p-5 bg-primary text-white rounded">
+                <h1>Public Transport System</h1>
+                <p>&copy; 2025</p>
+            </div>
+        </footer>
     </body>
 </html>     

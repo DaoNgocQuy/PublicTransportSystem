@@ -16,7 +16,6 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     private final Cloudinary cloudinary;
     
     public CloudinaryServiceImpl() {
-        // Cấu hình Cloudinary - Thay thế bằng thông tin của bạn
         Map<String, String> config = new HashMap<>();
         config.put("cloud_name", "dgbc7fkvk");
         config.put("api_key", "525297434446541");
@@ -34,7 +33,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         try {
             // Upload file và chỉ định thư mục
             Map<String, Object> params = ObjectUtils.asMap(
-                "folder", "pts_avatars",  // Thay đổi folder tùy ý
+                "folder", "pts_avatars", 
                 "resource_type", "auto"
             );
             
@@ -44,6 +43,28 @@ public class CloudinaryServiceImpl implements CloudinaryService {
             return result.get("secure_url").toString();
         } catch (IOException e) {
             throw new IOException("Lỗi khi upload ảnh: " + e.getMessage(), e);
+        }
+    }
+    
+    @Override
+    public String uploadImageToFolder(MultipartFile file, String folder) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IOException("File không được để trống");
+        }
+        
+        try {
+            // Upload file vào thư mục được chỉ định
+            Map<String, Object> params = ObjectUtils.asMap(
+                "folder", folder,
+                "resource_type", "auto"
+            );
+            
+            Map result = cloudinary.uploader().upload(file.getBytes(), params);
+            
+            // Trả về secure URL (https)
+            return result.get("secure_url").toString();
+        } catch (IOException e) {
+            throw new IOException("Lỗi khi upload ảnh vào thư mục " + folder + ": " + e.getMessage(), e);
         }
     }
 }

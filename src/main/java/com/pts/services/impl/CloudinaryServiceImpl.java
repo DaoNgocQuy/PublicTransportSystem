@@ -3,11 +3,11 @@ package com.pts.services.impl;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.pts.services.CloudinaryService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -15,13 +15,9 @@ public class CloudinaryServiceImpl implements CloudinaryService {
     
     private final Cloudinary cloudinary;
     
-    public CloudinaryServiceImpl() {
-        Map<String, String> config = new HashMap<>();
-        config.put("cloud_name", "dgbc7fkvk");
-        config.put("api_key", "525297434446541");
-        config.put("api_secret", "28FUJmTSBP6-G_63h2UoEaDSYoA");
-        
-        this.cloudinary = new Cloudinary(config);
+    @Autowired
+    public CloudinaryServiceImpl(Cloudinary cloudinary) {
+        this.cloudinary = cloudinary;
     }
     
     @Override

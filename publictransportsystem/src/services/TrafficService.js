@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db } from "../firebase/firebase";
+import { authApi, endpoints } from "../configs/Apis";
 
 // Lấy các thông tin tình trạng giao thông gần đây (1 lần)
 export const getTrafficConditions = async () => {
@@ -126,17 +127,20 @@ export const reportTrafficCondition = async (reportData, imageFile) => {
     try {
         let imageUrl = null;
 
-        // Nếu có file hình, tải lên Storage trước
+        // Nếu có file hình, tải lên Cloudinary thông qua API backend
         if (imageFile) {
-            const storage = getStorage();
-            const timestamp = new Date().getTime();
-            const storageRef = ref(storage, `traffic-reports/${timestamp}_${imageFile.name}`);
-
-            // Upload file
-            const uploadResult = await uploadBytes(storageRef, imageFile);
-
-            // Lấy URL download
-            imageUrl = await getDownloadURL(uploadResult.ref);
+            const formData = new FormData();
+            formData.append('file', imageFile);
+            
+            // Gọi API upload hình ảnh
+            const response = await authApi.post("api/upload-image", formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            // Lấy URL từ response
+            imageUrl = response.data;
         }
 
         // Thêm dữ liệu vào Firestore với URL hình ảnh (nếu có)

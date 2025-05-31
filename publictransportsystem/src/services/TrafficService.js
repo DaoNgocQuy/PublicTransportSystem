@@ -22,6 +22,7 @@ export const getTrafficConditions = async () => {
     try {
         const q = query(
             collection(db, "trafficConditions"),
+            where("status", "==", "active"),
             orderBy("timestamp", "desc"),
             limit(20)
         );
@@ -57,6 +58,7 @@ export const getTrafficConditions = async () => {
 // Đăng ký lắng nghe thông tin tình trạng giao thông theo thời gian thực
 export const subscribeToTrafficConditions = (callback) => {    const q = query(
         collection(db, "trafficConditions"),
+        where("status", "==", "active"),
         orderBy("timestamp", "desc"),
         limit(20)
     );
@@ -144,11 +146,12 @@ export const reportTrafficCondition = async (reportData, imageFile) => {
         }
 
         // Thêm dữ liệu vào Firestore với URL hình ảnh (nếu có)
+        // Thay đổi status từ 'active' thành 'pending'
         const docRef = await addDoc(collection(db, "trafficConditions"), {
             ...reportData,
             imageUrl,
             timestamp: serverTimestamp(),
-            status: 'active',
+            status: 'pending',  // Thay đổi từ 'active' thành 'pending'
             reportedBy: reportData.userId || 'anonymous'
         });
 
@@ -157,9 +160,68 @@ export const reportTrafficCondition = async (reportData, imageFile) => {
             ...reportData,
             imageUrl,
             timestamp: new Date(),
+            status: 'pending'
         };
     } catch (error) {
         console.error("Lỗi khi báo cáo tình trạng giao thông:", error);
+        throw error;
+    }
+};
+
+// Hàm duyệt báo cáo
+export const approveTrafficCondition = async (id) => {
+    try {
+        const trafficRef = doc(db, "trafficConditions", id);
+        await updateDoc(trafficRef, {
+            status: 'active',
+            approvedAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Lỗi khi duyệt báo cáo giao thông:", error);
+        throw error;
+    }
+};
+
+// Hàm từ chối báo cáo
+export const rejectTrafficCondition = async (id) => {
+    try {
+        const trafficRef = doc(db, "trafficConditions", id);
+        await updateDoc(trafficRef, {
+            status: 'rejected',
+            rejectedAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Lỗi khi từ chối báo cáo giao thông:", error);
+        throw error;
+    }
+};
+
+// Hàm lấy các báo cáo đang chờ duyệt
+export const getPendingTrafficConditions = async () => {
+    try {
+        const q = query(
+            collection(db, "trafficConditions"),
+            where("status", "==", "pending"),
+            orderBy("timestamp", "desc")
+        );
+
+        const querySnapshot = await getDocs(q);
+        
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Kiểm tra và chuyển đổi timestamp nếu cần
+                timestamp: data.timestamp
+                    ? (data.timestamp.toDate ? data.timestamp : new Date(data.timestamp.seconds * 1000))
+                    : new Date()
+            };
+        });
+    } catch (error) {
+        console.error("Lỗi khi lấy báo cáo chờ duyệt:", error);
         throw error;
     }
 };

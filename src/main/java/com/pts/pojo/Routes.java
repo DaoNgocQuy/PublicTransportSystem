@@ -41,7 +41,6 @@ import java.sql.Time;
     @NamedQuery(name = "Routes.findByOperationStartTime", query = "SELECT r FROM Routes r WHERE r.operationStartTime = :operationStartTime"),
     @NamedQuery(name = "Routes.findByOperationEndTime", query = "SELECT r FROM Routes r WHERE r.operationEndTime = :operationEndTime"),
     @NamedQuery(name = "Routes.findByFrequencyMinutes", query = "SELECT r FROM Routes r WHERE r.frequencyMinutes = :frequencyMinutes"),
-    @NamedQuery(name = "Routes.findByIsWalkingRoute", query = "SELECT r FROM Routes r WHERE r.isWalkingRoute = :isWalkingRoute"),
     @NamedQuery(name = "Routes.findByIsActive", query = "SELECT r FROM Routes r WHERE r.isActive = :isActive"),
     @NamedQuery(name = "Routes.findByCreatedAt", query = "SELECT r FROM Routes r WHERE r.createdAt = :createdAt"),
     @NamedQuery(name = "Routes.findByLastUpdated", query = "SELECT r FROM Routes r WHERE r.lastUpdated = :lastUpdated")})
@@ -75,8 +74,6 @@ public class Routes implements Serializable {
     private Date operationEndTime;
     @Column(name = "frequency_minutes")
     private Integer frequencyMinutes;
-    @Column(name = "is_walking_route")
-    private Boolean isWalkingRoute;
     @Column(name = "is_active")
     private Boolean isActive;
     @Column(name = "created_at")
@@ -184,15 +181,6 @@ public class Routes implements Serializable {
         this.frequencyMinutes = frequencyMinutes;
     }
 
-    
-
-    public Boolean getIsWalkingRoute() {
-        return isWalkingRoute;
-    }
-
-    public void setIsWalkingRoute(Boolean isWalkingRoute) {
-        this.isWalkingRoute = isWalkingRoute;
-    }
 
     public Boolean getActive() {
         return this.isActive;

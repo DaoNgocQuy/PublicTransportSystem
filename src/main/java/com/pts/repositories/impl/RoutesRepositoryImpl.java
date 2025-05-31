@@ -36,10 +36,6 @@ public class RoutesRepositoryImpl implements RoutesRepository {
             route.setStartLocation(rs.getString("start_location"));
             route.setEndLocation(rs.getString("end_location"));
 
-            // Kiểm tra null cho các trường có thể null
-            if (rs.getObject("is_walking_route") != null) {
-                route.setIsWalkingRoute(rs.getBoolean("is_walking_route"));
-            }
             if (rs.getObject("is_active") != null) {
                 route.setActive(rs.getBoolean("is_active"));
             }
@@ -124,8 +120,8 @@ public class RoutesRepositoryImpl implements RoutesRepository {
     public Routes save(Routes route) {
         if (route.getId() == null) {
             String sql = "INSERT INTO routes (name, route_type_id, start_location, end_location, total_stops, "
-                    + "operation_start_time, operation_end_time, frequency_minutes, is_walking_route, is_active) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                    + "operation_start_time, operation_end_time, frequency_minutes, is_active) "
+                    + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
@@ -138,8 +134,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
                 ps.setObject(6, route.getOperationStartTime());
                 ps.setObject(7, route.getOperationEndTime());
                 ps.setObject(8, route.getFrequencyMinutes());
-                ps.setObject(9, route.getIsWalkingRoute());
-                ps.setObject(10, route.getActive());
+                ps.setObject(9, route.getActive());
                 return ps;
             }, keyHolder);
 
@@ -149,7 +144,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         } else {
             String sql = "UPDATE routes SET name = ?, route_type_id = ?, start_location = ?, end_location = ?, "
                     + "total_stops = ?, operation_start_time = ?, operation_end_time = ?, frequency_minutes = ?, "
-                    + "is_walking_route = ?, is_active = ? WHERE id = ?";
+                    + "is_active = ? WHERE id = ?";
             jdbcTemplate.update(sql,
                     route.getName(),
                     route.getRouteTypeIdValue(),
@@ -159,7 +154,6 @@ public class RoutesRepositoryImpl implements RoutesRepository {
                     route.getOperationStartTime(),
                     route.getOperationEndTime(),
                     route.getFrequencyMinutes(),
-                    route.getIsWalkingRoute(),
                     route.getActive(),
                     route.getId());
         }
@@ -215,14 +209,7 @@ public class RoutesRepositoryImpl implements RoutesRepository {
         return jdbcTemplate.query(sql, routesWithTypeRowMapper, totalStops);
     }
 
-    @Override
-    public List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute) {
-        String sql = "SELECT r.*, rt.id as rt_id, rt.type_name, rt.color_code, rt.description "
-                + "FROM routes r "
-                + "LEFT JOIN route_types rt ON r.route_type_id = rt.id "
-                + "WHERE r.is_walking_route = ?";
-        return jdbcTemplate.query(sql, routesWithTypeRowMapper, isWalkingRoute);
-    }
+    
 
     @Override
     public List<Routes> findByIsActive(Boolean isActive) {

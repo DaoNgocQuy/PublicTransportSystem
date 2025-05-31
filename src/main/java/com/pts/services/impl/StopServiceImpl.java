@@ -61,16 +61,6 @@ public class StopServiceImpl implements StopService {
     }
 
     @Override
-    public List<Stops> findStopsByName(String stopName) {
-        return stopRepository.findByStopName(stopName);
-    }
-
-    @Override
-    public List<Stops> findStopsByAddress(String address) {
-        return stopRepository.findByAddress(address);
-    }
-
-    @Override
     public List<Stops> findStopsByRouteId(Integer routeId) {
         return stopRepository.findByRouteId(routeId);
     }
@@ -141,15 +131,7 @@ public class StopServiceImpl implements StopService {
         return result;
     }
 
-    @Override
-    public List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder) {
-        try {
-            return stopRepository.findStopsByRouteIdAndStopOrderRange(routeId, startOrder, endOrder);
-        } catch (Exception e) {
-            System.err.println("Lỗi khi tìm trạm theo khoảng thứ tự: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
+    
 
     private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
         // Radius of the Earth in km

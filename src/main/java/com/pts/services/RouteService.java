@@ -20,20 +20,11 @@ public interface RouteService {
 
     List<Routes> findRoutesByName(String name);
 
-    List<Routes> findRoutesByStartLocation(String startLocation);
-
-    List<Routes> findRoutesByEndLocation(String endLocation);
-
     List<Routes> findActiveRoutes();
-
-    List<Routes> findWalkingRoutes();
 
     List<Routes> findRoutesByRouteType(Integer routeTypeId);
 
     List<Routes> searchRoutesByName(String keyword);
-
-    List<Map<String, Object>> findRoutesWithStops(double fromLat, double fromLng, double toLat, double toLng,
-            double maxWalkDistance, int maxTransfers, String routePriority);
 
     List<Routes> findRoutesByStops(List<Integer> stopIds);
 
@@ -48,12 +39,15 @@ public interface RouteService {
     Map<String, Object> findJourneyOptions(
             Double fromLat, Double fromLng, Double toLat, Double toLng,
             Integer maxWalkDistance, String priority);
+
     List<List<Double>> calculateOptimalWalkingPath(Double fromLat, Double fromLng, Double toLat, Double toLng);
-    
+
     List<Routes> getAllRoutesWithPagination(int page, int size);
+
     int getTotalRoutes();
-    
+
     // Phân trang cho tìm kiếm
     List<Routes> searchRoutesByNameWithPagination(String keyword, int page, int size);
+
     int getTotalRoutesByKeyword(String keyword);
 }

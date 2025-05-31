@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/routes")
@@ -199,22 +200,82 @@ public class RouteController {
 
     @PostMapping("/add")
     public String addRoute(@ModelAttribute("route") Routes route,
-            @RequestParam(value = "selectedStopsInbound", required = false) List<Integer> selectedStopsInbound,
-            @RequestParam(value = "selectedStopsOutbound", required = false) List<Integer> selectedStopsOutbound) {
-        // Lưu thông tin tuyến
-        Routes savedRoute = routesService.saveRoute(route);
+            @RequestParam(value = "selectedStopsInbound", required = false) String selectedStopsInboundStr,
+            @RequestParam(value = "selectedStopsOutbound", required = false) String selectedStopsOutboundStr,
+            Model model, RedirectAttributes redirectAttributes) {
+        try {
+            System.out.println("Đang thêm tuyến: " + route.getName());
 
-        // Nếu có các điểm dừng chiều đi được chọn, thêm vào tuyến với direction = 1
-        if (selectedStopsInbound != null && !selectedStopsInbound.isEmpty()) {
-            routeStopService.reorderStops(savedRoute.getId(), selectedStopsInbound, 1);
+            // Set default value for active
+            if (route.getActive() == null) {
+                route.setActive(true);
+            }
+
+            // Lưu thông tin tuyến
+            Routes savedRoute = routesService.saveRoute(route);
+
+            // Kiểm tra nếu lưu tuyến thành công
+            if (savedRoute.getId() == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không thể lưu thông tin tuyến!");
+                return "redirect:/routes/add";
+            }
+
+            System.out.println("Đã lưu tuyến ID: " + savedRoute.getId());
+
+            // Xử lý các trạm dừng chiều đi
+            List<Integer> selectedStopsInbound = new ArrayList<>();
+            if (selectedStopsInboundStr != null && !selectedStopsInboundStr.isEmpty()) {
+                String[] stopIdsArray = selectedStopsInboundStr.split(",");
+                for (String stopIdStr : stopIdsArray) {
+                    try {
+                        selectedStopsInbound.add(Integer.parseInt(stopIdStr));
+                    } catch (NumberFormatException e) {
+                        System.err.println("Lỗi khi chuyển đổi ID trạm: " + stopIdStr);
+                    }
+                }
+            }
+
+            // Xử lý các trạm dừng chiều về
+            List<Integer> selectedStopsOutbound = new ArrayList<>();
+            if (selectedStopsOutboundStr != null && !selectedStopsOutboundStr.isEmpty()) {
+                String[] stopIdsArray = selectedStopsOutboundStr.split(",");
+                for (String stopIdStr : stopIdsArray) {
+                    try {
+                        selectedStopsOutbound.add(Integer.parseInt(stopIdStr));
+                    } catch (NumberFormatException e) {
+                        System.err.println("Lỗi khi chuyển đổi ID trạm: " + stopIdStr);
+                    }
+                }
+            }
+
+            // Thêm các trạm dừng chiều đi (direction = 1)
+            if (!selectedStopsInbound.isEmpty()) {
+                System.out.println("Thêm " + selectedStopsInbound.size() + " trạm cho chiều đi");
+                boolean success = routeStopService.reorderStops(savedRoute.getId(), selectedStopsInbound, 1);
+                if (!success) {
+                    System.err.println("Có lỗi khi thêm trạm dừng chiều đi");
+                }
+            }
+
+            // Thêm các trạm dừng chiều về (direction = 2)
+            if (!selectedStopsOutbound.isEmpty()) {
+                System.out.println("Thêm " + selectedStopsOutbound.size() + " trạm cho chiều về");
+                boolean success = routeStopService.reorderStops(savedRoute.getId(), selectedStopsOutbound, 2);
+                if (!success) {
+                    System.err.println("Có lỗi khi thêm trạm dừng chiều về");
+                }
+            }
+
+            // Tính toán lại các thông số cho tuyến (như tổng số trạm)
+            routesService.recalculateRoute(savedRoute.getId());
+
+            redirectAttributes.addFlashAttribute("successMessage", "Thêm tuyến " + savedRoute.getName() + " thành công!");
+            return "redirect:/routes/view/" + savedRoute.getId();
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi thêm tuyến: " + e.getMessage());
+            return "redirect:/routes/add";
         }
-
-        // Nếu có các điểm dừng chiều về được chọn, thêm vào tuyến với direction = 2
-        if (selectedStopsOutbound != null && !selectedStopsOutbound.isEmpty()) {
-            routeStopService.reorderStops(savedRoute.getId(), selectedStopsOutbound, 2);
-        }
-
-        return "redirect:/routes"; // Chuyển hướng về danh sách tuyến
     }
 
     // Hiển thị form chỉnh sửa tuyến
@@ -251,6 +312,63 @@ public class RouteController {
             System.err.println("Lỗi khi hiển thị form chỉnh sửa tuyến ID " + id + ": " + e.getMessage());
             e.printStackTrace();
             return "redirect:/routes?error=" + e.getMessage();
+        }
+    }
+// Thêm phương thức này sau phương thức showEditRouteForm
+
+    @PostMapping("/edit/{id}")
+    public String updateRoute(@PathVariable("id") Integer id,
+            @ModelAttribute Routes newRoute,
+            RedirectAttributes redirectAttributes) {
+        try {
+            // Lấy thông tin tuyến cũ
+            Optional<Routes> oldRouteOptional = routesService.getRouteById(id);
+
+            if (!oldRouteOptional.isPresent()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy tuyến có ID " + id);
+                return "redirect:/routes";
+            }
+
+            Routes oldRoute = oldRouteOptional.get();
+
+            // Giữ lại các trường được tính toán tự động
+            newRoute.setId(id);
+
+            // Kiểu dữ liệu đã được chuyển đổi đúng
+            if (oldRoute.getOperationStartTime() != null) {
+                newRoute.setOperationStartTime(new java.sql.Time(oldRoute.getOperationStartTime().getTime()));
+            }
+            if (oldRoute.getOperationEndTime() != null) {
+                newRoute.setOperationEndTime(new java.sql.Time(oldRoute.getOperationEndTime().getTime()));
+            }
+
+            newRoute.setFrequencyMinutes(oldRoute.getFrequencyMinutes());
+            newRoute.setTotalStops(oldRoute.getTotalStops());
+            newRoute.setCreatedAt(oldRoute.getCreatedAt());
+
+            // Cập nhật tuyến
+            Routes savedRoute = routesService.saveRoute(newRoute);
+
+            // Kiểm tra nếu có thay đổi đáng kể
+            boolean significantChanges = hasRouteChanged(oldRoute, savedRoute);
+
+            // Nếu có thay đổi đáng kể, gửi thông báo
+            if (significantChanges) {
+                // Đặt lịch gửi email thông báo thay đổi tuyến
+                sendChangeEmails(oldRoute, savedRoute);
+
+                redirectAttributes.addFlashAttribute("successMessage",
+                        "Cập nhật tuyến thành công! Thông báo đã được gửi cho hành khách đăng ký.");
+            } else {
+                redirectAttributes.addFlashAttribute("successMessage", "Cập nhật tuyến thành công!");
+            }
+
+            return "redirect:/routes/view/" + id;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi cập nhật tuyến: " + e.getMessage());
+            return "redirect:/routes/edit/" + id;
         }
     }
 

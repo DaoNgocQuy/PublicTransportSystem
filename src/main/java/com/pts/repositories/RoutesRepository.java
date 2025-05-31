@@ -27,8 +27,6 @@ public interface RoutesRepository {
 
     List<Routes> findByTotalStops(Integer totalStops);
 
-    List<Routes> findByIsWalkingRoute(Boolean isWalkingRoute);
-
     List<Routes> findByIsActive(Boolean isActive);
 
     List<Routes> findByRouteTypeId(Integer routeTypeId);

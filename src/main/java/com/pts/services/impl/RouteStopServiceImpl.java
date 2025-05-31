@@ -300,43 +300,7 @@ public class RouteStopServiceImpl implements RouteStopService {
         }
     }
 
-    @Override
-    public boolean swapStopOrder(Integer routeStopId1, Integer routeStopId2) {
-        try {
-            RouteStop routeStop1 = routeStopRepository.findById(routeStopId1);
-            RouteStop routeStop2 = routeStopRepository.findById(routeStopId2);
-
-            if (routeStop1 == null || routeStop2 == null) {
-                System.err.println("Không tìm thấy một hoặc cả hai RouteStop");
-                return false;
-            }
-
-            // Kiểm tra xem hai trạm có cùng tuyến và chiều không
-            if (!routeStop1.getRoute().getId().equals(routeStop2.getRoute().getId())
-                    || !routeStop1.getDirection().equals(routeStop2.getDirection())) {
-                System.err.println("Hai trạm không thuộc cùng tuyến hoặc hướng");
-                return false;
-            }
-
-            // Hoán đổi vị trí
-            Integer tempOrder = routeStop1.getStopOrder();
-            routeStop1.setStopOrder(routeStop2.getStopOrder());
-            routeStop2.setStopOrder(tempOrder);
-
-            // Lưu thay đổi
-            routeStopRepository.update(routeStop1);
-            routeStopRepository.update(routeStop2);
-
-            System.out.println("Đã hoán đổi vị trí giữa trạm " + routeStop1.getStop().getStopName()
-                    + " và " + routeStop2.getStop().getStopName());
-
-            return true;
-        } catch (Exception e) {
-            System.err.println("Lỗi khi hoán đổi vị trí trạm dừng: " + e.getMessage());
-            e.printStackTrace();
-            return false;
-        }
-    }
+    
 
     @Override
     @Transactional
@@ -358,50 +322,8 @@ public class RouteStopServiceImpl implements RouteStopService {
         }
     }
 
-    @Override
-    public List<Stops> getAvailableStopsForRoute(Integer routeId, Integer direction) {
-        try {
-            List<RouteStop> existingRouteStops = findByRouteIdAndDirection(routeId, direction);
-            List<Integer> existingStopIds = existingRouteStops.stream()
-                    .map(rs -> rs.getStop().getId())
-                    .collect(Collectors.toList());
-
-            List<Stops> allStops = stopRepository.findAll();
-            return allStops.stream()
-                    .filter(stop -> !existingStopIds.contains(stop.getId()))
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            System.err.println("Lỗi khi lấy danh sách trạm có thể thêm: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    @Override
-    public List<Map<String, Object>> getStopCoordinatesForRoute(Integer routeId, Integer direction) {
-        try {
-            List<RouteStop> routeStops = findByRouteIdAndDirection(routeId, direction);
-            List<Map<String, Object>> result = new ArrayList<>();
-
-            for (RouteStop rs : routeStops) {
-                if (rs.getStop() != null && rs.getStop().getLatitude() != null && rs.getStop().getLongitude() != null) {
-                    Map<String, Object> stopData = new HashMap<>();
-                    stopData.put("id", rs.getStop().getId());
-                    stopData.put("name", rs.getStop().getStopName());
-                    stopData.put("lat", rs.getStop().getLatitude());
-                    stopData.put("lng", rs.getStop().getLongitude());
-                    stopData.put("order", rs.getStopOrder());
-                    result.add(stopData);
-                }
-            }
-
-            System.out.println("Đã lấy " + result.size() + " tọa độ trạm cho tuyến " + routeId
-                    + ", chiều " + (direction == 1 ? "đi" : "về"));
-            return result;
-        } catch (Exception e) {
-            System.err.println("Lỗi khi lấy tọa độ trạm dừng: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
+    
+    
 
     @Override
     @Transactional

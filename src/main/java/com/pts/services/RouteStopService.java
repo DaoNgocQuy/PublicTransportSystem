@@ -33,12 +33,6 @@ public interface RouteStopService {
 
     RouteStop addStopToRoute(Integer routeId, Integer stopId, Integer direction, Integer stopOrder);
 
-    boolean swapStopOrder(Integer routeStopId1, Integer routeStopId2);
-
-    List<Stops> getAvailableStopsForRoute(Integer routeId, Integer direction);
-
-    List<Map<String, Object>> getStopCoordinatesForRoute(Integer routeId, Integer direction);
-
     boolean moveStopUp(Integer routeStopId);
 
     boolean moveStopDown(Integer routeStopId);

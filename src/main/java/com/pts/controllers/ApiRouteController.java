@@ -162,7 +162,6 @@ public class ApiRouteController {
         // Thông tin bổ sung về tuyến
         routeInfo.put("totalStops", route.getTotalStops());
         routeInfo.put("frequencyMinutes", route.getFrequencyMinutes());
-        routeInfo.put("isWalkingRoute", route.getIsWalkingRoute());
         routeInfo.put("active", route.getActive());
 
         // Lấy danh sách trạm dừng cho cả hai chiều

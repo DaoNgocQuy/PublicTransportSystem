@@ -25,6 +25,18 @@
     <div class="container my-4">
         <div th:replace="base :: header"></div>
 
+        <!-- Thông báo lỗi/thành công -->
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
         <!-- Nút quay lại -->
         <div class="mb-3">
             <a th:href="@{/routes/view/{id}(id=${route.id})}" class="btn btn-secondary">
@@ -44,17 +56,17 @@
         <form th:action="@{/routes/edit/{id}(id=${route.id})}" method="post" class="needs-validation" novalidate>
             <ul class="nav nav-tabs" id="editTab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                    <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab" aria-controls="basic" aria-selected="true">
                         Thông tin cơ bản
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="inbound-tab" data-bs-toggle="tab" data-bs-target="#inbound" type="button" role="tab">
+                    <button class="nav-link" id="inbound-tab" data-bs-toggle="tab" data-bs-target="#inbound" type="button" role="tab" aria-controls="inbound" aria-selected="false">
                         Chiều đi
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="outbound-tab" data-bs-toggle="tab" data-bs-target="#outbound" type="button" role="tab">
+                    <button class="nav-link" id="outbound-tab" data-bs-toggle="tab" data-bs-target="#outbound" type="button" role="tab" aria-controls="outbound" aria-selected="false">
                         Chiều về
                     </button>
                 </li>
@@ -74,11 +86,11 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="routeType" class="form-label">Loại tuyến</label>
-                                <select class="form-select" id="routeType" name="routeType">
-                                    <option value="BUS" th:selected="${route.routeType == 'BUS'}">Buýt</option>
-                                    <option value="METRO" th:selected="${route.routeType == 'METRO'}">Metro</option>
-                                    <option value="TRAIN" th:selected="${route.routeType == 'TRAIN'}">Tàu hỏa</option>
+                                <label for="routeTypeId" class="form-label">Loại tuyến</label>
+                                <select class="form-select" id="routeTypeId" name="routeTypeId">
+                                    <option value="1" th:selected="${route.routeTypeIdValue == 1}">Buýt</option>
+                                    <option value="2" th:selected="${route.routeTypeIdValue == 2}">Metro</option>
+                                    <option value="3" th:selected="${route.routeTypeIdValue == 3}">Tàu hỏa</option>
                                 </select>
                             </div>
 
@@ -101,21 +113,17 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="operationStartTime" class="form-label">Giờ bắt đầu hoạt động</label>
-                                <input type="time" class="form-control" id="operationStartTime" name="operationStartTime" 
-                                       th:value="${#dates.format(route.operationStartTime, 'HH:mm')}" required>
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="active" name="active" th:checked="${route.active}">
+                                    <label class="form-check-label" for="active">Đang hoạt động</label>
+                                </div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="operationEndTime" class="form-label">Giờ kết thúc hoạt động</label>
-                                <input type="time" class="form-control" id="operationEndTime" name="operationEndTime" 
-                                       th:value="${#dates.format(route.operationEndTime, 'HH:mm')}" required>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="frequencyMinutes" class="form-label">Tần suất (phút/chuyến)</label>
-                                <input type="number" class="form-control" id="frequencyMinutes" name="frequencyMinutes" 
-                                       th:value="${route.frequencyMinutes}" required>
+                            <div class="col-md-12 mt-3">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle-fill me-2"></i>
+                                    Thông tin về giờ hoạt động và tần suất được tự động tính toán dựa trên lịch trình.
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -212,6 +220,30 @@
                 }, false)
             })
         })()
+
+        // Initialize tabs
+        document.addEventListener('DOMContentLoaded', function () {
+            const triggerTabList = [].slice.call(document.querySelectorAll('#editTab button'))
+            triggerTabList.forEach(function (triggerEl) {
+                triggerEl.addEventListener('click', function (event) {
+                    event.preventDefault()
+                    const tabTarget = document.querySelector(this.getAttribute('data-bs-target'))
+
+                    // Hide all tab panes
+                    const tabPanes = document.querySelectorAll('.tab-pane')
+                    tabPanes.forEach(pane => {
+                        pane.classList.remove('show', 'active')
+                    })
+
+                    // Show the selected tab pane
+                    tabTarget.classList.add('show', 'active')
+
+                    // Update active states on tab buttons
+                    triggerTabList.forEach(btn => btn.classList.remove('active'))
+                    this.classList.add('active')
+                })
+            })
+        })
     </script>
 </body>
 </html>

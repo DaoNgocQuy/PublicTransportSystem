@@ -46,4 +46,6 @@ public interface RouteStopService {
     Integer findMaxStopOrderByRouteIdAndDirection(Integer routeId, Integer direction);
 
     void shiftStopOrders(Integer routeId, Integer direction, Integer fromOrder);
+
+    int countRoutesByStopId(Integer stopId);
 }

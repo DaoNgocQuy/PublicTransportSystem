@@ -418,7 +418,6 @@ public class ScheduleController {
         html.append("<h1>Thông báo thay đổi lịch trình tuyến</h1>");
         html.append("</div>");        html.append("<div style='padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd;'>");
         html.append("<p>Xin chào " + fullName + ",</p>");
-        // Xử lý trường hợp tên tuyến là null
         String routeName = (route.getName() != null) ? route.getName() : "ID: " + route.getId();
         html.append("<p>Lịch trình của tuyến <strong>" + routeName + "</strong> đã được cập nhật.</p>");
 

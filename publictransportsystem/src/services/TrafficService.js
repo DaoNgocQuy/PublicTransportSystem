@@ -15,12 +15,14 @@ import {
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db } from "../firebase/firebase";
+import { authApi, endpoints } from "../configs/Apis";
 
 // Lấy các thông tin tình trạng giao thông gần đây (1 lần)
 export const getTrafficConditions = async () => {
     try {
         const q = query(
             collection(db, "trafficConditions"),
+            where("status", "==", "active"),
             orderBy("timestamp", "desc"),
             limit(20)
         );
@@ -54,8 +56,7 @@ export const getTrafficConditions = async () => {
 };
 
 // Đăng ký lắng nghe thông tin tình trạng giao thông theo thời gian thực
-export const subscribeToTrafficConditions = (callback) => {
-    const q = query(
+export const subscribeToTrafficConditions = (callback) => {    const q = query(
         collection(db, "trafficConditions"),
         where("status", "==", "active"),
         orderBy("timestamp", "desc"),
@@ -115,10 +116,7 @@ export const updateTrafficCondition = async (id, trafficData) => {
 export const deleteTrafficCondition = async (id) => {
     try {
         const trafficRef = doc(db, "trafficConditions", id);
-        await updateDoc(trafficRef, {
-            status: "inactive",
-            updatedAt: serverTimestamp()
-        });
+        await deleteDoc(trafficRef);
 
         return true;
     } catch (error) {
@@ -130,25 +128,29 @@ export const reportTrafficCondition = async (reportData, imageFile) => {
     try {
         let imageUrl = null;
 
-        // Nếu có file hình, tải lên Storage trước
+        // Nếu có file hình, tải lên Cloudinary thông qua API backend
         if (imageFile) {
-            const storage = getStorage();
-            const timestamp = new Date().getTime();
-            const storageRef = ref(storage, `traffic-reports/${timestamp}_${imageFile.name}`);
-
-            // Upload file
-            const uploadResult = await uploadBytes(storageRef, imageFile);
-
-            // Lấy URL download
-            imageUrl = await getDownloadURL(uploadResult.ref);
+            const formData = new FormData();
+            formData.append('file', imageFile);
+            
+            // Gọi API upload hình ảnh
+            const response = await authApi.post("api/upload-image", formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            
+            // Lấy URL từ response
+            imageUrl = response.data;
         }
 
         // Thêm dữ liệu vào Firestore với URL hình ảnh (nếu có)
+        // Thay đổi status từ 'active' thành 'pending'
         const docRef = await addDoc(collection(db, "trafficConditions"), {
             ...reportData,
             imageUrl,
             timestamp: serverTimestamp(),
-            status: 'active',
+            status: 'pending',  // Thay đổi từ 'active' thành 'pending'
             reportedBy: reportData.userId || 'anonymous'
         });
 
@@ -157,9 +159,68 @@ export const reportTrafficCondition = async (reportData, imageFile) => {
             ...reportData,
             imageUrl,
             timestamp: new Date(),
+            status: 'pending'
         };
     } catch (error) {
         console.error("Lỗi khi báo cáo tình trạng giao thông:", error);
+        throw error;
+    }
+};
+
+// Hàm duyệt báo cáo
+export const approveTrafficCondition = async (id) => {
+    try {
+        const trafficRef = doc(db, "trafficConditions", id);
+        await updateDoc(trafficRef, {
+            status: 'active',
+            approvedAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Lỗi khi duyệt báo cáo giao thông:", error);
+        throw error;
+    }
+};
+
+// Hàm từ chối báo cáo
+export const rejectTrafficCondition = async (id) => {
+    try {
+        const trafficRef = doc(db, "trafficConditions", id);
+        await updateDoc(trafficRef, {
+            status: 'rejected',
+            rejectedAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Lỗi khi từ chối báo cáo giao thông:", error);
+        throw error;
+    }
+};
+
+// Hàm lấy các báo cáo đang chờ duyệt
+export const getPendingTrafficConditions = async () => {
+    try {
+        const q = query(
+            collection(db, "trafficConditions"),
+            where("status", "==", "pending"),
+            orderBy("timestamp", "desc")
+        );
+
+        const querySnapshot = await getDocs(q);
+        
+        return querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                // Kiểm tra và chuyển đổi timestamp nếu cần
+                timestamp: data.timestamp
+                    ? (data.timestamp.toDate ? data.timestamp : new Date(data.timestamp.seconds * 1000))
+                    : new Date()
+            };
+        });
+    } catch (error) {
+        console.error("Lỗi khi lấy báo cáo chờ duyệt:", error);
         throw error;
     }
 };

@@ -66,7 +66,7 @@ public class SpringSecurityConfigs {
         // Tạo MVC matcher
         MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(mvcHandlerMappingIntrospector());
 
-        http.cors(cors -> cors.configurationSource(corsConfigurationSource()))                .csrf(c -> c.disable())
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(c -> c.disable())
                 .authorizeHttpRequests(authorize -> authorize
                 // Sử dụng AntPathRequestMatcher rõ ràng
                 .requestMatchers(new AntPathRequestMatcher("/login")).permitAll()
@@ -74,6 +74,7 @@ public class SpringSecurityConfigs {
                 .requestMatchers(new AntPathRequestMatcher("/js/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/images/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/auth/**")).permitAll()
+                .requestMatchers(new AntPathRequestMatcher("/api/upload-image")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/routes/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/stops/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/users/register")).permitAll()
@@ -159,7 +160,7 @@ public class SpringSecurityConfigs {
             dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
             dataSource.setUrl("jdbc:mysql://localhost:3306/pts");
             dataSource.setUsername("root");
-            dataSource.setPassword("123456");
+            dataSource.setPassword("huyduong2004");
             return dataSource;
         }
 

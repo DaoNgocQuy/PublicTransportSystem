@@ -1,16 +1,19 @@
-// c:\PTS\PublicTransportSystem\publictransportsystem\src\pages\TrafficAdminPage.jsx
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Table, Alert, Badge, Modal } from 'react-bootstrap';
 import {
     getTrafficConditions,
+    getPendingTrafficConditions,
     addTrafficCondition,
     deleteTrafficCondition,
-    updateTrafficCondition
+    updateTrafficCondition,
+    approveTrafficCondition,
+    rejectTrafficCondition
 } from '../services/TrafficService';
 import './TrafficAdminPage.css';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
 const TrafficAdminPage = () => {
     // State cho form thêm mới
     const [formData, setFormData] = useState({
@@ -21,9 +24,13 @@ const TrafficAdminPage = () => {
         description: ''
     });
 
-    // State cho danh sách tình trạng giao thông
+    // State cho danh sách tình trạng giao thông đã duyệt
     const [trafficConditions, setTrafficConditions] = useState([]);
+    // State cho danh sách tình trạng giao thông chờ duyệt
+    const [pendingConditions, setPendingConditions] = useState([]);
+    
     const [loading, setLoading] = useState(true);
+    const [pendingLoading, setPendingLoading] = useState(true);
     const [alert, setAlert] = useState({ show: false, variant: '', message: '' });
     const [position, setPosition] = useState(null);
 
@@ -98,6 +105,7 @@ const TrafficAdminPage = () => {
             });
         }
     };
+
     useEffect(() => {
         if (showEditModal && editFormData.latitude && editFormData.longitude) {
             setEditPosition({
@@ -144,11 +152,9 @@ const TrafficAdminPage = () => {
     // Tải dữ liệu khi component mount
     useEffect(() => {
         loadTrafficConditions();
+        loadPendingConditions();
     }, []);
-    // Tải dữ liệu khi component mount
-    useEffect(() => {
-        loadTrafficConditions();
-    }, []);
+    
     const LocationMarker = ({ position, setPosition }) => {
         const map = useMapEvents({
             dblclick(e) {
@@ -183,6 +189,7 @@ const TrafficAdminPage = () => {
             }));
         }
     }, [position]);
+    
     // Hàm tải dữ liệu tình trạng giao thông
     const loadTrafficConditions = async () => {
         try {
@@ -198,6 +205,67 @@ const TrafficAdminPage = () => {
                 message: 'Có lỗi xảy ra khi tải dữ liệu tình trạng giao thông.'
             });
             setLoading(false);
+        }
+    };
+
+    // Hàm tải dữ liệu báo cáo chờ duyệt
+    const loadPendingConditions = async () => {
+        try {
+            setPendingLoading(true);
+            const data = await getPendingTrafficConditions();
+            setPendingConditions(data);
+            setPendingLoading(false);
+        } catch (error) {
+            console.error("Lỗi khi tải dữ liệu chờ duyệt:", error);
+            setAlert({
+                show: true,
+                variant: 'danger',
+                message: 'Có lỗi xảy ra khi tải dữ liệu báo cáo chờ duyệt.'
+            });
+            setPendingLoading(false);
+        }
+    };
+
+    // Hàm duyệt báo cáo
+    const handleApprove = async (id) => {
+        try {
+            await approveTrafficCondition(id);
+            setAlert({
+                show: true,
+                variant: 'success',
+                message: 'Đã duyệt báo cáo thành công.'
+            });
+            // Tải lại cả hai danh sách
+            loadPendingConditions();
+            loadTrafficConditions();
+        } catch (error) {
+            console.error("Lỗi khi duyệt báo cáo:", error);
+            setAlert({
+                show: true,
+                variant: 'danger',
+                message: 'Có lỗi xảy ra khi duyệt báo cáo.'
+            });
+        }
+    };
+
+    // Hàm từ chối báo cáo
+    const handleReject = async (id) => {
+        try {
+            await rejectTrafficCondition(id);
+            setAlert({
+                show: true,
+                variant: 'success',
+                message: 'Đã từ chối báo cáo thành công.'
+            });
+            // Tải lại danh sách báo cáo chờ duyệt
+            loadPendingConditions();
+        } catch (error) {
+            console.error("Lỗi khi từ chối báo cáo:", error);
+            setAlert({
+                show: true,
+                variant: 'danger',
+                message: 'Có lỗi xảy ra khi từ chối báo cáo.'
+            });
         }
     };
 
@@ -337,6 +405,104 @@ const TrafficAdminPage = () => {
                     <h1 className="mb-4">Quản lý tình trạng giao thông</h1>
                 </Col>
             </Row>
+
+            {/* Phần báo cáo chờ duyệt */}
+            {pendingConditions.length > 0 && (
+                <Row className="mb-4">
+                    <Col>
+                        <div className="pending-reports-container">
+                            <h3 className="mb-3">
+                                Báo cáo chờ duyệt 
+                                <Badge bg="danger" className="ms-2">{pendingConditions.length}</Badge>
+                            </h3>
+                            
+                            {pendingLoading ? (
+                                <div className="text-center py-4">
+                                    <div className="spinner-border text-primary" role="status">
+                                        <span className="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p className="mt-2">Đang tải dữ liệu...</p>
+                                </div>
+                            ) : (
+                                <div className="table-responsive">
+                                    <Table striped bordered hover>
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Loại</th>
+                                                <th>Mức độ</th>
+                                                <th>Mô tả</th>
+                                                <th>Vị trí</th>
+                                                <th>Hình ảnh</th>
+                                                <th>Thời gian</th>
+                                                <th>Người báo cáo</th>
+                                                <th>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pendingConditions.map(condition => (
+                                                <tr key={condition.id}>
+                                                    <td>{condition.id.substring(0, 8)}...</td>
+                                                    <td>{getConditionTypeName(condition.type)}</td>
+                                                    <td>
+                                                        <Badge bg={getSeverityBadgeVariant(condition.severity)}>
+                                                            {getSeverityName(condition.severity)}
+                                                        </Badge>
+                                                    </td>
+                                                    <td>{condition.description}</td>
+                                                    <td>
+                                                        {condition.latitude.toFixed(5)}, {condition.longitude.toFixed(5)}
+                                                    </td>
+                                                    <td>
+                                                        {condition.imageUrl ? (
+                                                            <a href={condition.imageUrl} target="_blank" rel="noreferrer">
+                                                                <img 
+                                                                    src={condition.imageUrl} 
+                                                                    alt="Hình ảnh báo cáo" 
+                                                                    style={{ maxWidth: '100px', maxHeight: '60px' }} 
+                                                                />
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-muted">Không có</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        {condition.timestamp?.toLocaleString() || 'N/A'}
+                                                    </td>
+                                                    <td>
+                                                        {condition.reportedBy === 'anonymous' ? 
+                                                            'Ẩn danh' : 
+                                                            condition.reportedBy
+                                                        }
+                                                    </td>
+                                                    <td>
+                                                        <div className="d-flex gap-2">
+                                                            <Button
+                                                                variant="success"
+                                                                size="sm"
+                                                                onClick={() => handleApprove(condition.id)}
+                                                            >
+                                                                Duyệt
+                                                            </Button>
+                                                            <Button
+                                                                variant="danger"
+                                                                size="sm"
+                                                                onClick={() => handleReject(condition.id)}
+                                                            >
+                                                                Từ chối
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            )}
+                        </div>
+                    </Col>
+                </Row>
+            )}
 
             <Row className="mb-5">
                 <Col>
@@ -484,7 +650,7 @@ const TrafficAdminPage = () => {
                                 <tbody>
                                     {trafficConditions.map(condition => (
                                         <tr key={condition.id}>
-                                            <td>{condition.id}</td>
+                                            <td>{condition.id.substring(0, 8)}...</td>
                                             <td>{getConditionTypeName(condition.type)}</td>
                                             <td>
                                                 <Badge bg={getSeverityBadgeVariant(condition.severity)}>
@@ -493,7 +659,7 @@ const TrafficAdminPage = () => {
                                             </td>
                                             <td>{condition.description}</td>
                                             <td>
-                                                {condition.latitude}, {condition.longitude}
+                                                {condition.latitude.toFixed(5)}, {condition.longitude.toFixed(5)}
                                             </td>
                                             <td>
                                                 {condition.timestamp?.toLocaleString() || 'N/A'}

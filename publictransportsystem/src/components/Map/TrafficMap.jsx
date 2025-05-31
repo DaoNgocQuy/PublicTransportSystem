@@ -83,12 +83,15 @@ const TrafficMap = () => {
         }
     };
 
-    // Component để bắt sự kiện click trên bản đồ
     const MapClickHandler = () => {
         const map = useMapEvents({
-            click(e) {
-                setClickedLocation(e.latlng);
-            },
+            dblclick: (e) => {
+                setClickedLocation({
+                    lat: e.latlng.lat,
+                    lng: e.latlng.lng
+                });
+                setShowReportForm(true);
+            }
         });
         return null;
     };

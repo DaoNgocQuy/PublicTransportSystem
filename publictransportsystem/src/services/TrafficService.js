@@ -56,7 +56,8 @@ export const getTrafficConditions = async () => {
 };
 
 // Đăng ký lắng nghe thông tin tình trạng giao thông theo thời gian thực
-export const subscribeToTrafficConditions = (callback) => {    const q = query(
+export const subscribeToTrafficConditions = (callback) => {
+    const q = query(
         collection(db, "trafficConditions"),
         where("status", "==", "active"),
         orderBy("timestamp", "desc"),
@@ -132,14 +133,14 @@ export const reportTrafficCondition = async (reportData, imageFile) => {
         if (imageFile) {
             const formData = new FormData();
             formData.append('file', imageFile);
-            
+
             // Gọi API upload hình ảnh
             const response = await authApi.post("api/upload-image", formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
             });
-            
+
             // Lấy URL từ response
             imageUrl = response.data;
         }
@@ -185,11 +186,9 @@ export const approveTrafficCondition = async (id) => {
 // Hàm từ chối báo cáo
 export const rejectTrafficCondition = async (id) => {
     try {
+        // Thay vì cập nhật trạng thái, xóa hoàn toàn document
         const trafficRef = doc(db, "trafficConditions", id);
-        await updateDoc(trafficRef, {
-            status: 'rejected',
-            rejectedAt: serverTimestamp()
-        });
+        await deleteDoc(trafficRef);
         return true;
     } catch (error) {
         console.error("Lỗi khi từ chối báo cáo giao thông:", error);
@@ -207,7 +206,7 @@ export const getPendingTrafficConditions = async () => {
         );
 
         const querySnapshot = await getDocs(q);
-        
+
         return querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {

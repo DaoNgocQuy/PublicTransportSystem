@@ -32,7 +32,6 @@ export const authApi = axios.create({
 
 authApi.interceptors.request.use(config => {
     try {
-        // Lấy từ sessionStorage thay vì localStorage
         const userStr = sessionStorage.getItem('user');
         if (userStr) {
             const user = JSON.parse(userStr);

@@ -87,15 +87,9 @@ public class Users implements Serializable {
     @OneToMany(mappedBy = "userId")
     private Collection<Favorites> favoritesCollection;
     @OneToMany(mappedBy = "userId")
-    private Collection<Reports> reportsCollection;
-    @OneToMany(mappedBy = "reportedBy") 
-    private Collection<TrafficConditions> trafficConditionsCollection;
-    @OneToMany(mappedBy = "userId")
     private Collection<RouteRatings> routeRatingsCollection;
     @OneToMany(mappedBy = "userId")
     private Collection<Notifications> notificationsCollection;
-    @OneToMany(mappedBy = "userId")
-    private Collection<RouteSearchHistory> routeSearchHistoryCollection;
 
     public Users() {
     }
@@ -208,22 +202,6 @@ public class Users implements Serializable {
         this.favoritesCollection = favoritesCollection;
     }
 
-    public Collection<Reports> getReportsCollection() {
-        return reportsCollection;
-    }
-
-    public void setReportsCollection(Collection<Reports> reportsCollection) {
-        this.reportsCollection = reportsCollection;
-    }
-
-    public Collection<TrafficConditions> getTrafficConditionsCollection() {
-        return trafficConditionsCollection;
-    }
-
-    public void setTrafficConditionsCollection(Collection<TrafficConditions> trafficConditionsCollection) {
-        this.trafficConditionsCollection = trafficConditionsCollection;
-    }
-
     public Collection<RouteRatings> getRouteRatingsCollection() {
         return routeRatingsCollection;
     }
@@ -238,14 +216,6 @@ public class Users implements Serializable {
 
     public void setNotificationsCollection(Collection<Notifications> notificationsCollection) {
         this.notificationsCollection = notificationsCollection;
-    }
-
-    public Collection<RouteSearchHistory> getRouteSearchHistoryCollection() {
-        return routeSearchHistoryCollection;
-    }
-
-    public void setRouteSearchHistoryCollection(Collection<RouteSearchHistory> routeSearchHistoryCollection) {
-        this.routeSearchHistoryCollection = routeSearchHistoryCollection;
     }
 
     @Override

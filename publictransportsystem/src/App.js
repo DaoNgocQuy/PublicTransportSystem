@@ -1,20 +1,21 @@
 import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom"
 import { useReducer, useState, useEffect } from "react";
 import Header from "./components/layouts/Header"
-import Home from "./components/Home"
-import Register from "./components/Register"
-import Login from "./components/Login"
-import Reset from "./components/Reset"
-import Userinfo from "./components/userInfo";
-import MapLeaflet from "./components/Map/MapLeaflet"
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import cookie from "react-cookies";
 import './App.css';
 import { UserContext, UserDispatchContext, RoleContext } from "./configs/MyContexts";
-import TrafficMapPage from './pages/TrafficMapPage';
-import TrafficAdminPage from './pages/TrafficAdminPage';
+import { 
+  LazyHome, 
+  LazyLogin, 
+  LazyRegister, 
+  LazyReset, 
+  LazyUserInfo,
+  LazyTrafficMapPage,
+  LazyTrafficAdminPage
+} from './lazyComponents';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -33,12 +34,10 @@ const AdminRoute = ({ children }) => {
   const userStr = sessionStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
 
-  // Kiểm tra quyền admin theo cả hai cách - giống như trong Header.js
+  // Kiểm tra quyền admin theo cả hai cách
   const isAdmin = user &&
     ((user.roles && Array.isArray(user.roles) && user.roles.includes('ADMIN')) ||
       (user.role === 'ADMIN'));
-
-
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -97,29 +96,21 @@ const AppContent = () => {
             <Routes>
               <Route path="/" element={
                 <ProtectedRoute>
-                  <Home />
+                  <LazyHome />
                 </ProtectedRoute>
               } />
-              <Route path="/map" element={
-                <ProtectedRoute>
-                  <div className="App">
-                    <h1>Bản đồ OpenStreetMap với Leaflet</h1>
-                    <MapLeaflet />
-                  </div>
-                </ProtectedRoute>
-              } />
-              <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/reset-password" element={<Reset />} />
+              <Route path="/register" element={<LazyRegister />} />
+              <Route path="/login" element={<LazyLogin />} />
+              <Route path="/reset-password" element={<LazyReset />} />
               <Route path="/profile" element={
                 <ProtectedRoute>
-                  <Userinfo />
+                  <LazyUserInfo />
                 </ProtectedRoute>
               } />
-              <Route path="/traffic" element={<TrafficMapPage />} />
+              <Route path="/traffic" element={<LazyTrafficMapPage />} />
               <Route path="/traffic-admin" element={
                 <AdminRoute>
-                  <TrafficAdminPage />
+                  <LazyTrafficAdminPage />
                 </AdminRoute>
               } />
 

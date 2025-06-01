@@ -1,8 +1,8 @@
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
-import { authApi, endpoints } from "../configs/Apis";
-import { UserDispatchContext } from "../configs/MyContexts";
+import { authApi, endpoints } from "../../configs/Apis";
+import { UserDispatchContext } from "../../configs/MyContexts";
 
 const Register = () => {
   const [userData, setUserData] = useState({

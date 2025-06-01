@@ -3,9 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { Button, Form, Card, Spinner } from 'react-bootstrap';
-import { UserDispatchContext } from "../configs/MyContexts";
-import { authApi } from "../configs/Apis";
-import { endpoints } from "../configs/Apis";
+import { UserDispatchContext } from "../../configs/MyContexts";
+import { authApi } from "../../configs/Apis";
+import { endpoints } from "../../configs/Apis";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -71,7 +71,7 @@ const Login = () => {
       dispatch({
         type: "login",
         payload: user
-      });      // Hiển thị thông báo thành công
+      });   
       toast.success("Đăng nhập thành công! Chào mừng " + user.fullName)
 
       // Chuyển hướng sau khi hiển thị thông báo

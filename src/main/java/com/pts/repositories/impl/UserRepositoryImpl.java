@@ -3,6 +3,11 @@ package com.pts.repositories.impl;
 import com.pts.pojo.Users;
 import com.pts.repositories.UserRepository;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import jakarta.transaction.Transactional;
 
 import java.sql.PreparedStatement;
@@ -29,6 +34,9 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+    
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private RowMapper<Users> userMapper = new RowMapper<Users>() {
         @Override
@@ -47,13 +55,36 @@ public class UserRepositoryImpl implements UserRepository {
             u.setIsActive(rs.getBoolean("is_active"));
             return u;
         }
-    };
-    
-    @Override
+    };    @Override
     public Optional<Users> findByUsername(String username) {
-        String sql = "SELECT * FROM users WHERE username = ?";
-        List<Users> results = jdbcTemplate.query(sql, userMapper, username);
-        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        try {
+            // Using JPA Criteria API - a type-safe way to construct queries
+            CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+            CriteriaQuery<Users> criteriaQuery = criteriaBuilder.createQuery(Users.class);
+            
+            Root<Users> root = criteriaQuery.from(Users.class);
+            criteriaQuery.select(root)
+                         .where(criteriaBuilder.equal(root.get("username"), username));
+            
+            List<Users> results = entityManager.createQuery(criteriaQuery)
+                                              .getResultList();
+            
+            return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+        } catch (Exception e) {
+            System.err.println("Error finding user by username with JPA Criteria: " + e.getMessage());
+            e.printStackTrace();
+            
+            // Fall back to JDBC implementation if JPA fails
+            try {
+                String sql = "SELECT * FROM users WHERE username = ?";
+                List<Users> results = jdbcTemplate.query(sql, userMapper, username);
+                return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+            } catch (Exception jdbcException) {
+                System.err.println("Error finding user by username with JDBC: " + jdbcException.getMessage());
+                jdbcException.printStackTrace();
+                return Optional.empty();
+            }
+        }
     }
 
     @Override
@@ -124,11 +155,32 @@ public class UserRepositoryImpl implements UserRepository {
     public List<Users> getAllUsers() {
         String sql = "SELECT * FROM users";
         return jdbcTemplate.query(sql, userMapper);
-    }
-
-    @Override
+    }    @Override
     @Transactional
     public boolean addUser(Users user) {
+        // Try to use JPA EntityManager first if available
+        if (entityManager != null) {
+            try {
+                // Set created_at if not set
+                if (user.getCreatedAt() == null) {
+                    user.setCreatedAt(new Date());
+                }
+                
+                // Set is_active to true if not set
+                if (user.getIsActive() == null) {
+                    user.setIsActive(true);
+                }
+                
+                entityManager.persist(user);
+                return true;
+            } catch (Exception e) {
+                System.err.println("Error adding user with JPA: " + e.getMessage());
+                e.printStackTrace();
+                // Fall back to JDBC if JPA fails
+            }
+        }
+        
+        // Fall back to JDBC implementation
         String sql = "INSERT INTO users(username, password, email, role, avatar_url, full_name, phone, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try {
@@ -167,8 +219,11 @@ public class UserRepositoryImpl implements UserRepository {
             
             System.out.println("Insert result: " + result + ", key: " + (keyHolder.getKey() != null ? keyHolder.getKey() : "null"));
             
-            if (result > 0 && keyHolder.getKey() != null) {
-                user.setId(keyHolder.getKey().intValue());
+            if (result > 0) {
+                // Get the generated key if available
+                if (keyHolder.getKey() != null) {
+                    user.setId(keyHolder.getKey().intValue());
+                }
                 return true;
             }
             
@@ -185,20 +240,67 @@ public class UserRepositoryImpl implements UserRepository {
     public boolean updateLastLogin(int id) {
         String sql = "UPDATE users SET last_login = ? WHERE id = ?";
         return jdbcTemplate.update(sql, new Date(), id) > 0;
-    }
-
-    @Override
+    }    @Override
     @Transactional
     public boolean deleteUser(int id) {
+        // Try to use JPA EntityManager if available
+        if (entityManager != null) {
+            try {
+                Users user = entityManager.find(Users.class, id);
+                if (user != null) {
+                    entityManager.remove(user);
+                    return true;
+                }
+                return false;
+            } catch (Exception e) {
+                System.err.println("Error deleting user with JPA: " + e.getMessage());
+                e.printStackTrace();
+                // Fall back to JDBC if JPA fails
+            }
+        }
+        
+        // Fall back to JDBC implementation
         String sql = "DELETE FROM users WHERE id = ?";
-        return jdbcTemplate.update(sql, id) > 0;
-    }
-
-    @Override
+        try {
+            return jdbcTemplate.update(sql, id) > 0;
+        } catch (Exception e) {
+            System.err.println("Error deleting user with JDBC: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }@Override
     @Transactional
     public boolean updateUser(Users user) {
         try {
-            String sql = "UPDATE users SET ";
+            // Using JPA approach
+            if (entityManager != null && user.getId() != null) {
+                // Check if user exists
+                Users existingUser = entityManager.find(Users.class, user.getId());
+                if (existingUser != null) {
+                    // Update only the fields that are not null in the user object
+                    if (user.getFullName() != null) {
+                        existingUser.setFullName(user.getFullName());
+                    }
+                    if (user.getEmail() != null) {
+                        existingUser.setEmail(user.getEmail());
+                    }
+                    if (user.getPhone() != null) {
+                        existingUser.setPhone(user.getPhone());
+                    }
+                    if (user.getPassword() != null) {
+                        existingUser.setPassword(user.getPassword());
+                    }
+                    if (user.getAvatarUrl() != null) {
+                        existingUser.setAvatarUrl(user.getAvatarUrl());
+                    }
+                    
+                    entityManager.merge(existingUser);
+                    return true;
+                }
+                return false;
+            }
+            
+            // Fall back to JDBC approach if entityManager is null or user ID is null
             List<Object> params = new ArrayList<>();
             
             // Danh sách các trường có thể cập nhật và giá trị tương ứng
@@ -251,14 +353,28 @@ public class UserRepositoryImpl implements UserRepository {
             e.printStackTrace();
             return false;
         }
-    }
-
-    @Override
+    }    @Override
     public Users getUserById(Integer userId) {
+        // Try to use JPA EntityManager if available
+        if (entityManager != null) {
+            try {
+                return entityManager.find(Users.class, userId);
+            } catch (Exception e) {
+                System.err.println("Error getting user by ID with JPA: " + e.getMessage());
+                e.printStackTrace();
+                // Fall back to JDBC if JPA fails
+            }
+        }
+        
+        // Fall back to JDBC implementation
         try {
             String sql = "SELECT * FROM users WHERE id = ?";
             return jdbcTemplate.queryForObject(sql, userRowMapper, userId);
         } catch (EmptyResultDataAccessException e) {
+            return null;
+        } catch (Exception e) {
+            System.err.println("Error getting user by ID with JDBC: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -287,7 +403,7 @@ public class UserRepositoryImpl implements UserRepository {
                 user.setLastLogin(new Date(lastLoginTs.getTime()));
             }
         } catch (SQLException e) {
-            // Bỏ qua nếu không có các trường này
+            e.printStackTrace();
         }
         
         return user;

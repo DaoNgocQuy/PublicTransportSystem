@@ -1,6 +1,7 @@
 package com.pts.repositories.impl;
 
 import com.pts.pojo.NotificationSettings;
+import com.pts.pojo.Notifications;
 import com.pts.pojo.Routes;
 import com.pts.pojo.Users;
 import com.pts.repositories.NotificationRepository;
@@ -283,5 +284,18 @@ public class NotificationRepositoryImpl implements NotificationRepository {
         }
         
         return subscribers;
+    }
+
+    // Thêm method mới
+    @Override
+    public Notifications saveNotification(Notifications notification) {
+        Session session = sessionFactory.getObject().getCurrentSession();
+        try {
+            session.save(notification);
+            return notification;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

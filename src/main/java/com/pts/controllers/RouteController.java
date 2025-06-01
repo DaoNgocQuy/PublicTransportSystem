@@ -159,9 +159,29 @@ public class RouteController {
     // Hiển thị form thêm tuyến mới
     @GetMapping("/add")
     public String addRouteForm(Model model) {
+        System.out.println("=== DEBUG ADD ROUTE FORM ===");
+
         model.addAttribute("route", new Routes());
+
         // Thêm danh sách tất cả các điểm dừng để có thể chọn khi tạo tuyến
-        model.addAttribute("allStops", stopService.getAllStops());
+        List<Stops> allStops = stopService.getAllStops();
+        System.out.println("All stops count: " + (allStops != null ? allStops.size() : "null"));
+        model.addAttribute("allStops", allStops);
+
+        // Thêm danh sách loại tuyến
+        List<RouteTypes> routeTypes = routeTypeService.getAllRouteTypes();
+        System.out.println("Route types count: " + (routeTypes != null ? routeTypes.size() : "null"));
+
+        if (routeTypes != null) {
+            for (RouteTypes rt : routeTypes) {
+                System.out.println("Route Type ID: " + rt.getId() + ", Name: " + rt.getTypeName());
+            }
+        } else {
+            System.out.println("Route types is NULL!");
+        }
+
+        model.addAttribute("routeTypes", routeTypes);
+
         return "routes/addRoute"; // Tên view (addRoute.html)
     }
 
@@ -169,13 +189,55 @@ public class RouteController {
     public String addRoute(@ModelAttribute("route") Routes route,
             @RequestParam(value = "selectedStopsInbound", required = false) String selectedStopsInboundStr,
             @RequestParam(value = "selectedStopsOutbound", required = false) String selectedStopsOutboundStr,
+            @RequestParam(value = "routeTypeIdValue", required = false) Integer routeTypeIdValue,
             Model model, RedirectAttributes redirectAttributes) {
         try {
-            System.out.println("Đang thêm tuyến: " + route.getRouteName()); // SỬA FIELD NAME
+            System.out.println("Đang thêm tuyến: " + route.getRouteName());
+            System.out.println("=== DEBUG ADD ROUTE POST ===");
+            System.out.println("Route name: " + route.getRouteName());
+            System.out.println("Start location: " + route.getStartLocation());
+            System.out.println("End location: " + route.getEndLocation());
+            System.out.println("Route type from route object: "
+                    + (route.getRouteTypeId() != null ? route.getRouteTypeId().getId() : "null"));
+            System.out.println("Is active: " + route.getIsActive());
+            // Kiểm tra các trường bắt buộc
+            if (route.getRouteName() == null || route.getRouteName().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Tên tuyến không được để trống!");
+                model.addAttribute("route", new Routes());
+                model.addAttribute("allStops", stopService.getAllStops());
+                model.addAttribute("routeTypes", routeTypeService.getAllRouteTypes());
+                return "redirect:/routes/add";
+            }
+
+            if (route.getStartLocation() == null || route.getStartLocation().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Điểm bắt đầu không được để trống!");
+                model.addAttribute("route", new Routes());
+                model.addAttribute("allStops", stopService.getAllStops());
+                model.addAttribute("routeTypes", routeTypeService.getAllRouteTypes());
+                return "redirect:/routes/add";
+            }
+
+            if (route.getEndLocation() == null || route.getEndLocation().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Điểm kết thúc không được để trống!");
+                model.addAttribute("route", new Routes());
+                model.addAttribute("allStops", stopService.getAllStops());
+                model.addAttribute("routeTypes", routeTypeService.getAllRouteTypes());
+                return "redirect:/routes/add";
+            }
 
             // Set default value for active
-            if (route.getIsActive() == null) { // SỬA FIELD NAME
-                route.setIsActive(true); // SỬA FIELD NAME
+            if (route.getIsActive() == null) {
+                route.setIsActive(true);
+            }
+
+            if (routeTypeIdValue != null && routeTypeIdValue > 0) {
+                RouteTypes routeType = new RouteTypes();
+                routeType.setId(routeTypeIdValue);
+                route.setRouteTypeId(routeType);
+                System.out.println("Set route type to: " + routeTypeIdValue);
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn loại tuyến!");
+                return "redirect:/routes/add";
             }
 
             // Lưu thông tin tuyến
@@ -233,12 +295,13 @@ public class RouteController {
                 }
             }
 
-            // Tính toán lại các thông số cho tuyến (như tổng số trạm)
-            routesService.updateTotalStops(savedRoute.getId()); // SỬA METHOD NAME
+            // Tính toán lại các thông số cho tuyến
+            routesService.updateTotalStops(savedRoute.getId());
 
             redirectAttributes.addFlashAttribute("successMessage",
-                    "Thêm tuyến " + savedRoute.getRouteName() + " thành công!"); // SỬA FIELD NAME
+                    "Thêm tuyến " + savedRoute.getRouteName() + " thành công!");
             return "redirect:/routes/view/" + savedRoute.getId();
+
         } catch (Exception e) {
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi thêm tuyến: " + e.getMessage());

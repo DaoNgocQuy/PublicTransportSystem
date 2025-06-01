@@ -65,35 +65,11 @@ public class RouteController {
             @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "page", defaultValue = "0") int page) {
 
-        // Cố định số lượng mỗi trang là 5
-        final int size = 5;
+        // Gọi service để lấy dữ liệu phân trang
+        Map<String, Object> result = routesService.getRoutesWithPagination(keyword, page);
 
-        // Validate input params
-        if (page < 0) {
-            page = 0;
-        }
-
-        List<Routes> routes;
-        int totalItems;
-        int totalPages;
-
-        if (keyword != null && !keyword.isEmpty()) {
-            // Tìm kiếm với phân trang
-            routes = routesService.searchRoutesByNameWithPagination(keyword, page * size, size);
-            totalItems = routesService.countByNameContaining(keyword);
-            model.addAttribute("keyword", keyword);
-        } else {
-            // Lấy tất cả với phân trang
-            routes = routesService.findAllWithPagination(page * size, size);
-            totalItems = routesService.countAll();
-        }
-
-        totalPages = (int) Math.ceil((double) totalItems / (double) size);
-
-        model.addAttribute("routes", routes);
-        model.addAttribute("currentPage", page);
-        model.addAttribute("totalPages", totalPages);
-        model.addAttribute("totalItems", totalItems);
+        // Thêm tất cả dữ liệu vào model
+        model.addAllAttributes(result);
 
         return "routes/listRoute";
     }

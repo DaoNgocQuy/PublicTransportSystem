@@ -89,48 +89,49 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                     onRouteFound && onRouteFound(walkingRoute);
                     setLoadingDetails(false);
                     return;
-                } else {
-                    // Xác định trạm lên và trạm xuống
-                    const busLegs = option.legs?.filter(leg => leg.type === 'BUS') || [];
+                }
 
-                    if (busLegs.length > 0) {
-                        // Lấy thông tin tuyến từ API
-                        const routeId = busLegs[0].routeId;
-                        const routeDetail = await getRouteDetails(routeId);
+                // For bus routes
+                const busLegs = option.legs?.filter(leg => leg.type === 'BUS') || [];
 
-                        // Xác định chiều di chuyển dựa vào thứ tự của trạm
-                        const boardStopOrder = busLegs[0].boardStopOrder;
-                        const alightStopOrder = busLegs[0].alightStopOrder;
+                if (busLegs.length > 0 && onRouteFound) {
+                    const routeId = busLegs[0].routeId;
 
-                        // Xác định chiều đi (1: chiều đi, 2: chiều về)
-                        let direction = 1; // Mặc định là chiều đi
+                    // Make sure we have a valid routeId
+                    if (routeId && routeId !== 'undefined') {
+                        try {
+                            const routeDetail = await getRouteDetails(routeId);
 
-                        // Nếu có thông tin định hướng trong option
-                        if (option.direction !== undefined) {
-                            direction = option.direction;
-                        }
-                        // Nếu không, thử xác định từ thứ tự trạm
-                        else if (boardStopOrder !== undefined && alightStopOrder !== undefined) {
-                            // Nếu trạm lên có thứ tự > trạm xuống, có thể là chiều về
-                            if (boardStopOrder > alightStopOrder) {
-                                direction = 2;
+                            if (routeDetail) {
+                                const enhancedRoute = {
+                                    ...routeDetail,
+                                    // Thêm direction từ option vào route để truyền lên component cha
+                                    direction: option.direction, // Thêm dòng này
+                                    journeySegment: {
+                                        routeId: busLegs[0].routeId,
+                                        boardStop: busLegs[0].boardStop || busLegs[0].from,
+                                        alightStop: busLegs[0].alightStop || busLegs[0].to,
+                                        boardStopOrder: busLegs[0].boardStopOrder,
+                                        alightStopOrder: busLegs[0].alightStopOrder
+                                    }
+                                };
+                                onRouteFound(enhancedRoute);
                             }
+                        } catch (err) {
+                            console.error('Error loading route for map display:', err);
                         }
-
-                        // Đóng gói thông tin để truyền lên component cha
-                        const enhancedRoute = {
-                            ...routeDetail,
-                            direction: direction,
+                    } else {
+                        // Create a minimal route object for routes without a valid ID
+                        onRouteFound({
+                            id: option.id || "walk-route",
+                            name: option.name || "Walking route",
+                            walkingOnly: true,
+                            direction: option.direction, // Thêm dòng này
                             journeySegment: {
-                                routeId: busLegs[0].routeId,
                                 boardStop: busLegs[0].boardStop || busLegs[0].from,
-                                alightStop: busLegs[0].alightStop || busLegs[0].to,
-                                boardStopOrder: busLegs[0].boardStopOrder,
-                                alightStopOrder: busLegs[0].alightStopOrder
+                                alightStop: busLegs[0].alightStop || busLegs[0].to
                             }
-                        };
-
-                        onRouteFound(enhancedRoute);
+                        });
                     }
                 }
             } catch (err) {
@@ -148,7 +149,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
         const fetchStopsAndLandmarks = async () => {
             try {
                 setLoading(true);
-                setError(null);
+
                 // Gọi cả API stops và landmarks
                 const [stopsResponse] = await Promise.all([
                     authApi.get('/api/stops'),
@@ -161,34 +162,33 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
 
                 if (Array.isArray(stopsResponse.data)) {
                     console.log('Got stop suggestions:', stopsResponse.data.length, 'items');
+                    if (stopsResponse.data.length === 0) {
+                        console.warn('API returned empty stops array');
+                    } else {
+                        console.log('First stop suggestion:', stopsResponse.data[0]);
 
-                    // Định dạng các trạm dừng với thẻ "BUS_STOP" - sửa lỗi stop_name
-                    const formattedStops = stopsResponse.data.map(stop => {
-                        // Đảm bảo các trường cần thiết đều có giá trị
-                        return {
+                        // Định dạng các trạm dừng với thẻ "BUS_STOP"
+                        const formattedStops = stopsResponse.data.map(stop => ({
                             ...stop,
-                            stop_name: stop.name || "Unnamed Stop",
-                            address: stop.address || "",
-                            latitude: stop.latitude || 0,
-                            longitude: stop.longitude || 0,
                             suggestionType: 'BUS_STOP',
                             displayIcon: <FaMapMarkerAlt />
-                        };
-                    });
+                        }));
 
-                    allSuggestions = [...formattedStops];
+                        allSuggestions = [...formattedStops];
+                    }
                 } else {
                     console.error('API stops response is not an array:', stopsResponse.data);
                 }
+
+                // Xử lý kết quả từ API landmarks
+
+
                 // Cập nhật state với tất cả các gợi ý
                 setSuggestions(allSuggestions);
 
             } catch (err) {
                 console.error('Error fetching stops and landmarks:', err);
-                if (err.response) {
-                    console.error('Server returned:', err.response.status, err.response.data);
-                }
-                throw err;
+                setError('Không thể tải danh sách điểm dừng và địa điểm');
             } finally {
                 setLoading(false);
             }
@@ -229,12 +229,9 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
             const filtered = suggestions.filter(item => {
                 if (!item || typeof item !== 'object') return false;
 
-                // Sửa: Kiểm tra cả name và stop_name
-                const nameMatch = (item.stop_name && item.stop_name.toLowerCase().includes(value.toLowerCase())) ||
-                    (item.name && item.name.toLowerCase().includes(value.toLowerCase()));
+                const nameMatch = item.stop_name && item.stop_name.toLowerCase().includes(value.toLowerCase());
                 const addressMatch = item.address && item.address.toLowerCase().includes(value.toLowerCase());
-
-                // Các xử lý khác giữ nguyên
+                // Nếu là landmark, tìm cả trong tags
                 const tagsMatch = item.suggestionType === 'LANDMARK' &&
                     item.landmarkData &&
                     item.landmarkData.tags &&
@@ -283,10 +280,10 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
     const selectOrigin = (item) => {
         console.log('Selected origin item:', item);
 
-        // Sửa: Sử dụng name nếu stop_name không tồn tại
+        // Make sure we preserve all properties and explicitly set the display name
         setOrigin({
             ...item,
-            displayName: item.stop_name || item.name,
+            displayName: item.stop_name,
             // Ensure these critical properties are always set
             latitude: item.latitude,
             longitude: item.longitude,

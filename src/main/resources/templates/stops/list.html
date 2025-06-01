@@ -3,7 +3,7 @@
 
 <head>
     <title>Danh sách trạm dừng</title>
-    <th:block th:replace="base :: bootstrap"></th:block>
+    <th:block th:replace="~{base :: bootstrap}"></th:block>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 
@@ -36,141 +36,119 @@
                     <i class="bi bi-plus-circle"></i> Thêm trạm dừng mới
                 </a>
 
-                <!-- Thêm form tìm kiếm -->
-                <form th:action="@{/stops/search}" method="get" class="d-flex">
+                <!-- Form tìm kiếm -->
+                <form th:action="@{/stops}" method="get" class="d-flex">
                     <input type="text" name="keyword" class="form-control me-2" placeholder="Tìm trạm dừng..."
-                        th:value="${keyword != null ? keyword : ''}">
+                        th:value="${keyword}">
+                    <input type="hidden" name="page" value="0">
                     <button type="submit" class="btn btn-outline-secondary">
                         <i class="bi bi-search"></i>
                     </button>
+                    <a th:href="@{/stops}" class="btn btn-outline-secondary ms-1">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </a>
                 </form>
             </div>
-            <span class="badge bg-info py-2 px-3">Tổng số: <span th:text="${stops != null ? stops.size() : 0}">0</span>
-                trạm</span>
+
+
         </div>
 
-        <!-- Bảng danh sách trạm dừng -->
         <div class="card">
             <div class="card-body">
-                <div th:if="${stops.isEmpty()}" class="alert alert-info">
-                    Chưa có trạm dừng nào trong hệ thống.
-                </div>
-
-                <div th:unless="${stops.isEmpty()}" class="table-responsive">
+                <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
                             <tr>
-                                <th>ID</th>
+                                <th>#</th>
                                 <th>Tên trạm</th>
                                 <th>Địa chỉ</th>
-                                <th>Tọa độ</th>
-                                <th>Tiếp cận</th>
-                                <th>Tuyến đường</th>
-                                <th>Hành động</th>
+                                <th>Số tuyến</th>
+                                <th>Trạng thái</th>
+                                <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr th:each="stop : ${stops}">
-                                <td th:text="${stop.id}"></td>
+                            <tr th:each="stop, iterStat : ${stops}">
+                                <td th:text="${currentPage * 10 + iterStat.index + 1}">1</td>
+                                <td th:text="${stop.stopName}">Tên trạm</td>
+                                <td th:text="${stop.address}">Địa chỉ</td>
                                 <td>
-                                    <a th:href="@{/stops/view/{id}(id=${stop.id})}"
-                                        class="text-decoration-none fw-bold">
-                                        <span th:text="${stop.stopName}">Trạm Central Park</span>
+                                    <span class="badge bg-primary" th:text="${routeCounts[stop.id] ?: 0} + ' tuyến'">0
+                                        tuyến</span>
+                                </td>
+                                <td>
+                                    <span class="badge"
+                                        th:classappend="${stop.isAccessible ? 'bg-success' : 'bg-warning'}"
+                                        th:text="${stop.isAccessible ? 'Hoạt động' : 'Không hoạt động'}">
+                                    </span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/stops/view/{id}(id=${stop.id})}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-eye"></i> Xem
+                                    </a>
+                                    <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil"></i> Sửa
+                                    </a>
+                                    <a th:href="@{/stops/delete/{id}(id=${stop.id})}" class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Bạn có chắc muốn xóa trạm này?')">
+                                        <i class="bi bi-trash"></i> Xóa
                                     </a>
                                 </td>
-                                <td th:text="${stop.address != null ? stop.address : '-'}">123 đường ABC</td>
-                                <td>
-                                    <small th:if="${stop.latitude != null && stop.longitude != null}"
-                                        class="text-muted">
-                                        <span th:text="${#numbers.formatDecimal(stop.latitude, 1, 6)}"></span>,
-                                        <span th:text="${#numbers.formatDecimal(stop.longitude, 1, 6)}"></span>
-                                    </small>
-                                    <span th:unless="${stop.latitude != null && stop.longitude != null}">-</span>
-                                </td>
-                                <td>
-                                    <span th:if="${stop.isAccessible == true}" class="badge bg-success"
-                                        title="Tiếp cận được">
-                                        <i class="bi bi-wheelchair"></i>
-                                    </span>
-                                    <span th:unless="${stop.isAccessible == true}" class="badge bg-secondary">
-                                        <i class="bi bi-wheelchair"></i>
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="text-center">
-                                        <span
-                                            th:if="${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0}"
-                                            class="badge bg-primary rounded-pill"
-                                            th:text="${routeCounts.get(stop.id)} + ' tuyến'"></span>
-                                        <span
-                                            th:unless="${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0}"
-                                            class="text-muted">-</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="d-flex gap-1">
-                                        <a th:href="@{/stops/view/{id}(id=${stop.id})}" class="btn btn-sm btn-info"
-                                            title="Xem chi tiết">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-sm btn-warning"
-                                            title="Chỉnh sửa">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <a th:href="@{/stops/delete/{id}(id=${stop.id})}"
-                                            th:data-bs-toggle="${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0 ? 'modal' : ''}"
-                                            th:data-bs-target="${routeCounts != null && routeCounts.containsKey(stop.id) && routeCounts.get(stop.id) > 0 ? '#deleteModal' + stop.id : ''}"
-                                            class="btn btn-sm btn-danger" title="Xóa">
-                                            <i class="bi bi-trash"></i>
-                                        </a>
-                                    </div>
-                                    <div class="modal fade" th:id="${'deleteModal' + stop.id}" tabindex="-1"
-                                        aria-hidden="true">
-                                        <div class="modal-dialog">
-                                            <div class="modal-content">
-                                                <div class="modal-header bg-danger text-white">
-                                                    <h5 class="modal-title">Cảnh báo xóa trạm</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                                        aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <div class="alert alert-warning">
-                                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                                        Trạm <strong th:text="${stop.stopName}"></strong> hiện đang
-                                                        thuộc
-                                                        <strong th:text="${routeCounts.get(stop.id)}"></strong> tuyến.
-                                                    </div>
-                                                    <p>Bạn có các lựa chọn sau:</p>
-                                                    <ol>
-                                                        <li><strong>Xóa khỏi tất cả tuyến:</strong> Xóa trạm khỏi tất cả
-                                                            các tuyến và xóa trạm hoàn toàn.</li>
-                                                        <li><strong>Chỉnh sửa trạm:</strong> Chuyển đến trang chỉnh sửa
-                                                            trạm để xóa từ từng tuyến.</li>
-                                                        <li><strong>Hủy:</strong> Không thực hiện thao tác nào.</li>
-                                                    </ol>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="button" class="btn btn-secondary"
-                                                        data-bs-dismiss="modal">Hủy</button>
-                                                    <a th:href="@{/stops/edit/{id}(id=${stop.id})}"
-                                                        class="btn btn-primary">
-                                                        Chỉnh sửa trạm
-                                                    </a>
-                                                    <a th:href="@{/stops/forceDelete/{id}(id=${stop.id})}"
-                                                        onclick="return confirm('CẢNH BÁO: Thao tác này sẽ xóa trạm khỏi TẤT CẢ các tuyến. Tiếp tục?');"
-                                                        class="btn btn-danger">
-                                                        Xóa khỏi tất cả tuyến
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(stops)}">
+                                <td colspan="6" class="text-center text-muted">
+                                    <i class="bi bi-inbox"></i> Không có trạm dừng nào
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
+        </div>
+
+        <!-- Thanh phân trang -->
+        <div class="d-flex justify-content-center mt-3" th:if="${totalPages > 1}">
+            <nav aria-label="Stop pagination">
+                <ul class="pagination">
+                    <!-- First page -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/stops(page=0, keyword=${keyword})}" title="Trang đầu">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+
+                    <!-- Previous page -->
+                    <li class="page-item" th:classappend="${currentPage == 0 ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/stops(page=${currentPage - 1}, keyword=${keyword})}"
+                            title="Trang trước">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    <!-- Page numbers -->
+                    <li class="page-item" th:each="i: ${#numbers.sequence(T(java.lang.Math).max(0, currentPage - 2), 
+                                                        T(java.lang.Math).min(totalPages - 1, currentPage + 2))}"
+                        th:classappend="${i == currentPage ? 'active' : ''}">
+                        <a class="page-link" th:href="@{/stops(page=${i}, keyword=${keyword})}" th:text="${i + 1}"></a>
+                    </li>
+
+                    <!-- Next page -->
+                    <li class="page-item" th:classappend="${currentPage + 1 >= totalPages ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/stops(page=${currentPage + 1}, keyword=${keyword})}"
+                            title="Trang sau">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+
+                    <!-- Last page -->
+                    <li class="page-item" th:classappend="${currentPage + 1 >= totalPages ? 'disabled' : ''}">
+                        <a class="page-link" th:href="@{/stops(page=${totalPages - 1}, keyword=${keyword})}"
+                            title="Trang cuối">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         </div>
 
         <div th:replace="base :: footer"></div>

@@ -28,5 +28,6 @@ public interface StopService {
 
     List<Map<String, Object>> findNearbyStopsFormatted(double lat, double lng, double radiusMeters);
 
+    Map<String, Object> getStopsWithPagination(String keyword, int page);
 
 }

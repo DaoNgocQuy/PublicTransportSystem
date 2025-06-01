@@ -34,32 +34,6 @@ public class StopController {
     @Autowired
     private RouteStopService routeStopService;
 
-    // Hiển thị danh sách tất cả trạm dừng
-    @GetMapping
-    public String listAllStops(Model model) {
-        try {
-            List<Stops> stops = stopService.getAllStops();
-
-            // Tính toán số lượng tuyến đường của mỗi trạm một lần thay vì gọi nhiều lần từ
-            // template
-            Map<Integer, Integer> routeCounts = new HashMap<>();
-            for (Stops stop : stops) {
-                int count = routeStopService.countRoutesByStopId(stop.getId());
-                routeCounts.put(stop.getId(), count);
-            }
-
-            model.addAttribute("stops", stops);
-            model.addAttribute("routeCounts", routeCounts);
-
-            return "stops/list";
-        } catch (Exception e) {
-            e.printStackTrace();
-            model.addAttribute("errorMessage", "Lỗi khi tải danh sách trạm: " + e.getMessage());
-            model.addAttribute("stops", new ArrayList<>());
-            return "stops/list";
-        }
-    }
-
     // Hiển thị form tạo trạm dừng mới
     @GetMapping("/create")
     public String showCreateForm(@RequestParam(required = false) Integer routeId,
@@ -725,30 +699,36 @@ public class StopController {
         }
     }
 
+    @GetMapping
+    public String listStops(Model model,
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "page", defaultValue = "0") int page) {
+
+        System.out.println("=== DEBUG STOP PAGINATION ===");
+        System.out.println("Keyword: " + keyword);
+        System.out.println("Page: " + page);
+
+        // Gọi service để lấy dữ liệu phân trang
+        Map<String, Object> result = stopService.getStopsWithPagination(keyword, page);
+
+        System.out.println("Result keys: " + result.keySet());
+        System.out.println("Total items: " + result.get("totalItems"));
+        System.out.println("Total pages: " + result.get("totalPages"));
+        System.out.println("Current page: " + result.get("currentPage"));
+
+        // Thêm tất cả dữ liệu vào model
+        model.addAllAttributes(result);
+
+        return "stops/list";
+    }
+
     // Tìm kiếm trạm dừng
     @GetMapping("/search")
-    public String searchStops(@RequestParam("keyword") String keyword, Model model) {
-        try {
-            List<Stops> stops = stopService.searchStops(keyword);
+    public String searchStops(@RequestParam("keyword") String keyword,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            Model model) {
 
-            // Tính toán số lượng tuyến đường của mỗi trạm một lần
-            Map<Integer, Integer> routeCounts = new HashMap<>();
-            for (Stops stop : stops) {
-                int count = routeStopService.countRoutesByStopId(stop.getId());
-                routeCounts.put(stop.getId(), count);
-            }
-
-            model.addAttribute("stops", stops);
-            model.addAttribute("routeCounts", routeCounts);
-            model.addAttribute("keyword", keyword);
-
-            return "stops/list";
-        } catch (Exception e) {
-            e.printStackTrace();
-            model.addAttribute("errorMessage", "Lỗi khi tìm kiếm trạm: " + e.getMessage());
-            model.addAttribute("stops", new ArrayList<>());
-            model.addAttribute("keyword", keyword);
-            return "stops/list";
-        }
+        // Chuyển hướng về trang chính với keyword
+        return "redirect:/stops?keyword=" + keyword + "&page=" + page;
     }
 }

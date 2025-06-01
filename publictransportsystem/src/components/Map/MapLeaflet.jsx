@@ -36,20 +36,20 @@ const SetViewToSelectedStop = ({ selectedStop }) => {
 };
 
 // Component để di chuyển bản đồ đến trạm đầu tiên khi chọn tuyến
-const SetViewToFirstStop = ({ busStops, selectedRoute }) => {
+const SetViewToFirstStop = ({ busStops, selectedRoute, activeTab }) => {
     const map = useMap();
 
     useEffect(() => {
-        if (selectedRoute && busStops?.length > 0) {
+        // CHỈ auto-focus khi ở tab lookup và có route được chọn
+        if (activeTab === 'lookup' && selectedRoute && busStops?.length > 0) {
             const stopToFocus = busStops[0];
             if (stopToFocus?.latitude && stopToFocus?.longitude) {
-                // Sử dụng flyTo với duration ngắn hơn để giảm thời gian chờ
                 map.flyTo([stopToFocus.latitude, stopToFocus.longitude], 16, {
-                    duration: 1.1 // Giảm thời gian animation xuống còn 0.75 giây
+                    duration: 1.1
                 });
             }
         }
-    }, [map, busStops, selectedRoute]);
+    }, [map, busStops, selectedRoute, activeTab]); // Thêm activeTab vào dependencies
 
     return null;
 };
@@ -1228,10 +1228,11 @@ const MapLeaflet = ({ busStops = [], allStops = [], selectedRoute, direction, ac
             <SetViewToSelectedStop selectedStop={selectedStop} />
 
             {/* Chỉ tự động focus vào trạm đầu tiên trong tab tra cứu */}
-            {activeTab === 'lookup' && (
+            {activeTab === 'lookup' && selectedRoute && busStops.length > 0 && (
                 <SetViewToFirstStop
                     busStops={busStops}
                     selectedRoute={selectedRoute}
+                    activeTab={activeTab}
                 />
             )}
 

@@ -259,4 +259,78 @@ public class StopRepositoryImpl implements StopRepository {
             return Collections.emptyList();
         }
     }
+
+    @Override
+    public List<Stops> findAllWithPagination(int offset, int limit) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Stops> q = b.createQuery(Stops.class);
+        Root root = q.from(Stops.class);
+        q.select(root);
+        q.orderBy(b.asc(root.get("stopName")));
+
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+
+        return query.getResultList();
+    }
+
+    @Override
+    public List<Stops> searchStopsWithPagination(String keyword, int offset, int limit) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Stops> q = b.createQuery(Stops.class);
+        Root root = q.from(Stops.class);
+        q.select(root);
+
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Predicate> predicates = new ArrayList<>();
+            String searchPattern = String.format("%%%s%%", keyword);
+            predicates.add(b.like(root.get("stopName"), searchPattern));
+            predicates.add(b.like(root.get("address"), searchPattern));
+            q.where(b.or(predicates.toArray(Predicate[]::new)));
+        }
+
+        q.orderBy(b.asc(root.get("stopName")));
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+
+        return query.getResultList();
+    }
+
+    @Override
+    public int countAll() {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Stops.class);
+        q.select(b.count(root));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
+    }
+
+    @Override
+    public int countByKeyword(String keyword) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Stops.class);
+        q.select(b.count(root));
+
+        if (keyword != null && !keyword.isEmpty()) {
+            List<Predicate> predicates = new ArrayList<>();
+            String searchPattern = String.format("%%%s%%", keyword);
+            predicates.add(b.like(root.get("stopName"), searchPattern));
+            predicates.add(b.like(root.get("address"), searchPattern));
+            q.where(b.or(predicates.toArray(Predicate[]::new)));
+        }
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
+    }
 }

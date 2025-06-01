@@ -1,258 +1,401 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.pts.repositories.impl;
 
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Vehicles;
 import com.pts.pojo.Routes;
 import com.pts.repositories.ScheduleRepository;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
-import org.springframework.stereotype.Repository;
-
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import jakarta.persistence.Query;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.sql.Time;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import org.hibernate.Session;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+/**
+ *
+ * @author LEGION
+ */
 @Repository
+@Transactional
 public class ScheduleRepositoryImpl implements ScheduleRepository {
 
-    private final JdbcTemplate jdbcTemplate;
-
-    // Chuỗi SQL dùng chung cho tất cả các truy vấn
-    private static final String BASE_SELECT_SQL
-            = "SELECT s.*, v.license_plate, v.type, r.name, r.start_location, r.end_location "
-            + "FROM schedules s "
-            + "LEFT JOIN vehicles v ON s.vehicle_id = v.id "
-            + "LEFT JOIN routes r ON s.route_id = r.id";
-
-    public ScheduleRepositoryImpl(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
-
-    // RowMapper dùng chung cho tất cả các truy vấn
-    private final RowMapper<Schedules> fullScheduleRowMapper = new RowMapper<Schedules>() {
-        @Override
-        public Schedules mapRow(ResultSet rs, int rowNum) throws SQLException {
-            Schedules schedule = new Schedules();
-            schedule.setId(rs.getInt("id"));
-
-            // Load vehicle info
-            Vehicles vehicle = new Vehicles();
-            vehicle.setId(rs.getInt("vehicle_id"));
-            vehicle.setLicensePlate(rs.getString("license_plate"));
-            vehicle.setType(rs.getString("type"));
-            schedule.setVehicleId(vehicle);
-
-            // Load route info
-            Routes route = new Routes();
-            route.setId(rs.getInt("route_id"));
-            route.setName(rs.getString("name"));
-            route.setStartLocation(rs.getString("start_location"));
-            route.setEndLocation(rs.getString("end_location"));
-            schedule.setRouteId(route);
-
-            // Chuyển java.sql.Time sang java.util.Date
-            java.sql.Time depTime = rs.getTime("departure_time");
-            if (depTime != null) {
-                schedule.setDepartureTime(new Date(depTime.getTime()));
-            }
-
-            java.sql.Time arrTime = rs.getTime("arrival_time");
-            if (arrTime != null) {
-                schedule.setArrivalTime(new Date(arrTime.getTime()));
-            }
-
-            // Thêm trường created_at
-            java.sql.Timestamp createdTime = rs.getTimestamp("created_at");
-            if (createdTime != null) {
-                schedule.setCreatedAt(new Date(createdTime.getTime()));
-            }
-
-            return schedule;
-        }
-    };
+    private static final int PAGE_SIZE = 20;
+    @Autowired
+    private LocalSessionFactoryBean factory;
 
     @Override
     public List<Schedules> findAll() {
-        return jdbcTemplate.query(BASE_SELECT_SQL, fullScheduleRowMapper);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.orderBy(b.asc(root.get("id")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
-      @Override
+
+    @Override
     public List<Schedules> findAllWithPagination(int offset, int limit) {
-        String sql = BASE_SELECT_SQL + " ORDER BY s.id LIMIT ? OFFSET ?";
-        System.out.println("SQL for pagination: " + sql + ", limit=" + limit + ", offset=" + offset);
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, limit, offset);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.orderBy(b.asc(root.get("id")));
+
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
     }
-      @Override
+
+    @Override
     public int countAll() {
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM schedules", Integer.class);
-        System.out.println("Total count: " + count);
-        return count != null ? count : 0;
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Schedules.class);
+        q.select(b.count(root));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
     }
 
     @Override
     public Optional<Schedules> findById(Integer id) {
-        try {
-            String sql = BASE_SELECT_SQL + " WHERE s.id = ?";
-            Schedules schedule = jdbcTemplate.queryForObject(sql, fullScheduleRowMapper, id);
-            return Optional.ofNullable(schedule);
-        } catch (Exception e) {
-            return Optional.empty();
-        }
+        Session s = this.factory.getObject().getCurrentSession();
+        Schedules schedule = s.get(Schedules.class, id);
+        return Optional.ofNullable(schedule);
     }
 
     @Override
     public List<Schedules> findByVehicleId(Vehicles vehicleId) {
-        String sql = BASE_SELECT_SQL + " WHERE s.vehicle_id = ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, vehicleId.getId());
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("vehicleId").get("id"), vehicleId.getId()));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
-    
+
     @Override
     public List<Schedules> findByVehicleIdWithPagination(Vehicles vehicleId, int offset, int limit) {
-        String sql = BASE_SELECT_SQL + " WHERE s.vehicle_id = ? ORDER BY id LIMIT ? OFFSET ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, vehicleId.getId(), limit, offset);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("vehicleId").get("id"), vehicleId.getId()));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
     }
-      @Override
+
+    @Override
     public int countByVehicleId(Vehicles vehicleId) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM schedules WHERE vehicle_id = ?", 
-                Integer.class, 
-                vehicleId.getId());
-        return count != null ? count : 0;
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Schedules.class);
+        q.select(b.count(root));
+        q.where(b.equal(root.get("vehicleId").get("id"), vehicleId.getId()));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
     }
 
     @Override
     public List<Schedules> findByRouteId(Routes routeId) {
-        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId.getId());
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("routeId").get("id"), routeId.getId()));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
-    
+
     @Override
     public List<Schedules> findByRouteIdWithPagination(Routes routeId, int offset, int limit) {
-        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ? ORDER BY id LIMIT ? OFFSET ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId.getId(), limit, offset);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("routeId").get("id"), routeId.getId()));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
     }
-      @Override
+
+    @Override
     public int countByRouteId(Routes routeId) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM schedules WHERE route_id = ?", 
-                Integer.class, 
-                routeId.getId());
-        return count != null ? count : 0;
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Schedules.class);
+        q.select(b.count(root));
+        q.where(b.equal(root.get("routeId").get("id"), routeId.getId()));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
     }
 
     @Override
     public List<Schedules> findByRouteId(Integer routeId) {
-        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("routeId").get("id"), routeId));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
-    
+
     @Override
     public List<Schedules> findByRouteIdWithPagination(Integer routeId, int offset, int limit) {
-        String sql = BASE_SELECT_SQL + " WHERE s.route_id = ? ORDER BY id LIMIT ? OFFSET ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, routeId, limit, offset);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("routeId").get("id"), routeId));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
     }
-      @Override
+
+    @Override
     public int countByRouteId(Integer routeId) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM schedules WHERE route_id = ?", 
-                Integer.class, 
-                routeId);
-        return count != null ? count : 0;
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Schedules.class);
+        q.select(b.count(root));
+        q.where(b.equal(root.get("routeId").get("id"), routeId));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
     }
 
     @Override
     public List<Schedules> findByDepartureTimeBetween(Time startTime, Time endTime) {
-        String sql = BASE_SELECT_SQL + " WHERE s.departure_time BETWEEN ? AND ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, startTime, endTime);
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(b.greaterThanOrEqualTo(root.get("departureTime"), startTime));
+        predicates.add(b.lessThanOrEqualTo(root.get("departureTime"), endTime));
+        q.where(predicates.toArray(Predicate[]::new));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
-    
+
     @Override
-    public List<Schedules> findByDepartureTimeBetweenWithPagination(Time startTime, Time endTime, int offset, int limit) {
-        String sql = BASE_SELECT_SQL + " WHERE s.departure_time BETWEEN ? AND ? ORDER BY departure_time LIMIT ? OFFSET ?";
-        return jdbcTemplate.query(sql, fullScheduleRowMapper, startTime, endTime, limit, offset);
+    public List<Schedules> findByDepartureTimeBetweenWithPagination(Time startTime, Time endTime, int offset,
+            int limit) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(b.greaterThanOrEqualTo(root.get("departureTime"), startTime));
+        predicates.add(b.lessThanOrEqualTo(root.get("departureTime"), endTime));
+        q.where(predicates.toArray(Predicate[]::new));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        query.setFirstResult(offset);
+        query.setMaxResults(limit);
+        return query.getResultList();
     }
-      @Override
+
+    @Override
     public int countByDepartureTimeBetween(Time startTime, Time endTime) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM schedules WHERE departure_time BETWEEN ? AND ?", 
-                Integer.class, 
-                startTime, endTime);
-        return count != null ? count : 0;
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Schedules.class);
+        q.select(b.count(root));
+
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(b.greaterThanOrEqualTo(root.get("departureTime"), startTime));
+        predicates.add(b.lessThanOrEqualTo(root.get("departureTime"), endTime));
+        q.where(predicates.toArray(Predicate[]::new));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count.intValue();
     }
 
     @Override
     public Schedules save(Schedules schedule) {
+        Session s = this.factory.getObject().getCurrentSession();
         if (schedule.getId() == null || schedule.getId() == 0) {
-            // Thêm mới
-            KeyHolder keyHolder = new GeneratedKeyHolder();
-
-            String sql = "INSERT INTO schedules (vehicle_id, route_id, departure_time, arrival_time) "
-                    + "VALUES (?, ?, ?, ?)";
-
-
-            jdbcTemplate.update(connection -> {
-                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-                ps.setInt(1, schedule.getVehicleId().getId());
-                ps.setInt(2, schedule.getRouteId().getId());
-
-                // Chuyển từ java.util.Date sang java.sql.Time
-                if (schedule.getDepartureTime() != null) {
-                    ps.setTime(3, new java.sql.Time(schedule.getDepartureTime().getTime()));
-                } else {
-                    ps.setNull(3, java.sql.Types.TIME);
-                }
-
-                if (schedule.getArrivalTime() != null) {
-                    ps.setTime(4, new java.sql.Time(schedule.getArrivalTime().getTime()));
-                } else {
-                    ps.setNull(4, java.sql.Types.TIME);
-                }
-
-                return ps;
-            }, keyHolder);
-
-            if (keyHolder.getKey() != null) {
-                schedule.setId(keyHolder.getKey().intValue());
-            }        } else {
-            // Cập nhật
-
-            String sql = "UPDATE schedules SET vehicle_id = ?, route_id = ?, departure_time = ?, arrival_time = ? "
-                    + "WHERE id = ?";
-
-
-            jdbcTemplate.update(sql,
-                    schedule.getVehicleId().getId(),
-                    schedule.getRouteId().getId(),
-                    schedule.getDepartureTime() != null ? new java.sql.Time(schedule.getDepartureTime().getTime()) : null,
-                    schedule.getArrivalTime() != null ? new java.sql.Time(schedule.getArrivalTime().getTime()) : null,
-                    schedule.getId());
-        }
-        
-        // Trả về đối tượng đầy đủ sau khi lưu bằng cách gọi findById
-        Optional<Schedules> updatedSchedule = findById(schedule.getId());
-        if (updatedSchedule.isPresent()) {
-            return updatedSchedule.get();
+            s.persist(schedule);
+        } else {
+            s.merge(schedule);
         }
         return schedule;
     }
 
     @Override
     public void deleteById(Integer id) {
-        jdbcTemplate.update("DELETE FROM schedules WHERE id = ?", id);
+        Session s = this.factory.getObject().getCurrentSession();
+        Schedules schedule = this.findById(id).orElse(null);
+        if (schedule != null) {
+            s.remove(schedule);
+        }
     }
 
     @Override
     public boolean existsById(Integer id) {
-        String sql = "SELECT COUNT(*) FROM schedules WHERE id = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
-        return count != null && count > 0;
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(Schedules.class);
+        q.select(b.count(root));
+        q.where(b.equal(root.get("id"), id));
+
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count > 0;
+    }
+
+    // Thêm các method utility theo kiểu thầy
+    public List<Schedules> getSchedulesWithFilters(java.util.Map<String, String> params) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+
+        if (params != null) {
+            List<Predicate> predicates = new ArrayList<>();
+
+            String vehicleId = params.get("vehicleId");
+            if (vehicleId != null && !vehicleId.isEmpty()) {
+                predicates.add(b.equal(root.get("vehicleId").get("id"), Integer.parseInt(vehicleId)));
+            }
+
+            String routeId = params.get("routeId");
+            if (routeId != null && !routeId.isEmpty()) {
+                predicates.add(b.equal(root.get("routeId").get("id"), Integer.parseInt(routeId)));
+            }
+
+            String startTime = params.get("startTime");
+            if (startTime != null && !startTime.isEmpty()) {
+                predicates.add(b.greaterThanOrEqualTo(root.get("departureTime"), Time.valueOf(startTime)));
+            }
+
+            String endTime = params.get("endTime");
+            if (endTime != null && !endTime.isEmpty()) {
+                predicates.add(b.lessThanOrEqualTo(root.get("departureTime"), Time.valueOf(endTime)));
+            }
+
+            q.where(predicates.toArray(Predicate[]::new));
+
+            String orderBy = params.get("orderBy");
+            if (orderBy != null && !orderBy.isEmpty()) {
+                q.orderBy(b.asc(root.get(orderBy)));
+            } else {
+                q.orderBy(b.asc(root.get("departureTime")));
+            }
+        }
+
+        Query query = s.createQuery(q);
+
+        if (params != null && params.containsKey("page")) {
+            int page = Integer.parseInt(params.get("page"));
+            int start = (page - 1) * PAGE_SIZE;
+
+            query.setMaxResults(PAGE_SIZE);
+            query.setFirstResult(start);
+        }
+
+        return query.getResultList();
+    }
+
+    public List<Schedules> findSchedulesForToday() {
+        Session s = this.factory.getObject().getCurrentSession();
+
+        // Sử dụng JPQL cho complex query
+        String jpql = "SELECT s FROM Schedules s " +
+                "WHERE DATE(s.createdAt) = CURRENT_DATE " +
+                "ORDER BY s.departureTime";
+
+        Query query = s.createQuery(jpql, Schedules.class);
+        return query.getResultList();
+    }
+
+    public List<Schedules> findSchedulesByVehicleLicensePlate(String licensePlate) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.equal(root.get("vehicleId").get("licensePlate"), licensePlate));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
+    }
+
+    public List<Schedules> findSchedulesByRouteNameContaining(String routeName) {
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Schedules> q = b.createQuery(Schedules.class);
+        Root root = q.from(Schedules.class);
+        q.select(root);
+        q.where(b.like(root.get("routeId").get("routeName"), String.format("%%%s%%", routeName)));
+        q.orderBy(b.asc(root.get("departureTime")));
+
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
 }
-
-

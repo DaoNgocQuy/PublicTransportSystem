@@ -1,351 +1,307 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.pts.repositories.impl;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
+import com.pts.pojo.RouteStop;
+import com.pts.repositories.RouteStopRepository;
+import jakarta.persistence.Query;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-
-import javax.sql.DataSource;
-
+import org.hibernate.Session;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.hibernate5.LocalSessionFactoryBean;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
-import com.pts.pojo.Routes;
-import com.pts.pojo.RouteStop;
-import com.pts.pojo.Stops;
-import com.pts.repositories.RoutesRepository;
-import com.pts.repositories.RouteStopRepository;
-import com.pts.repositories.StopRepository;
-
+/**
+ *
+ * @author LEGION
+ */
 @Repository
+@Transactional
 public class RouteStopRepositoryImpl implements RouteStopRepository {
 
     @Autowired
-    private DataSource dataSource;
-
-    @Autowired
-    private RoutesRepository routeRepository;
-
-    @Autowired
-    private StopRepository stopRepository;
+    private LocalSessionFactoryBean factory;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Override
     public RouteStop save(RouteStop routeStop) {
-        // Cập nhật SQL để thêm direction vào bảng
-        String sql = "INSERT INTO route_stops (route_id, stop_id, stop_order, direction) VALUES (?, ?, ?, ?)";
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            ps.setInt(1, routeStop.getRoute().getId());
-            ps.setInt(2, routeStop.getStop().getId());
-            ps.setInt(3, routeStop.getStopOrder());
-
-            // Kiểm tra và thiết lập direction
-            if (routeStop.getDirection() != null) {
-                ps.setInt(4, routeStop.getDirection());
-            } else {
-                ps.setObject(4, null);  // Nếu không có chiều, sẽ để NULL
-            }
-
-            int affectedRows = ps.executeUpdate();
-
-            if (affectedRows > 0) {
-                try (ResultSet rs = ps.getGeneratedKeys()) {
-                    if (rs.next()) {
-                        routeStop.setId(rs.getInt(1));
-                        return routeStop;
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        Session s = this.factory.getObject().getCurrentSession();
+        if (routeStop.getId() == null) {
+            s.persist(routeStop);
+        } else {
+            s.merge(routeStop);
         }
-
-        return null;
+        return routeStop;
     }
 
     @Override
     public boolean update(RouteStop routeStop) {
-        // Cập nhật SQL để bao gồm direction
-        String sql = "UPDATE route_stops SET route_id = ?, stop_id = ?, stop_order = ?, direction = ? WHERE id = ?";
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, routeStop.getRoute().getId());
-            ps.setInt(2, routeStop.getStop().getId());
-            ps.setInt(3, routeStop.getStopOrder());
-
-            // Kiểm tra và thiết lập direction
-            if (routeStop.getDirection() != null) {
-                ps.setInt(4, routeStop.getDirection());
-            } else {
-                ps.setObject(4, null);  // Nếu không có chiều, sẽ để NULL
-            }
-
-            ps.setInt(5, routeStop.getId());
-
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            Session s = this.factory.getObject().getCurrentSession();
+            s.merge(routeStop);
+            return true;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
     @Override
     public RouteStop findById(Integer id) {
-        String sql = "SELECT * FROM route_stops WHERE id = ?";
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, id);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return mapRowToRouteStop(rs);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return null;
+        Session s = this.factory.getObject().getCurrentSession();
+        return s.get(RouteStop.class, id);
     }
 
     @Override
     public List<RouteStop> findAll() {
-        String sql = "SELECT * FROM route_stops";
-        List<RouteStop> routeStops = new ArrayList<>();
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<RouteStop> q = b.createQuery(RouteStop.class);
+        Root root = q.from(RouteStop.class);
+        q.select(root);
+        q.orderBy(b.asc(root.get("route").get("id")), b.asc(root.get("stopOrder")));
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql); ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                RouteStop routeStop = mapRowToRouteStop(rs);
-                if (routeStop != null) {
-                    routeStops.add(routeStop);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return routeStops;
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
 
     @Override
     public List<RouteStop> findByRouteIdOrderByStopOrder(Integer routeId) {
-        String sql = "SELECT * FROM route_stops WHERE route_id = ? ORDER BY stop_order";
-        List<RouteStop> routeStops = new ArrayList<>();
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<RouteStop> q = b.createQuery(RouteStop.class);
+        Root root = q.from(RouteStop.class);
+        q.select(root);
+        q.where(b.equal(root.get("route").get("id"), routeId));
+        q.orderBy(b.asc(root.get("stopOrder")));
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, routeId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    RouteStop routeStop = mapRowToRouteStop(rs);
-                    if (routeStop != null) {
-                        routeStops.add(routeStop);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return routeStops;
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
 
     @Override
     public List<RouteStop> findByRouteIdAndDirectionOrderByStopOrder(Integer routeId, Integer direction) {
-        String sql = "SELECT * FROM route_stops WHERE route_id = ? AND direction = ? ORDER BY stop_order";
-        List<RouteStop> routeStops = new ArrayList<>();
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<RouteStop> q = b.createQuery(RouteStop.class);
+        Root root = q.from(RouteStop.class);
+        q.select(root);
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(b.equal(root.get("route").get("id"), routeId));
+        predicates.add(b.equal(root.get("direction"), direction));
+        q.where(predicates.toArray(Predicate[]::new));
+        q.orderBy(b.asc(root.get("stopOrder")));
 
-            ps.setInt(1, routeId);
-            ps.setInt(2, direction);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    RouteStop routeStop = mapRowToRouteStop(rs);
-                    if (routeStop != null) {
-                        routeStops.add(routeStop);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return routeStops;
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
 
     @Override
     public List<RouteStop> findByStopId(Integer stopId) {
-        String sql = "SELECT * FROM route_stops WHERE stop_id = ?";
-        List<RouteStop> routeStops = new ArrayList<>();
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<RouteStop> q = b.createQuery(RouteStop.class);
+        Root root = q.from(RouteStop.class);
+        q.select(root);
+        q.where(b.equal(root.get("stop").get("id"), stopId));
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, stopId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    RouteStop routeStop = mapRowToRouteStop(rs);
-                    if (routeStop != null) {
-                        routeStops.add(routeStop);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return routeStops;
+        Query query = s.createQuery(q);
+        return query.getResultList();
     }
 
     @Override
     public boolean deleteById(Integer id) {
-        String sql = "DELETE FROM route_stops WHERE id = ?";
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, id);
-
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            RouteStop routeStop = findById(id);
+            if (routeStop != null) {
+                Session s = this.factory.getObject().getCurrentSession();
+                s.remove(routeStop);
+                s.flush(); // Đảm bảo thay đổi được đẩy xuống DB ngay lập tức
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xóa RouteStop với ID " + id + ": " + e.getMessage());
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
     @Override
     public boolean deleteByRouteId(Integer routeId) {
-        String sql = "DELETE FROM route_stops WHERE route_id = ?";
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, routeId);
-
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            Session s = this.factory.getObject().getCurrentSession();
+            String jpql = "DELETE FROM RouteStop rs WHERE rs.route.id = :routeId";
+            Query query = s.createQuery(jpql);
+            query.setParameter("routeId", routeId);
+            int deletedCount = query.executeUpdate();
+            return deletedCount > 0;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
     @Override
     public boolean deleteByRouteIdAndDirection(Integer routeId, Integer direction) {
-        String sql = "DELETE FROM route_stops WHERE route_id = ? AND direction = ?";
-
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, routeId);
-            ps.setInt(2, direction);
-
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
+        try {
+            Session s = this.factory.getObject().getCurrentSession();
+            String jpql = "DELETE FROM RouteStop rs WHERE rs.route.id = :routeId AND rs.direction = :direction";
+            Query query = s.createQuery(jpql);
+            query.setParameter("routeId", routeId);
+            query.setParameter("direction", direction);
+            int deletedCount = query.executeUpdate();
+            return deletedCount > 0;
+        } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
+    // Các method còn lại implement tương tự...
     @Override
     public boolean existsByStopId(Integer stopId) {
-        String sql = "SELECT COUNT(*) FROM route_stops WHERE stop_id = ?";
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Long> q = b.createQuery(Long.class);
+        Root root = q.from(RouteStop.class);
+        q.select(b.count(root));
+        q.where(b.equal(root.get("stop").get("id"), stopId));
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, stopId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return false;
+        Query query = s.createQuery(q);
+        Long count = (Long) query.getSingleResult();
+        return count > 0;
     }
 
     @Override
     public Integer findMaxStopOrderByRouteId(Integer routeId) {
-        String sql = "SELECT MAX(stop_order) FROM route_stops WHERE route_id = ?";
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Integer> q = b.createQuery(Integer.class);
+        Root root = q.from(RouteStop.class);
+        q.select(b.max(root.get("stopOrder")));
+        q.where(b.equal(root.get("route").get("id"), routeId));
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, routeId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return 0;
+        Query query = s.createQuery(q);
+        Integer maxOrder = (Integer) query.getSingleResult();
+        return maxOrder != null ? maxOrder : 0;
     }
 
     @Override
     public Integer findMaxStopOrderByRouteIdAndDirection(Integer routeId, Integer direction) {
-        String sql = "SELECT MAX(stop_order) FROM route_stops WHERE route_id = ? AND direction = ?";
+        Session s = this.factory.getObject().getCurrentSession();
+        CriteriaBuilder b = s.getCriteriaBuilder();
+        CriteriaQuery<Integer> q = b.createQuery(Integer.class);
+        Root root = q.from(RouteStop.class);
+        q.select(b.max(root.get("stopOrder")));
 
-        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+        List<Predicate> predicates = new ArrayList<>();
+        predicates.add(b.equal(root.get("route").get("id"), routeId));
+        predicates.add(b.equal(root.get("direction"), direction));
+        q.where(predicates.toArray(Predicate[]::new));
 
-            ps.setInt(1, routeId);
-            ps.setInt(2, direction);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return 0;
+        Query query = s.createQuery(q);
+        Integer maxOrder = (Integer) query.getSingleResult();
+        return maxOrder != null ? maxOrder : 0;
     }
 
-    private RouteStop mapRowToRouteStop(ResultSet rs) throws SQLException {
-        RouteStop routeStop = new RouteStop();
-        routeStop.setId(rs.getInt("id"));
+    @Override
+    public boolean swapStopOrders(Integer firstStopId, Integer secondStopId) {
+        try {
+            // Lấy thông tin hai trạm
+            RouteStop first = findById(firstStopId);
+            RouteStop second = findById(secondStopId);
 
-        Optional<Routes> routeOpt = routeRepository.findById(rs.getInt("route_id"));
-        Optional<Stops> stopOpt = stopRepository.findById(rs.getInt("stop_id"));
-
-        if (routeOpt.isPresent() && stopOpt.isPresent()) {
-            routeStop.setRoute(routeOpt.get());
-            routeStop.setStop(stopOpt.get());
-            routeStop.setStopOrder(rs.getInt("stop_order"));
-
-            // Đọc trường direction từ cơ sở dữ liệu
-            int direction = rs.getInt("direction");
-            if (!rs.wasNull()) {
-                routeStop.setDirection(direction);
+            if (first == null || second == null) {
+                return false;
             }
 
-            Timestamp createdAt = rs.getTimestamp("created_at");
-            if (createdAt != null) {
-                routeStop.setCreatedAt(createdAt.toLocalDateTime());
-            }
+            // Lưu thứ tự ban đầu
+            int firstOrder = first.getStopOrder();
+            int secondOrder = second.getStopOrder();
 
-            return routeStop;
+            // Sử dụng một giá trị tạm thời lớn không có khả năng xung đột
+            // Đặt giá trị tạm thời -999999 cho trạm thứ nhất
+            entityManager.createNativeQuery(
+                    "UPDATE route_stops SET stop_order = -999999 WHERE id = :id")
+                    .setParameter("id", firstStopId)
+                    .executeUpdate();
+
+            // Cập nhật thứ tự cho trạm thứ hai
+            entityManager.createNativeQuery(
+                    "UPDATE route_stops SET stop_order = :newOrder WHERE id = :id")
+                    .setParameter("newOrder", firstOrder)
+                    .setParameter("id", secondStopId)
+                    .executeUpdate();
+
+            // Cập nhật thứ tự cho trạm thứ nhất
+            entityManager.createNativeQuery(
+                    "UPDATE route_stops SET stop_order = :newOrder WHERE id = :id")
+                    .setParameter("newOrder", secondOrder)
+                    .setParameter("id", firstStopId)
+                    .executeUpdate();
+
+            // Flush để đảm bảo các thay đổi được lưu xuống DB
+            entityManager.flush();
+            return true;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi swap thứ tự trạm: " + e.getMessage());
+            e.printStackTrace();
+            return false;
         }
+    }
 
-        return null;
+    @Override
+    @Transactional
+    public boolean deleteAndReorder(Integer routeStopId) {
+        try {
+            // Lấy thông tin trạm cần xóa
+            RouteStop routeStop = findById(routeStopId);
+            if (routeStop == null) {
+                return false;
+            }
+
+            Integer routeId = routeStop.getRoute().getId();
+            Integer direction = routeStop.getDirection();
+            Integer deletedOrder = routeStop.getStopOrder();
+
+            System.out.println("Xóa trạm #" + routeStopId + " với thứ tự " + deletedOrder +
+                    " từ tuyến " + routeId + ", chiều " + direction);
+
+            // Xóa trạm
+            Session s = this.factory.getObject().getCurrentSession();
+            s.remove(routeStop);
+
+            // Dịch chuyển tất cả các trạm có thứ tự lớn hơn lên trước 1 đơn vị
+            String updateQuery = "UPDATE RouteStop rs SET rs.stopOrder = rs.stopOrder - 1 " +
+                    "WHERE rs.route.id = :routeId AND rs.direction = :direction " +
+                    "AND rs.stopOrder > :deletedOrder";
+
+            Query query = s.createQuery(updateQuery);
+            query.setParameter("routeId", routeId);
+            query.setParameter("direction", direction);
+            query.setParameter("deletedOrder", deletedOrder);
+
+            int updatedCount = query.executeUpdate();
+            System.out.println("Đã cập nhật " + updatedCount + " trạm còn lại");
+
+            return true;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xóa và sắp xếp lại trạm: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
     }
 }

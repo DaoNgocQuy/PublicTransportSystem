@@ -36,20 +36,20 @@ public class VehicleRepositoryImpl implements VehicleRepository {
     @Override
     public boolean addVehicle(Vehicles vehicle) {
         String sql = "INSERT INTO vehicles (vehicle_name, type, license_plate) VALUES (?, ?, ?)";
-        return jdbcTemplate.update(sql, 
-            vehicle.getVehicleName(),
-            vehicle.getType(), 
-            vehicle.getLicensePlate()) > 0;
+        return jdbcTemplate.update(sql,
+                vehicle.getVehicleName(),
+                vehicle.getType(),
+                vehicle.getLicensePlate()) > 0;
     }
 
     @Override
     public boolean updateVehicle(Vehicles vehicle) {
         String sql = "UPDATE vehicles SET vehicle_name = ?, type = ?, license_plate = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, 
-            vehicle.getVehicleName(),
-            vehicle.getType(), 
-            vehicle.getLicensePlate(),
-            vehicle.getId()) > 0;
+        return jdbcTemplate.update(sql,
+                vehicle.getVehicleName(),
+                vehicle.getType(),
+                vehicle.getLicensePlate(),
+                vehicle.getId()) > 0;
     }
 
     @Override
@@ -64,7 +64,7 @@ public class VehicleRepositoryImpl implements VehicleRepository {
         vehicle.setVehicleName(rs.getString("vehicle_name"));
         vehicle.setType(rs.getString("type"));
         vehicle.setLicensePlate(rs.getString("license_plate"));
-        
+
         return vehicle;
     }
 }

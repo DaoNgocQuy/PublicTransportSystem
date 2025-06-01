@@ -1,254 +1,260 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Thêm trạm dừng mới</title>
-        <th:block th:replace="base :: bootstrap"></th:block>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    </head>
-    <body>
-        <div class="container my-4">
-            <div th:replace="base :: header"></div>
-            
-            <!-- Thông báo lỗi/thành công -->
-            <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                <span th:text="${errorMessage}"></span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
-                <i class="bi bi-check-circle-fill me-2"></i>
-                <span th:text="${successMessage}"></span>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
 
-            <div class="mb-3">
-                <a href="javascript:history.back()" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left"></i> Quay lại
-                </a>
-            </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thêm trạm dừng mới</title>
+    <th:block th:replace="base :: bootstrap"></th:block>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
 
-            <h2>Thêm trạm dừng mới</h2>
+<body>
+    <div class="container my-4">
+        <div th:replace="base :: header"></div>
 
-            <div class="row mt-4">
-                <div class="col-md-6">
-                    <form th:action="@{/stops/create}" th:object="${stop}" method="post" class="card">
-                        <div class="card-body">
-                            <div class="mb-3">
-                                <label for="routeId" class="form-label">Tuyến đường</label>
-                                <select class="form-select" id="routeId" name="routeId">
-                                    <option value="">-- Chọn tuyến đường --</option>
-                                    <option th:each="route : ${routes}" 
-                                            th:value="${route.id}" 
-                                            th:text="${route.name}"
-                                            th:selected="${selectedRouteId != null && selectedRouteId == route.id}">
-                                        Tuyến 1
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="stopName" class="form-label">Tên trạm dừng <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="stopName" th:field="*{stopName}" required>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="address" class="form-label">Địa chỉ</label>
-                                <input type="text" class="form-control" id="address" th:field="*{address}">
-                            </div>
-
-                            <div class="row mb-3">
-                                <div class="col">
-                                    <label for="latitude" class="form-label">Vĩ độ <span class="text-danger">*</span></label>
-                                    <input type="number" step="any" class="form-control" id="latitude" th:field="*{latitude}" required>
-                                </div>
-                                <div class="col">
-                                    <label for="longitude" class="form-label">Kinh độ <span class="text-danger">*</span></label>
-                                    <input type="number" step="any" class="form-control" id="longitude" th:field="*{longitude}" required>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="direction" class="form-label">Chiều</label>
-                                <select class="form-select" id="direction" name="direction">
-                                    <option value="1" th:selected="${direction == 1}">Chiều đi</option>
-                                    <option value="2" th:selected="${direction == 2}">Chiều về</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="stopOrder" class="form-label">Thứ tự trên tuyến</label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" id="stopOrder" name="stopOrder" min="1" 
-                                           th:value="${stopOrder != null ? stopOrder : 1}">
-                                    <div class="form-text text-muted ms-2">
-                                        (Thứ tự sẽ được tự động sắp xếp lại nếu bị trùng)
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Nút submit -->
-                            <div class="d-flex justify-content-between">
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-save"></i> Lưu trạm dừng
-                                </button>
-                                <a th:href="@{/stops}" class="btn btn-secondary">Hủy</a>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5 class="mb-0">Chọn vị trí trên bản đồ</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div id="map" style="height: 400px;"></div>
-                        </div>
-                        <div class="card-footer small text-muted">
-                            Nhấp vào bản đồ để chọn vị trí trạm dừng
-                        </div>
-                    </div>
-
-                    <!-- Hiển thị trạm dừng hiện có trên tuyến này nếu đã chọn tuyến -->
-                    <div class="card mt-3" id="existingStopsCard" style="display:none;">
-                        <div class="card-header">
-                            <h5 class="mb-0">Trạm dừng hiện có trên tuyến</h5>
-                        </div>
-                        <div class="card-body p-0">
-                            <div id="existingStopsContainer">
-                                <div class="alert alert-info m-3">Chọn tuyến để xem các trạm dừng hiện có</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div th:replace="base :: footer"></div>
+        <!-- Thông báo lỗi/thành công -->
+        <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span th:text="${errorMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script>
-            // Khởi tạo bản đồ
-            var map = L.map('map').setView([10.8231, 106.6297], 13); // Tọa độ mặc định (TP.HCM)
+        <div class="mb-3">
+            <a href="javascript:history.back()" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Quay lại
+            </a>
+        </div>
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
+        <h2>Thêm trạm dừng mới</h2>
 
-            var marker = null;
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <form th:action="@{/stops/create}" th:object="${stop}" method="post" class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="routeId" class="form-label">Tuyến đường</label>
+                            <select class="form-select" id="routeId" name="routeId">
+                                <option value="">-- Chọn tuyến đường --</option>
+                                <option th:each="route : ${routes}" th:value="${route.id}" th:text="${route.routeName}"
+                                    th:selected="${selectedRouteId != null && selectedRouteId == route.id}">
+                                    Tuyến 1
+                                </option>
+                            </select>
+                        </div>
 
-            // Xử lý sự kiện click trên bản đồ
-            map.on('click', function (e) {
-                var lat = e.latlng.lat;
-                var lng = e.latlng.lng;
+                        <div class="mb-3">
+                            <label for="stopName" class="form-label">Tên trạm dừng <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="stopName" th:field="*{stopName}" required>
+                        </div>
 
-                // Cập nhật giá trị trong form
-                document.getElementById('latitude').value = lat;
-                document.getElementById('longitude').value = lng;
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Địa chỉ</label>
+                            <input type="text" class="form-control" id="address" th:field="*{address}">
+                        </div>
 
-                // Thêm hoặc di chuyển marker
-                if (marker === null) {
-                    marker = L.marker([lat, lng]).addTo(map);
-                } else {
-                    marker.setLatLng([lat, lng]);
-                }
-            });
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label for="latitude" class="form-label">Vĩ độ <span
+                                        class="text-danger">*</span></label>
+                                <input type="number" step="any" class="form-control" id="latitude"
+                                    th:field="*{latitude}" required>
+                            </div>
+                            <div class="col">
+                                <label for="longitude" class="form-label">Kinh độ <span
+                                        class="text-danger">*</span></label>
+                                <input type="number" step="any" class="form-control" id="longitude"
+                                    th:field="*{longitude}" required>
+                            </div>
+                        </div>
 
-            // Khởi tạo marker nếu đã có tọa độ
-            window.onload = function () {
-                var lat = document.getElementById('latitude').value;
-                var lng = document.getElementById('longitude').value;
+                        <div class="mb-3">
+                            <label for="direction" class="form-label">Chiều</label>
+                            <select class="form-select" id="direction" name="direction">
+                                <option value="1" th:selected="${direction == 1}">Chiều đi</option>
+                                <option value="2" th:selected="${direction == 2}">Chiều về</option>
+                            </select>
+                        </div>
 
-                if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
-                    lat = parseFloat(lat);
-                    lng = parseFloat(lng);
+                        <div class="mb-3">
+                            <label for="stopOrder" class="form-label">Thứ tự trên tuyến</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="stopOrder" name="stopOrder" min="1"
+                                    th:value="${stopOrder != null ? stopOrder : 1}">
+                                <div class="form-text text-muted ms-2">
+                                    (Thứ tự sẽ được tự động sắp xếp lại nếu bị trùng)
+                                </div>
+                            </div>
+                        </div>
 
-                    marker = L.marker([lat, lng]).addTo(map);
-                    map.setView([lat, lng], 15);
-                }
+                        <!-- Nút submit -->
+                        <div class="d-flex justify-content-between">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Lưu trạm dừng
+                            </button>
+                            <a th:href="@{/stops}" class="btn btn-secondary">Hủy</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
-                // Nếu đã có routeId, tải danh sách trạm
-                var routeId = $('#routeId').val();
-                if (routeId) {
-                    loadExistingStops(routeId);
-                }
-            };
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Chọn vị trí trên bản đồ</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="map" style="height: 400px;"></div>
+                    </div>
+                    <div class="card-footer small text-muted">
+                        Nhấp vào bản đồ để chọn vị trí trạm dừng
+                    </div>
+                </div>
 
-            // Khi thay đổi tuyến, tải danh sách trạm hiện có
-            $('#routeId').on('change', function () {
-                var routeId = $(this).val();
-                if (routeId) {
-                    loadExistingStops(routeId);
-                } else {
-                    $('#existingStopsCard').hide();
-                }
-            });
+                <!-- Hiển thị trạm dừng hiện có trên tuyến này nếu đã chọn tuyến -->
+                <div class="card mt-3" id="existingStopsCard" style="display:none;">
+                    <div class="card-header">
+                        <h5 class="mb-0">Trạm dừng hiện có trên tuyến</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="existingStopsContainer">
+                            <div class="alert alert-info m-3">Chọn tuyến để xem các trạm dừng hiện có</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-            // Hàm tải danh sách trạm theo tuyến và chiều
-            function loadExistingStops(routeId) {
-                var direction = $('#direction').val();
+        <div th:replace="base :: footer"></div>
+    </div>
 
-                $.ajax({
-                    url: '/stops/route/' + routeId + '/ajax',
-                    data: {direction: direction},
-                    dataType: 'json',
-                    success: function (data) {
-                        displayExistingStops(data);
-                    },
-                    error: function () {
-                        $('#existingStopsContainer').html(
-                                '<div class="alert alert-danger m-3">Không thể tải danh sách trạm</div>'
-                                );
-                    }
-                });
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Khởi tạo bản đồ
+        var map = L.map('map').setView([10.8231, 106.6297], 13); // Tọa độ mặc định (TP.HCM)
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        var marker = null;
+
+        // Xử lý sự kiện click trên bản đồ
+        map.on('click', function (e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+
+            // Cập nhật giá trị trong form
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+
+            // Thêm hoặc di chuyển marker
+            if (marker === null) {
+                marker = L.marker([lat, lng]).addTo(map);
+            } else {
+                marker.setLatLng([lat, lng]);
+            }
+        });
+
+        // Khởi tạo marker nếu đã có tọa độ
+        window.onload = function () {
+            var lat = document.getElementById('latitude').value;
+            var lng = document.getElementById('longitude').value;
+
+            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+                lat = parseFloat(lat);
+                lng = parseFloat(lng);
+
+                marker = L.marker([lat, lng]).addTo(map);
+                map.setView([lat, lng], 15);
             }
 
-            // Hiển thị danh sách trạm
-            function displayExistingStops(stops) {
-                if (!stops || stops.length === 0) {
+            // Nếu đã có routeId, tải danh sách trạm
+            var routeId = $('#routeId').val();
+            if (routeId) {
+                loadExistingStops(routeId);
+            }
+        };
+
+        // Khi thay đổi tuyến, tải danh sách trạm hiện có
+        $('#routeId').on('change', function () {
+            var routeId = $(this).val();
+            if (routeId) {
+                loadExistingStops(routeId);
+            } else {
+                $('#existingStopsCard').hide();
+            }
+        });
+
+        // Hàm tải danh sách trạm theo tuyến và chiều
+        function loadExistingStops(routeId) {
+            var direction = $('#direction').val();
+
+            $.ajax({
+                url: '/stops/route/' + routeId + '/ajax',
+                data: { direction: direction },
+                dataType: 'json',
+                success: function (data) {
+                    displayExistingStops(data);
+                },
+                error: function () {
                     $('#existingStopsContainer').html(
-                            '<div class="alert alert-info m-3">Chưa có trạm dừng nào trên tuyến này</div>'
-                            );
-                    $('#existingStopsCard').show();
-                    return;
-                }
-
-                var html = '<div class="list-group list-group-flush">';
-
-                stops.forEach(function (stop) {
-                    html += '<div class="list-group-item d-flex justify-content-between align-items-center">';
-                    html += '<div><strong>' + stop.stopOrder + '.</strong> ' + stop.stopName + '</div>';
-                    html += '</div>';
-                });
-
-                html += '</div>';
-
-                $('#existingStopsContainer').html(html);
-                $('#existingStopsCard').show();
-
-                // Đề xuất stopOrder là số lớn nhất + 1
-                var maxOrder = 0;
-                stops.forEach(function (stop) {
-                    if (stop.stopOrder > maxOrder)
-                        maxOrder = stop.stopOrder;
-                });
-                $('#stopOrder').val(maxOrder + 1);
-            }
-
-            // Khi thay đổi chiều, tải lại danh sách trạm
-            $('#direction').on('change', function () {
-                var routeId = $('#routeId').val();
-                if (routeId) {
-                    loadExistingStops(routeId);
+                        '<div class="alert alert-danger m-3">Không thể tải danh sách trạm</div>'
+                    );
                 }
             });
-        </script>
-    </body>
+        }
+
+        // Hiển thị danh sách trạm
+        function displayExistingStops(stops) {
+            if (!stops || stops.length === 0) {
+                $('#existingStopsContainer').html(
+                    '<div class="alert alert-info m-3">Chưa có trạm dừng nào trên tuyến này</div>'
+                );
+                $('#existingStopsCard').show();
+                return;
+            }
+
+            var html = '<div class="list-group list-group-flush">';
+
+            stops.forEach(function (stop) {
+                html += '<div class="list-group-item d-flex justify-content-between align-items-center">';
+                html += '<div><strong>' + stop.stopOrder + '.</strong> ' + stop.stopName + '</div>';
+                html += '</div>';
+            });
+
+            html += '</div>';
+
+            $('#existingStopsContainer').html(html);
+            $('#existingStopsCard').show();
+
+            // Đề xuất stopOrder là số lớn nhất + 1
+            var maxOrder = 0;
+            stops.forEach(function (stop) {
+                if (stop.stopOrder > maxOrder)
+                    maxOrder = stop.stopOrder;
+            });
+            $('#stopOrder').val(maxOrder + 1);
+        }
+
+        // Khi thay đổi chiều, tải lại danh sách trạm
+        $('#direction').on('change', function () {
+            var routeId = $('#routeId').val();
+            if (routeId) {
+                loadExistingStops(routeId);
+            }
+        });
+    </script>
+</body>
+
 </html>

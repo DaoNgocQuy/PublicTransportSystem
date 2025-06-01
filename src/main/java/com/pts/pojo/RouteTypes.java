@@ -4,7 +4,9 @@
  */
 package com.pts.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Basic;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -17,7 +19,7 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
-import java.util.Collection;
+import java.util.Set;
 
 /**
  *
@@ -26,14 +28,21 @@ import java.util.Collection;
 @Entity
 @Table(name = "route_types")
 @NamedQueries({
-    @NamedQuery(name = "RouteTypes.findAll", query = "SELECT r FROM RouteTypes r"),
-    @NamedQuery(name = "RouteTypes.findById", query = "SELECT r FROM RouteTypes r WHERE r.id = :id"),
-    @NamedQuery(name = "RouteTypes.findByTypeName", query = "SELECT r FROM RouteTypes r WHERE r.typeName = :typeName"),
-    @NamedQuery(name = "RouteTypes.findByDescription", query = "SELECT r FROM RouteTypes r WHERE r.description = :description"),
-    @NamedQuery(name = "RouteTypes.findByIconUrl", query = "SELECT r FROM RouteTypes r WHERE r.iconUrl = :iconUrl"),
-    @NamedQuery(name = "RouteTypes.findByColorCode", query = "SELECT r FROM RouteTypes r WHERE r.colorCode = :colorCode")})
+        @NamedQuery(name = "RouteTypes.findAll", query = "SELECT r FROM RouteTypes r ORDER BY r.typeName"),
+        @NamedQuery(name = "RouteTypes.findById", query = "SELECT r FROM RouteTypes r WHERE r.id = :id"),
+        @NamedQuery(name = "RouteTypes.findByTypeName", query = "SELECT r FROM RouteTypes r WHERE r.typeName = :typeName"),
+        @NamedQuery(name = "RouteTypes.findByDescription", query = "SELECT r FROM RouteTypes r WHERE r.description = :description"),
+        @NamedQuery(name = "RouteTypes.findByIconUrl", query = "SELECT r FROM RouteTypes r WHERE r.iconUrl = :iconUrl"),
+        @NamedQuery(name = "RouteTypes.findByColorCode", query = "SELECT r FROM RouteTypes r WHERE r.colorCode = :colorCode")
+})
 public class RouteTypes implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "id")
+    private Integer id;
     @Basic(optional = false)
     @NotNull
     @Size(min = 1, max = 50)
@@ -48,15 +57,9 @@ public class RouteTypes implements Serializable {
     @Size(max = 10)
     @Column(name = "color_code")
     private String colorCode;
-
-    private static final long serialVersionUID = 1L;
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Basic(optional = false)
-    @Column(name = "id")
-    private Integer id;
-    @OneToMany(mappedBy = "routeTypeId")
-    private Collection<Routes> routesCollection;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "routeTypeId")
+    @JsonIgnore
+    private Set<Routes> routesSet;
 
     public RouteTypes() {
     }
@@ -86,6 +89,13 @@ public class RouteTypes implements Serializable {
         this.typeName = typeName;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
     public String getIconUrl() {
         return iconUrl;
@@ -103,12 +113,12 @@ public class RouteTypes implements Serializable {
         this.colorCode = colorCode;
     }
 
-    public Collection<Routes> getRoutesCollection() {
-        return routesCollection;
+    public Set<Routes> getRoutesSet() {
+        return routesSet;
     }
 
-    public void setRoutesCollection(Collection<Routes> routesCollection) {
-        this.routesCollection = routesCollection;
+    public void setRoutesSet(Set<Routes> routesSet) {
+        this.routesSet = routesSet;
     }
 
     @Override
@@ -120,7 +130,6 @@ public class RouteTypes implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof RouteTypes)) {
             return false;
         }
@@ -134,13 +143,5 @@ public class RouteTypes implements Serializable {
     @Override
     public String toString() {
         return "com.pts.pojo.RouteTypes[ id=" + id + " ]";
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
     }
 }

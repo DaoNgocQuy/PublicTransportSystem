@@ -1,10 +1,10 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.pts.pojo;
 
-import com.pts.pojo.Routes;
-import com.pts.pojo.Stops;
-import java.time.LocalDateTime;
-import java.util.Objects;
-
+import jakarta.persistence.Basic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,60 +12,98 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
+import jakarta.persistence.Temporal;
+import jakarta.persistence.TemporalType;
 import jakarta.persistence.UniqueConstraint;
+import java.io.Serializable;
+import java.util.Date;
 
 /**
- * Entity class representing the route_stops table Maps the relationship between
- * routes and stops with ordering
+ *
+ * @author LEGION
  */
 @Entity
 @Table(name = "route_stops", uniqueConstraints = {
-    @UniqueConstraint(name = "route_direction_stop_order", columnNames = {"route_id", "direction", "stop_order"})
+        @UniqueConstraint(columnNames = { "route_id", "direction", "stop_order" })
 })
-public class RouteStop {
+@NamedQueries({
+        @NamedQuery(name = "RouteStop.findAll", query = "SELECT r FROM RouteStop r"),
+        @NamedQuery(name = "RouteStop.findById", query = "SELECT r FROM RouteStop r WHERE r.id = :id"),
+        @NamedQuery(name = "RouteStop.findByRouteId", query = "SELECT r FROM RouteStop r WHERE r.route.id = :routeId ORDER BY r.stopOrder"),
+        @NamedQuery(name = "RouteStop.findByStopId", query = "SELECT r FROM RouteStop r WHERE r.stop.id = :stopId"),
+        @NamedQuery(name = "RouteStop.findByDirection", query = "SELECT r FROM RouteStop r WHERE r.direction = :direction"),
+        @NamedQuery(name = "RouteStop.findByStopOrder", query = "SELECT r FROM RouteStop r WHERE r.stopOrder = :stopOrder")
+})
+public class RouteStop implements Serializable {
 
+    private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Basic(optional = false)
+    @Column(name = "id")
     private Integer id;
-
-    @ManyToOne
-    @JoinColumn(name = "route_id", nullable = false)
-    private Routes route;
-
-    @ManyToOne
-    @JoinColumn(name = "stop_id", nullable = false)
-    private Stops stop;
-    @Column(name = "direction", nullable = false)
+    @Basic(optional = false)
+    @Column(name = "direction")
     private Integer direction;
-    @Column(name = "stop_order", nullable = false)
+    @Basic(optional = false)
+    @Column(name = "stop_order")
     private Integer stopOrder;
+    @Column(name = "created_at")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
+    @JoinColumn(name = "route_id", referencedColumnName = "id")
+    @ManyToOne(optional = false)
+    private Routes route;
+    @JoinColumn(name = "stop_id", referencedColumnName = "id")
+    @ManyToOne(optional = false)
+    private Stops stop;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    // Default constructor
     public RouteStop() {
-        this.direction = 1;
     }
 
-    // Constructor with all fields
-    public RouteStop(Integer id, Routes route, Stops stop, Integer stopOrder, Integer direction, LocalDateTime createdAt) {
+    public RouteStop(Integer id) {
         this.id = id;
-        this.route = route;
-        this.stop = stop;
-        this.stopOrder = stopOrder;
-        this.direction = direction;
-        this.createdAt = createdAt;
     }
 
-    // Getters and setters
+    public RouteStop(Integer id, Integer direction, Integer stopOrder) {
+        this.id = id;
+        this.direction = direction;
+        this.stopOrder = stopOrder;
+    }
+
     public Integer getId() {
         return id;
     }
 
     public void setId(Integer id) {
         this.id = id;
+    }
+
+    public Integer getDirection() {
+        return direction;
+    }
+
+    public void setDirection(Integer direction) {
+        this.direction = direction;
+    }
+
+    public Integer getStopOrder() {
+        return stopOrder;
+    }
+
+    public void setStopOrder(Integer stopOrder) {
+        this.stopOrder = stopOrder;
+    }
+
+    public Date getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Date createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Routes getRoute() {
@@ -84,57 +122,27 @@ public class RouteStop {
         this.stop = stop;
     }
 
-    public Integer getStopOrder() {
-        return stopOrder;
-    }
-
-    public void setStopOrder(Integer stopOrder) {
-        this.stopOrder = stopOrder;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Integer getDirection() {
-        return direction;
-    }
-
-    public void setDirection(Integer direction) {
-        this.direction = direction != null ? direction : 1;
-
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        RouteStop routeStop = (RouteStop) o;
-        return Objects.equals(id, routeStop.id);
-    }
-
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        int hash = 0;
+        hash += (id != null ? id.hashCode() : 0);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof RouteStop)) {
+            return false;
+        }
+        RouteStop other = (RouteStop) object;
+        if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
+            return false;
+        }
+        return true;
     }
 
     @Override
     public String toString() {
-        return "RouteStop{"
-                + "id=" + id
-                + ", route=" + (route != null ? route.getId() : null)
-                + ", stop=" + (stop != null ? stop.getId() : null)
-                + ", stopOrder=" + stopOrder
-                + ", direction=" + direction
-                + ", createdAt=" + createdAt
-                + '}';
+        return "com.pts.pojo.RouteStop[ id=" + id + " ]";
     }
 }

@@ -34,6 +34,7 @@ public class ScheduleController {
     private RouteService routeService;
 
     @Autowired
+
     private NotificationService notificationService;   
     
     @GetMapping
@@ -41,28 +42,28 @@ public class ScheduleController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
             Model model) {
-        
+
         Map<String, Object> response = scheduleService.getSchedulesWithPagination(page, size);
-        
+
         model.addAttribute("schedules", response.get("schedules"));
         model.addAttribute("currentPage", response.get("currentPage"));
         model.addAttribute("totalItems", response.get("totalItems"));
         model.addAttribute("totalPages", response.get("totalPages"));
         model.addAttribute("pageSize", size);
-        
+
         // Debug print for pagination info
         System.out.println("Pagination Info:");
         System.out.println("Current Page: " + response.get("currentPage"));
         System.out.println("Total Items: " + response.get("totalItems"));
         System.out.println("Total Pages: " + response.get("totalPages"));
         System.out.println("Page Size: " + size);
-        
+
         model.addAttribute("vehicles", vehicleService.getAllVehicles());
         model.addAttribute("routes", routeService.getAllRoutes());
-        
+
         // Add the base URL for pagination
         model.addAttribute("searchUrl", "/schedules");
-        
+
         return "schedules/listSchedule";
     }
 
@@ -173,7 +174,9 @@ public class ScheduleController {
             existingSchedule.setArrivalTime(arrTime);
 
             // Lưu thay đổi
-            Schedules updatedSchedule = scheduleService.updateSchedule(id, existingSchedule);            // Kiểm tra và gửi thông báo nếu có thay đổi thời gian
+            Schedules updatedSchedule = scheduleService.updateSchedule(id, existingSchedule); // Kiểm tra và gửi thông
+                                                                                              // báo nếu có thay đổi
+                                                                                              // thời gian
             if (hasScheduleTimeChanged(oldSchedule, updatedSchedule)) {
                 // Lấy thông tin đầy đủ của route từ routeService
                 Routes fullRoute = routeService.getRouteById(routeId)
@@ -195,7 +198,9 @@ public class ScheduleController {
     public String deleteSchedule(@PathVariable Integer id) {
         scheduleService.deleteSchedule(id);
         return "redirect:/schedules";
-    }    @GetMapping("/search")
+    }
+
+    @GetMapping("/search")
     public String searchSchedules(
             @RequestParam(required = false) Integer routeId,
             @RequestParam(required = false) Integer vehicleId,
@@ -225,24 +230,24 @@ public class ScheduleController {
                 Routes route = new Routes();
                 route.setId(routeId);
                 response = scheduleService.getSchedulesByRouteWithPagination(route, page, size);
-                
+
                 // Debug log
                 System.out.println("Search by route: " + routeId);
             } else if (vehicleId != null) {
                 Vehicles vehicle = new Vehicles();
                 vehicle.setId(vehicleId);
                 response = scheduleService.getSchedulesByVehicleWithPagination(vehicle, page, size);
-                
+
                 // Debug log
                 System.out.println("Search by vehicle: " + vehicleId);
             } else if (startTimeObj != null && endTimeObj != null) {
                 response = scheduleService.getSchedulesByTimeRangeWithPagination(startTimeObj, endTimeObj, page, size);
-                
+
                 // Debug log
                 System.out.println("Search by time range: " + startTime + " - " + endTime);
             } else {
                 response = scheduleService.getSchedulesWithPagination(page, size);
-                
+
                 // Debug log
                 System.out.println("No search criteria, showing all with pagination");
             }
@@ -254,7 +259,7 @@ public class ScheduleController {
             model.addAttribute("pageSize", size);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            
+
             // Add search parameters for pagination links
             if (routeId != null) {
                 model.addAttribute("routeId", routeId);
@@ -272,15 +277,15 @@ public class ScheduleController {
                 model.addAttribute("endTime", endTime);
                 System.out.println("Added endTime to model: " + endTime);
             }
-            
+
             // Add the search URL for pagination
             model.addAttribute("searchUrl", "/schedules/search");
-            
+
             return "schedules/listSchedule";
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("error", e.getMessage());
-            
+
             // In case of error, fallback to regular pagination
             Map<String, Object> response = scheduleService.getSchedulesWithPagination(page, size);
             model.addAttribute("schedules", response.get("schedules"));
@@ -290,7 +295,7 @@ public class ScheduleController {
             model.addAttribute("pageSize", size);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            
+
             return "schedules/listSchedule";
         }
     }
@@ -299,10 +304,14 @@ public class ScheduleController {
         try {
             // Log thông tin để kiểm tra
             System.out.println("Kiểm tra thay đổi lịch trình:");
-            System.out.println("Old departure: " + (oldSchedule.getDepartureTime() != null ? oldSchedule.getDepartureTime().toString() : "null"));
-            System.out.println("New departure: " + (newSchedule.getDepartureTime() != null ? newSchedule.getDepartureTime().toString() : "null"));
-            System.out.println("Old arrival: " + (oldSchedule.getArrivalTime() != null ? oldSchedule.getArrivalTime().toString() : "null"));
-            System.out.println("New arrival: " + (newSchedule.getArrivalTime() != null ? newSchedule.getArrivalTime().toString() : "null"));
+            System.out.println("Old departure: "
+                    + (oldSchedule.getDepartureTime() != null ? oldSchedule.getDepartureTime().toString() : "null"));
+            System.out.println("New departure: "
+                    + (newSchedule.getDepartureTime() != null ? newSchedule.getDepartureTime().toString() : "null"));
+            System.out.println("Old arrival: "
+                    + (oldSchedule.getArrivalTime() != null ? oldSchedule.getArrivalTime().toString() : "null"));
+            System.out.println("New arrival: "
+                    + (newSchedule.getArrivalTime() != null ? newSchedule.getArrivalTime().toString() : "null"));
 
             // Kiểm tra thay đổi giờ khởi hành
             boolean departureChanged = false;
@@ -333,7 +342,8 @@ public class ScheduleController {
             }
 
             boolean changed = departureChanged || arrivalChanged;
-            System.out.println("Phát hiện thay đổi: " + changed + " (departure: " + departureChanged + ", arrival: " + arrivalChanged + ")");
+            System.out.println("Phát hiện thay đổi: " + changed + " (departure: " + departureChanged + ", arrival: "
+                    + arrivalChanged + ")");
 
             return changed;
         } catch (Exception e) {
@@ -341,6 +351,7 @@ public class ScheduleController {
             e.printStackTrace();
             return false;
         }
+
     }    
     
     private void sendScheduleChangeEmails(Routes route, Schedules oldSchedule, Schedules newSchedule) {

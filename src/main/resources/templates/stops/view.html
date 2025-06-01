@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Chi tiết trạm dừng</title>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết trạm dừng</title>
     <th:block th:replace="base :: bootstrap"></th:block>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,6 +16,7 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+
         .badge-stop {
             background-color: white;
             color: #333;
@@ -22,12 +24,15 @@
             border-radius: 15px;
             font-weight: 500;
         }
+
         .action-btn {
             margin-right: 5px;
         }
+
         #map {
             height: 400px;
         }
+
         .route-item {
             border-left: 3px solid #0d6efd;
             margin-bottom: 10px;
@@ -35,14 +40,17 @@
             transition: all 0.2s;
             background-color: #f8f9fa;
         }
+
         .route-item:hover {
             background-color: #e9ecef;
         }
+
         .route-directions {
             display: flex;
             gap: 10px;
             margin-top: 5px;
         }
+
         .direction-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -50,11 +58,13 @@
             font-size: 0.8rem;
             font-weight: 500;
         }
+
         .inbound {
             background-color: #e7f5ff;
             color: #0d6efd;
             border: 1px solid #0d6efd;
         }
+
         .outbound {
             background-color: #e6fcf5;
             color: #0ca678;
@@ -62,6 +72,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container my-4">
         <div th:replace="base :: header"></div>
@@ -122,7 +133,7 @@
                             <tr th:if="${stop.latitude != null && stop.longitude != null}">
                                 <th>Tọa độ:</th>
                                 <td>
-                                    <span th:text="${stop.latitude}">10.7756</span>, 
+                                    <span th:text="${stop.latitude}">10.7756</span>,
                                     <span th:text="${stop.longitude}">106.6850</span>
                                 </td>
                             </tr>
@@ -142,12 +153,13 @@
                             <a th:href="@{/stops/edit/{id}(id=${stop.id})}" class="btn btn-warning">
                                 <i class="bi bi-pencil"></i> Sửa thông tin trạm
                             </a>
-                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addToRouteModal">
+                            <button type="button" class="btn btn-success" data-bs-toggle="modal"
+                                data-bs-target="#addToRouteModal">
                                 <i class="bi bi-plus-circle"></i> Thêm vào tuyến
                             </button>
-                            <a th:href="@{/stops/delete/{id}(id=${stop.id})}" 
-                               onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này? Hành động này không thể hoàn tác.')" 
-                               class="btn btn-danger">
+                            <a th:href="@{/stops/delete/{id}(id=${stop.id})}"
+                                onclick="return confirm('Bạn có chắc chắn muốn xóa trạm dừng này? Hành động này không thể hoàn tác.')"
+                                class="btn btn-danger">
                                 <i class="bi bi-trash"></i> Xóa trạm
                             </a>
                         </div>
@@ -182,7 +194,7 @@
                             <div th:each="entry : ${routeInfoMap}" class="route-item">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h5 class="mb-0">
-                                        <span th:text="${entry.value.route.name}">Tuyến 1</span>
+                                        <span th:text="${entry.value.route.routeName}">Tuyến 1</span>
                                     </h5>
                                     <div>
                                         <a th:href="@{/routes/view/{id}(id=${entry.key})}" class="btn btn-sm btn-info">
@@ -192,31 +204,36 @@
                                 </div>
                                 <div class="route-info mt-2">
                                     <small class="text-muted">
-                                        <i class="bi bi-pin-map"></i> 
-                                        <span th:text="${entry.value.route.startLocation + ' - ' + entry.value.route.endLocation}">
+                                        <i class="bi bi-pin-map"></i>
+                                        <span
+                                            th:text="${entry.value.route.startLocation + ' - ' + entry.value.route.endLocation}">
                                             Điểm đầu - Điểm cuối
                                         </span>
                                     </small>
                                 </div>
                                 <div class="route-directions">
-                                    <div th:if="${entry.value.directions.containsKey(1)}" class="direction-badge inbound">
-                                        <i class="bi bi-arrow-right"></i> Chiều đi (Thứ tự: <span th:text="${entry.value.directions.get(1)}">1</span>)
+                                    <div th:if="${entry.value.directions.containsKey(1)}"
+                                        class="direction-badge inbound">
+                                        <i class="bi bi-arrow-right"></i> Chiều đi (Thứ tự: <span
+                                            th:text="${entry.value.directions.get(1)}">1</span>)
                                     </div>
-                                    <div th:if="${entry.value.directions.containsKey(2)}" class="direction-badge outbound">
-                                        <i class="bi bi-arrow-left"></i> Chiều về (Thứ tự: <span th:text="${entry.value.directions.get(2)}">1</span>)
+                                    <div th:if="${entry.value.directions.containsKey(2)}"
+                                        class="direction-badge outbound">
+                                        <i class="bi bi-arrow-left"></i> Chiều về (Thứ tự: <span
+                                            th:text="${entry.value.directions.get(2)}">1</span>)
                                     </div>
                                 </div>
                                 <div class="mt-2">
-                                    <a th:href="@{/stops/{stopId}/removeFromRoute/{routeId}(stopId=${stop.id}, routeId=${entry.key}, direction=1)}" 
-                                       th:if="${entry.value.directions.containsKey(1)}"
-                                       onclick="return confirm('Bạn có chắc muốn xóa trạm này khỏi chiều đi của tuyến?');"
-                                       class="btn btn-sm btn-outline-danger">
+                                    <a th:href="@{/stops/{stopId}/removeFromRoute/{routeId}(stopId=${stop.id}, routeId=${entry.key}, direction=1)}"
+                                        th:if="${entry.value.directions.containsKey(1)}"
+                                        onclick="return confirm('Bạn có chắc muốn xóa trạm này khỏi chiều đi của tuyến?');"
+                                        class="btn btn-sm btn-outline-danger">
                                         <i class="bi bi-x-circle"></i> Xóa khỏi chiều đi
                                     </a>
-                                    <a th:href="@{/stops/{stopId}/removeFromRoute/{routeId}(stopId=${stop.id}, routeId=${entry.key}, direction=2)}" 
-                                       th:if="${entry.value.directions.containsKey(2)}"
-                                       onclick="return confirm('Bạn có chắc muốn xóa trạm này khỏi chiều về của tuyến?');"
-                                       class="btn btn-sm btn-outline-danger ms-1">
+                                    <a th:href="@{/stops/{stopId}/removeFromRoute/{routeId}(stopId=${stop.id}, routeId=${entry.key}, direction=2)}"
+                                        th:if="${entry.value.directions.containsKey(2)}"
+                                        onclick="return confirm('Bạn có chắc muốn xóa trạm này khỏi chiều về của tuyến?');"
+                                        class="btn btn-sm btn-outline-danger ms-1">
                                         <i class="bi bi-x-circle"></i> Xóa khỏi chiều về
                                     </a>
                                 </div>
@@ -228,7 +245,8 @@
         </div>
 
         <!-- Modal thêm vào tuyến -->
-        <div class="modal fade" id="addToRouteModal" tabindex="-1" aria-labelledby="addToRouteModalLabel" aria-hidden="true">
+        <div class="modal fade" id="addToRouteModal" tabindex="-1" aria-labelledby="addToRouteModalLabel"
+            aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header bg-success text-white">
@@ -241,9 +259,8 @@
                                 <label for="routeId" class="form-label">Chọn tuyến:</label>
                                 <select id="routeId" name="routeId" class="form-select" required>
                                     <option value="">-- Chọn tuyến --</option>
-                                    <option th:each="route : ${allRoutes}" 
-                                            th:value="${route.id}" 
-                                            th:text="${route.name + ' (' + route.startLocation + ' - ' + route.endLocation + ')'}">
+                                    <option th:each="route : ${allRoutes}" th:value="${route.id}"
+                                        th:text="${route.name + ' (' + route.startLocation + ' - ' + route.endLocation + ')'}">
                                         Tuyến 1 (Điểm đầu - Điểm cuối)
                                     </option>
                                 </select>
@@ -251,13 +268,15 @@
                             <div class="mb-3">
                                 <label class="form-label">Chiều:</label>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="direction" id="directionInbound" value="1" checked>
+                                    <input class="form-check-input" type="radio" name="direction" id="directionInbound"
+                                        value="1" checked>
                                     <label class="form-check-label" for="directionInbound">
                                         Chiều đi
                                     </label>
                                 </div>
                                 <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="direction" id="directionOutbound" value="2">
+                                    <input class="form-check-input" type="radio" name="direction" id="directionOutbound"
+                                        value="2">
                                     <label class="form-check-label" for="directionOutbound">
                                         Chiều về
                                     </label>
@@ -279,41 +298,42 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script th:inline="javascript">
-                                           /*<![CDATA[*/
-                                           // Khởi tạo bản đồ
-                                           var map = L.map('map');
+        /*<![CDATA[*/
+        // Khởi tạo bản đồ
+        var map = L.map('map');
 
-                                           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                                               attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-                                           }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+        }).addTo(map);
 
-                                           // Lấy tọa độ trạm dừng từ dữ liệu server
-                                           var latitude = /*[[${stop.latitude}]]*/ 10.7756;
-                                           var longitude = /*[[${stop.longitude}]]*/ 106.6850;
+        // Lấy tọa độ trạm dừng từ dữ liệu server
+        var latitude = /*[[${stop.latitude}]]*/ 10.7756;
+        var longitude = /*[[${stop.longitude}]]*/ 106.6850;
 
-                                           // Kiểm tra nếu có tọa độ
-                                           if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
-                                               // Tạo biểu tượng tùy chỉnh cho marker
-                                               var stopIcon = L.divIcon({
-                                                   html: '<div style="background-color: #28a745; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; font-weight: bold;"><i class="bi bi-bus-front"></i></div>',
-                                                   className: 'marker-stop',
-                                                   iconSize: [30, 30],
-                                                   iconAnchor: [15, 15]
-                                               });
+        // Kiểm tra nếu có tọa độ
+        if (latitude && longitude && !isNaN(latitude) && !isNaN(longitude)) {
+            // Tạo biểu tượng tùy chỉnh cho marker
+            var stopIcon = L.divIcon({
+                html: '<div style="background-color: #28a745; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; justify-content: center; align-items: center; font-weight: bold;"><i class="bi bi-bus-front"></i></div>',
+                className: 'marker-stop',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
 
-                                               // Thêm marker vào bản đồ
-                                               var marker = L.marker([latitude, longitude], {icon: stopIcon}).addTo(map);
-                                               marker.bindPopup("<b>" + /*[[${stop.stopName}]]*/ "Tên trạm" + "</b>").openPopup();
+            // Thêm marker vào bản đồ
+            var marker = L.marker([latitude, longitude], { icon: stopIcon }).addTo(map);
+            marker.bindPopup("<b>" + /*[[${stop.stopName}]]*/ "Tên trạm" + "</b>").openPopup();
 
-                                               // Set view và zoom
-                                               map.setView([latitude, longitude], 16);
-                                           } else {
-                                               // Hiển thị thông báo nếu không có tọa độ
-                                               document.getElementById('map').innerHTML =
-                                                       '<div class="d-flex align-items-center justify-content-center h-100 bg-light">' +
-                                                       '<p class="text-muted">Không có tọa độ cho trạm dừng này</p></div>';
-                                           }
-                                           /*]]>*/
+            // Set view và zoom
+            map.setView([latitude, longitude], 16);
+        } else {
+            // Hiển thị thông báo nếu không có tọa độ
+            document.getElementById('map').innerHTML =
+                '<div class="d-flex align-items-center justify-content-center h-100 bg-light">' +
+                '<p class="text-muted">Không có tọa độ cho trạm dừng này</p></div>';
+        }
+        /*]]>*/
     </script>
 </body>
+
 </html>

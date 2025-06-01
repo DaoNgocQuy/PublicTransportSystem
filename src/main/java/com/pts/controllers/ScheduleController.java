@@ -34,34 +34,37 @@ public class ScheduleController {
     private RouteService routeService;
 
     @Autowired
-    private NotificationRepository notificationRepository;    @Autowired
-    private EmailService emailService;    @GetMapping
+    private NotificationRepository notificationRepository;
+    @Autowired
+    private EmailService emailService;
+
+    @GetMapping
     public String listSchedules(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "5") int size,
             Model model) {
-        
+
         Map<String, Object> response = scheduleService.getSchedulesWithPagination(page, size);
-        
+
         model.addAttribute("schedules", response.get("schedules"));
         model.addAttribute("currentPage", response.get("currentPage"));
         model.addAttribute("totalItems", response.get("totalItems"));
         model.addAttribute("totalPages", response.get("totalPages"));
         model.addAttribute("pageSize", size);
-        
+
         // Debug print for pagination info
         System.out.println("Pagination Info:");
         System.out.println("Current Page: " + response.get("currentPage"));
         System.out.println("Total Items: " + response.get("totalItems"));
         System.out.println("Total Pages: " + response.get("totalPages"));
         System.out.println("Page Size: " + size);
-        
+
         model.addAttribute("vehicles", vehicleService.getAllVehicles());
         model.addAttribute("routes", routeService.getAllRoutes());
-        
+
         // Add the base URL for pagination
         model.addAttribute("searchUrl", "/schedules");
-        
+
         return "schedules/listSchedule";
     }
 
@@ -172,7 +175,9 @@ public class ScheduleController {
             existingSchedule.setArrivalTime(arrTime);
 
             // Lưu thay đổi
-            Schedules updatedSchedule = scheduleService.updateSchedule(id, existingSchedule);            // Kiểm tra và gửi thông báo nếu có thay đổi thời gian
+            Schedules updatedSchedule = scheduleService.updateSchedule(id, existingSchedule); // Kiểm tra và gửi thông
+                                                                                              // báo nếu có thay đổi
+                                                                                              // thời gian
             if (hasScheduleTimeChanged(oldSchedule, updatedSchedule)) {
                 // Lấy thông tin đầy đủ của route từ routeService
                 Routes fullRoute = routeService.getRouteById(routeId)
@@ -194,7 +199,9 @@ public class ScheduleController {
     public String deleteSchedule(@PathVariable Integer id) {
         scheduleService.deleteSchedule(id);
         return "redirect:/schedules";
-    }    @GetMapping("/search")
+    }
+
+    @GetMapping("/search")
     public String searchSchedules(
             @RequestParam(required = false) Integer routeId,
             @RequestParam(required = false) Integer vehicleId,
@@ -224,24 +231,24 @@ public class ScheduleController {
                 Routes route = new Routes();
                 route.setId(routeId);
                 response = scheduleService.getSchedulesByRouteWithPagination(route, page, size);
-                
+
                 // Debug log
                 System.out.println("Search by route: " + routeId);
             } else if (vehicleId != null) {
                 Vehicles vehicle = new Vehicles();
                 vehicle.setId(vehicleId);
                 response = scheduleService.getSchedulesByVehicleWithPagination(vehicle, page, size);
-                
+
                 // Debug log
                 System.out.println("Search by vehicle: " + vehicleId);
             } else if (startTimeObj != null && endTimeObj != null) {
                 response = scheduleService.getSchedulesByTimeRangeWithPagination(startTimeObj, endTimeObj, page, size);
-                
+
                 // Debug log
                 System.out.println("Search by time range: " + startTime + " - " + endTime);
             } else {
                 response = scheduleService.getSchedulesWithPagination(page, size);
-                
+
                 // Debug log
                 System.out.println("No search criteria, showing all with pagination");
             }
@@ -253,7 +260,7 @@ public class ScheduleController {
             model.addAttribute("pageSize", size);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            
+
             // Add search parameters for pagination links
             if (routeId != null) {
                 model.addAttribute("routeId", routeId);
@@ -271,15 +278,15 @@ public class ScheduleController {
                 model.addAttribute("endTime", endTime);
                 System.out.println("Added endTime to model: " + endTime);
             }
-            
+
             // Add the search URL for pagination
             model.addAttribute("searchUrl", "/schedules/search");
-            
+
             return "schedules/listSchedule";
         } catch (Exception e) {
             e.printStackTrace();
             model.addAttribute("error", e.getMessage());
-            
+
             // In case of error, fallback to regular pagination
             Map<String, Object> response = scheduleService.getSchedulesWithPagination(page, size);
             model.addAttribute("schedules", response.get("schedules"));
@@ -289,7 +296,7 @@ public class ScheduleController {
             model.addAttribute("pageSize", size);
             model.addAttribute("vehicles", vehicleService.getAllVehicles());
             model.addAttribute("routes", routeService.getAllRoutes());
-            
+
             return "schedules/listSchedule";
         }
     }
@@ -298,10 +305,14 @@ public class ScheduleController {
         try {
             // Log thông tin để kiểm tra
             System.out.println("Kiểm tra thay đổi lịch trình:");
-            System.out.println("Old departure: " + (oldSchedule.getDepartureTime() != null ? oldSchedule.getDepartureTime().toString() : "null"));
-            System.out.println("New departure: " + (newSchedule.getDepartureTime() != null ? newSchedule.getDepartureTime().toString() : "null"));
-            System.out.println("Old arrival: " + (oldSchedule.getArrivalTime() != null ? oldSchedule.getArrivalTime().toString() : "null"));
-            System.out.println("New arrival: " + (newSchedule.getArrivalTime() != null ? newSchedule.getArrivalTime().toString() : "null"));
+            System.out.println("Old departure: "
+                    + (oldSchedule.getDepartureTime() != null ? oldSchedule.getDepartureTime().toString() : "null"));
+            System.out.println("New departure: "
+                    + (newSchedule.getDepartureTime() != null ? newSchedule.getDepartureTime().toString() : "null"));
+            System.out.println("Old arrival: "
+                    + (oldSchedule.getArrivalTime() != null ? oldSchedule.getArrivalTime().toString() : "null"));
+            System.out.println("New arrival: "
+                    + (newSchedule.getArrivalTime() != null ? newSchedule.getArrivalTime().toString() : "null"));
 
             // Kiểm tra thay đổi giờ khởi hành
             boolean departureChanged = false;
@@ -332,7 +343,8 @@ public class ScheduleController {
             }
 
             boolean changed = departureChanged || arrivalChanged;
-            System.out.println("Phát hiện thay đổi: " + changed + " (departure: " + departureChanged + ", arrival: " + arrivalChanged + ")");
+            System.out.println("Phát hiện thay đổi: " + changed + " (departure: " + departureChanged + ", arrival: "
+                    + arrivalChanged + ")");
 
             return changed;
         } catch (Exception e) {
@@ -340,12 +352,14 @@ public class ScheduleController {
             e.printStackTrace();
             return false;
         }
-    }    private void sendScheduleChangeEmails(Routes route, Schedules oldSchedule, Schedules newSchedule) {
+    }
+
+    private void sendScheduleChangeEmails(Routes route, Schedules oldSchedule, Schedules newSchedule) {
         try {
             System.out.println("Bắt đầu gửi email thông báo thay đổi lịch trình cho tuyến " + route.getId());
-            
+
             // Kiểm tra và xử lý trường hợp route.getName() là null
-            String routeName = (route.getName() != null) ? route.getName() : "ID: " + route.getId();
+            String routeName = (route.getRouteName() != null) ? route.getRouteName() : "ID: " + route.getId();
             System.out.println("Tên tuyến: " + routeName);
 
             // Lấy danh sách người dùng đăng ký nhận thông báo
@@ -360,22 +374,28 @@ public class ScheduleController {
 
             SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
             String oldDeparture = oldSchedule.getDepartureTime() != null
-                    ? timeFormat.format(oldSchedule.getDepartureTime()) : "N/A";
+                    ? timeFormat.format(oldSchedule.getDepartureTime())
+                    : "N/A";
             String oldArrival = oldSchedule.getArrivalTime() != null
-                    ? timeFormat.format(oldSchedule.getArrivalTime()) : "N/A";
+                    ? timeFormat.format(oldSchedule.getArrivalTime())
+                    : "N/A";
             String newDeparture = newSchedule.getDepartureTime() != null
-                    ? timeFormat.format(newSchedule.getDepartureTime()) : "N/A";
+                    ? timeFormat.format(newSchedule.getDepartureTime())
+                    : "N/A";
             String newArrival = newSchedule.getArrivalTime() != null
-                    ? timeFormat.format(newSchedule.getArrivalTime()) : "N/A";
+                    ? timeFormat.format(newSchedule.getArrivalTime())
+                    : "N/A";
 
-            String subject = "Thông báo thay đổi lịch trình tuyến " + ((route.getName() != null) ? route.getName() : "ID: " + route.getId());
+            String subject = "Thông báo thay đổi lịch trình tuyến "
+                    + ((route.getRouteName() != null) ? route.getRouteName() : "ID: " + route.getId());
 
             for (Map<String, Object> subscriber : subscribers) {
                 String email = (String) subscriber.get("email");
                 String fullName = (String) subscriber.get("full_name");
                 Boolean notifyScheduleChanges = (Boolean) subscriber.get("notify_schedule_changes");
 
-                System.out.println("Người dùng: " + fullName + " (" + email + "), nhận thông báo: " + notifyScheduleChanges);
+                System.out.println(
+                        "Người dùng: " + fullName + " (" + email + "), nhận thông báo: " + notifyScheduleChanges);
 
                 // Chỉ gửi cho người dùng đăng ký nhận thông báo và có email
                 if (email != null && !email.isEmpty() && Boolean.TRUE.equals(notifyScheduleChanges)) {
@@ -384,8 +404,7 @@ public class ScheduleController {
                             fullName != null && !fullName.isEmpty() ? fullName : "Quý khách",
                             route,
                             oldDeparture, oldArrival,
-                            newDeparture, newArrival
-                    );
+                            newDeparture, newArrival);
 
                     // Gửi email
                     System.out.println("Đang gửi email đến: " + email);
@@ -397,7 +416,8 @@ public class ScheduleController {
                         e.printStackTrace();
                     }
                 } else {
-                    System.out.println("Không gửi email cho người dùng này vì họ không đăng ký nhận thông báo hoặc không có email");
+                    System.out.println(
+                            "Không gửi email cho người dùng này vì họ không đăng ký nhận thông báo hoặc không có email");
                 }
             }
         } catch (Exception e) {
@@ -416,9 +436,10 @@ public class ScheduleController {
         html.append("<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>");
         html.append("<div style='background-color: #4CAF50; color: white; padding: 20px; text-align: center;'>");
         html.append("<h1>Thông báo thay đổi lịch trình tuyến</h1>");
-        html.append("</div>");        html.append("<div style='padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd;'>");
+        html.append("</div>");
+        html.append("<div style='padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd;'>");
         html.append("<p>Xin chào " + fullName + ",</p>");
-        String routeName = (route.getName() != null) ? route.getName() : "ID: " + route.getId();
+        String routeName = (route.getRouteName() != null) ? route.getRouteName() : "ID: " + route.getId();
         html.append("<p>Lịch trình của tuyến <strong>" + routeName + "</strong> đã được cập nhật.</p>");
 
         html.append("<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>");

@@ -40,6 +40,7 @@ public class RoutesServiceImpl implements RouteService {
 
     @Autowired
     private RouteStopRepository routeStopRepository;
+
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -55,9 +56,9 @@ public class RoutesServiceImpl implements RouteService {
 
     @Override
     public Routes saveRoute(Routes route) {
-        // Set default values
-        if (route.getActive() == null) {
-            route.setActive(true);
+        // Set default values - SỬA FIELD NAME
+        if (route.getIsActive() == null) { // Đổi từ getActive() thành getIsActive()
+            route.setIsActive(true); // Đổi từ setActive() thành setIsActive()
         }
 
         // Save route without calculated fields first
@@ -72,12 +73,6 @@ public class RoutesServiceImpl implements RouteService {
         return routesRepository.findById(savedRoute.getId()).orElse(savedRoute);
     }
 
-    /**
-     * Updates calculated fields for a route: - total_stops: Count of stops on
-     * the route - operation_start_time: Time of first scheduled departure -
-     * operation_end_time: Time of last scheduled departure - frequency_minutes:
-     * Average time between schedules
-     */
     @Override
     public void deleteRoute(Integer id) {
         // Delete route_stops links first
@@ -127,7 +122,7 @@ public class RoutesServiceImpl implements RouteService {
         // Filter routes that pass through all specified stops
         return allRoutes.stream()
                 .filter(route -> {
-                    // Get all stops for this route
+                    // Get all stops for this route - SỬA METHOD NAME
                     List<Stops> routeStops = routesRepository.findStopsByRouteId(route.getId());
                     List<Integer> routeStopIds = routeStops.stream()
                             .map(Stops::getId)
@@ -216,8 +211,8 @@ public class RoutesServiceImpl implements RouteService {
         return stopIds;
     }
 
-    // Find routes that require transfers
-    private List<List<Routes>> findTransferRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops, int maxTransfers) {
+    private List<List<Routes>> findTransferRoutes(List<Map<String, Object>> fromStops,
+            List<Map<String, Object>> toStops, int maxTransfers) {
         List<List<Routes>> transferRoutes = new ArrayList<>();
         Set<Integer> fromStopIds = extractStopIds(fromStops);
         Set<Integer> toStopIds = extractStopIds(toStops);
@@ -246,7 +241,8 @@ public class RoutesServiceImpl implements RouteService {
             // Get all stops on the starting route
             List<Stops> startRouteStops = routesRepository.findStopsByRouteId(startRoute.getId());
 
-            // For each stop on the starting route, check if any routes go from here to destination
+            // For each stop on the starting route, check if any routes go from here to
+            // destination
             for (Stops transferStop : startRouteStops) {
                 List<Routes> transferRoutesList = routesRepository.findByStopId(transferStop.getId());
 
@@ -284,82 +280,6 @@ public class RoutesServiceImpl implements RouteService {
         return transferRoutes;
     }
 
-    // Format results for return
-    private List<Map<String, Object>> formatRoutesResult(List<Routes> directRoutes, List<List<Routes>> transferRoutes,
-            List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
-            double fromLat, double fromLng, double toLat, double toLng, String routePriority) {
-
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        // Process direct routes
-        int optionId = 1;
-        for (Routes route : directRoutes) {
-            Map<String, Object> option = new HashMap<>();
-            option.put("id", optionId++);
-            option.put("name", "Tuyến " + route.getName());
-            option.put("routeId", route.getId());
-            option.put("totalTime", calculateEstimatedTime(route, fromStops, toStops));
-            option.put("totalDistance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // Convert to meters
-            option.put("walkingDistance", calculateWalkingDistance(fromStops, toStops, fromLat, fromLng, toLat, toLng));
-            option.put("transfers", 0);
-
-            // Journey information
-            List<Map<String, Object>> legs = createLegs(route, fromStops, toStops, fromLat, fromLng, toLat, toLng);
-            option.put("legs", legs);
-
-            // Add route display information
-            List<Map<String, Object>> routes = new ArrayList<>();
-            Map<String, Object> routeInfo = new HashMap<>();
-            routeInfo.put("number", route.getId().toString());
-            routeInfo.put("name", route.getName());
-            routeInfo.put("color", route.getRouteTypeColor() != null ? route.getRouteTypeColor() : "#4CAF50");
-            routes.add(routeInfo);
-            option.put("routes", routes);
-
-            result.add(option);
-        }
-
-        // Process routes that require transfers
-        for (List<Routes> transferRoute : transferRoutes) {
-            Map<String, Object> option = new HashMap<>();
-            option.put("id", optionId++);
-
-            StringBuilder nameBuilder = new StringBuilder("Tuyến ");
-            for (int i = 0; i < transferRoute.size(); i++) {
-                if (i > 0) {
-                    nameBuilder.append(" → ");
-                }
-                nameBuilder.append(transferRoute.get(i).getName());
-            }
-            option.put("name", nameBuilder.toString());
-
-            // Calculate journey parameters
-            int totalTime = 0;
-            double totalDistance = 0;
-            double walkingDistance = 0;
-
-            for (Routes route : transferRoute) {
-                totalTime += calculateEstimatedTime(route, fromStops, toStops);
-                totalDistance += calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) / transferRoute.size();
-            }
-
-            // Set parameters
-            option.put("totalTime", totalTime);
-            option.put("totalDistance", totalDistance);
-            option.put("walkingDistance", walkingDistance);
-            option.put("transfers", transferRoute.size() - 1);
-
-            // Journey information - simplified example
-            List<Map<String, Object>> legs = new ArrayList<>();
-            option.put("legs", legs);
-
-            result.add(option);
-        }
-
-        // Sort results by priority
-        return sortRouteOptions(result, routePriority);
-    }
-
     private void updateRouteCalculatedFields(Integer routeId) {
         try {
             System.out.println("Bắt đầu tính toán dữ liệu cho tuyến ID: " + routeId);
@@ -388,16 +308,18 @@ public class RoutesServiceImpl implements RouteService {
                     int validIntervals = 0;
 
                     for (int i = 0; i < schedules.size() - 1; i++) {
-                        if (schedules.get(i).getDepartureTime() != null && schedules.get(i + 1).getDepartureTime() != null) {
+                        if (schedules.get(i).getDepartureTime() != null
+                                && schedules.get(i + 1).getDepartureTime() != null) {
                             long diffMs = schedules.get(i + 1).getDepartureTime().getTime()
                                     - schedules.get(i).getDepartureTime().getTime();
                             int diffMinutes = (int) (diffMs / (60 * 1000));
 
-                            // Chấp nhận khoảng cách từ 1 phút đến 4 giờ 
+                            // Chấp nhận khoảng cách từ 1 phút đến 4 giờ
                             if (diffMinutes > 0 && diffMinutes <= 240) {
                                 totalMinutes += diffMinutes;
                                 validIntervals++;
-                                System.out.println("Khoảng cách lịch trình " + i + " và " + (i + 1) + ": " + diffMinutes + " phút");
+                                System.out.println("Khoảng cách lịch trình " + i + " và " + (i + 1) + ": " + diffMinutes
+                                        + " phút");
                             }
                         }
                     }
@@ -407,7 +329,8 @@ public class RoutesServiceImpl implements RouteService {
                         System.out.println("Tần suất tính được: " + frequencyMinutes + " phút ("
                                 + totalMinutes + " / " + validIntervals + ")");
                     } else {
-                        // Nếu không có khoảng thời gian hợp lệ, sử dụng phương pháp khác: thời gian hoạt động / số chuyến
+                        // Nếu không có khoảng thời gian hợp lệ, sử dụng phương pháp khác: thời gian
+                        // hoạt động / số chuyến
                         long operatingMs = endTime.getTime() - startTime.getTime();
                         int operatingMinutes = (int) (operatingMs / (60 * 1000));
 
@@ -433,8 +356,13 @@ public class RoutesServiceImpl implements RouteService {
                     System.out.println("Frequency không hợp lệ, sử dụng mặc định: " + frequencyMinutes + " phút");
                 }
 
-                // Update the route with calculated values using JDBC directly for better debugging
+                // SỬA COLUMN NAMES: Kiểm tra database schema
+                // Nếu DB có columns start_time, end_time:
                 String sql = "UPDATE routes SET operation_start_time = ?, operation_end_time = ?, frequency_minutes = ? WHERE id = ?";
+                // Nếu DB có columns operation_start_time, operation_end_time thì dùng:
+                // String sql = "UPDATE routes SET operation_start_time = ?, operation_end_time
+                // = ?, frequency_minutes = ? WHERE id = ?";
+
                 int rowsUpdated = jdbcTemplate.update(sql, startTime, endTime, frequencyMinutes, routeId);
                 System.out.println("Cập nhật " + rowsUpdated + " dòng: start=" + startTime
                         + ", end=" + endTime + ", freq=" + frequencyMinutes);
@@ -512,7 +440,8 @@ public class RoutesServiceImpl implements RouteService {
                     Collections.sort(intervals);
                     int median = intervals.get(intervals.size() / 2);
                     hourlyFrequencies.add(median);
-                    System.out.println("Hour " + hour + ": " + hourSchedules.size() + " schedules, median frequency: " + median + " minutes");
+                    System.out.println("Hour " + hour + ": " + hourSchedules.size() + " schedules, median frequency: "
+                            + median + " minutes");
                 } else {
                     System.out.println("Hour " + hour + ": No valid intervals found");
                 }
@@ -569,14 +498,18 @@ public class RoutesServiceImpl implements RouteService {
         Comparator<Map<String, Object>> comparator;
 
         if ("LEAST_TIME".equals(routePriority)) {
-            comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
+            comparator = Comparator
+                    .comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
         } else if ("LEAST_DISTANCE".equals(routePriority)) {
-            comparator = Comparator.comparingDouble(o -> ((Number) o.getOrDefault("totalDistance", Double.MAX_VALUE)).doubleValue());
+            comparator = Comparator
+                    .comparingDouble(o -> ((Number) o.getOrDefault("totalDistance", Double.MAX_VALUE)).doubleValue());
         } else if ("LEAST_TRANSFERS".equals(routePriority)) {
-            comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue());
+            comparator = Comparator
+                    .comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue());
         } else {
             // Default sort by time
-            comparator = Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
+            comparator = Comparator
+                    .comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue());
         }
 
         options.sort(comparator);
@@ -584,7 +517,8 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     // Calculate estimated time
-    private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
+    private int calculateEstimatedTime(Routes route, List<Map<String, Object>> fromStops,
+            List<Map<String, Object>> toStops) {
         // Find stops on this route at both ends
         Map<String, Object> fromStop = findStopOnRoute(fromStops, route.getId());
         Map<String, Object> toStop = findStopOnRoute(toStops, route.getId());
@@ -621,7 +555,8 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     // Calculate estimated distance
-    private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat, double toLng) {
+    private double calculateEstimatedDistance(Routes route, double fromLat, double fromLng, double toLat,
+            double toLng) {
         // Calculate distance between two points (km) - Haversine formula
         return calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
     }
@@ -639,7 +574,8 @@ public class RoutesServiceImpl implements RouteService {
             Double stopLng = getDoubleValue(nearestFromStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                distanceToFirstStop = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // Convert km to m
+                distanceToFirstStop = calculateHaversineDistance(fromLat, fromLng, stopLat, stopLng) * 1000; // Convert
+                                                                                                             // km to m
             }
         }
 
@@ -652,7 +588,8 @@ public class RoutesServiceImpl implements RouteService {
             Double stopLng = getDoubleValue(nearestToStop, "longitude", "lng");
 
             if (stopLat != null && stopLng != null) {
-                distanceFromLastStop = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // Convert km to m
+                distanceFromLastStop = calculateHaversineDistance(stopLat, stopLng, toLat, toLng) * 1000; // Convert km
+                                                                                                          // to m
             }
         }
 
@@ -660,7 +597,8 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     // Create journey legs
-    private List<Map<String, Object>> createLegs(Routes route, List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops,
+    private List<Map<String, Object>> createLegs(Routes route, List<Map<String, Object>> fromStops,
+            List<Map<String, Object>> toStops,
             double fromLat, double fromLng, double toLat, double toLng) {
 
         List<Map<String, Object>> legs = new ArrayList<>();
@@ -698,8 +636,7 @@ public class RoutesServiceImpl implements RouteService {
         busLeg.put("type", "BUS");
         busLeg.put("routeId", route.getId());
         busLeg.put("routeNumber", route.getId().toString());
-        busLeg.put("routeName", route.getName());
-        busLeg.put("routeColor", route.getRouteTypeColor() != null ? route.getRouteTypeColor() : "#4CAF50");
+        busLeg.put("routeName", route.getRouteName());
         busLeg.put("distance", calculateEstimatedDistance(route, fromLat, fromLng, toLat, toLng) * 1000); // m
         busLeg.put("duration", calculateEstimatedTime(route, fromStops, toStops));
         busLeg.put("from", nearestFromStop);
@@ -749,8 +686,7 @@ public class RoutesServiceImpl implements RouteService {
                     "id", 0,
                     "name", "Undefined stop",
                     "lat", lat,
-                    "lng", lng
-            );
+                    "lng", lng);
         }
 
         Map<String, Object> nearestStop = stops.get(0);
@@ -772,7 +708,8 @@ public class RoutesServiceImpl implements RouteService {
         // Standardize stop format
         Map<String, Object> standardStop = new HashMap<>();
         standardStop.put("id", nearestStop.getOrDefault("id", 0));
-        standardStop.put("name", nearestStop.getOrDefault("name", nearestStop.getOrDefault("stop_name", "Undefined stop")));
+        standardStop.put("name",
+                nearestStop.getOrDefault("name", nearestStop.getOrDefault("stop_name", "Undefined stop")));
         standardStop.put("lat", getDoubleValue(nearestStop, "latitude", "lat"));
         standardStop.put("lng", getDoubleValue(nearestStop, "longitude", "lng"));
 
@@ -791,7 +728,7 @@ public class RoutesServiceImpl implements RouteService {
         // Haversine formula
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
@@ -832,15 +769,6 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     @Override
-    public List<Routes> searchRoutesByNameWithPagination(String keyword, int page, int size) {
-        int offset = page * size;
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return getAllRoutesWithPagination(page, size);
-        }
-        return routesRepository.searchRoutesByNameWithPagination(keyword, offset, size);
-    }
-
-    @Override
     public int getTotalRoutesByKeyword(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return getTotalRoutes();
@@ -849,7 +777,8 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     private Integer determineDirectionForRoute(Integer fromStopId, Integer toStopId, Integer routeId) {
-        System.out.println("Đang xác định direction cho tuyến " + routeId + " từ trạm " + fromStopId + " đến trạm " + toStopId);
+        System.out.println(
+                "Đang xác định direction cho tuyến " + routeId + " từ trạm " + fromStopId + " đến trạm " + toStopId);
 
         // Kiểm tra chiều đi (direction = 1)
         List<RouteStop> outboundStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(routeId, 1);
@@ -868,7 +797,8 @@ public class RoutesServiceImpl implements RouteService {
             }
         }
 
-        // Nếu cả hai trạm đều nằm trong chiều đi và trạm đầu có thứ tự nhỏ hơn trạm cuối
+        // Nếu cả hai trạm đều nằm trong chiều đi và trạm đầu có thứ tự nhỏ hơn trạm
+        // cuối
         if (fromStopOrderInOutbound != null && toStopOrderInOutbound != null
                 && fromStopOrderInOutbound < toStopOrderInOutbound) {
             System.out.println("Xác định direction=1 vì trạm " + fromStopId + " (thứ tự " + fromStopOrderInOutbound
@@ -893,7 +823,8 @@ public class RoutesServiceImpl implements RouteService {
             }
         }
 
-        // Nếu cả hai trạm đều nằm trong chiều về và trạm đầu có thứ tự nhỏ hơn trạm cuối
+        // Nếu cả hai trạm đều nằm trong chiều về và trạm đầu có thứ tự nhỏ hơn trạm
+        // cuối
         if (fromStopOrderInReturn != null && toStopOrderInReturn != null
                 && fromStopOrderInReturn < toStopOrderInReturn) {
             System.out.println("Xác định direction=2 vì trạm " + fromStopId + " (thứ tự " + fromStopOrderInReturn
@@ -968,7 +899,8 @@ public class RoutesServiceImpl implements RouteService {
 
                 for (Routes route : routes) {
                     // Kiểm tra cho direction 1 (chiều đi)
-                    List<RouteStop> outboundRouteStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(route.getId(), 1);
+                    List<RouteStop> outboundRouteStops = routeStopRepository
+                            .findByRouteIdAndDirectionOrderByStopOrder(route.getId(), 1);
 
                     // Tìm vị trí của fromStop và toStop trên chiều đi
                     RouteStop fromStopOnOutbound = findRouteStopByStopId(outboundRouteStops, fromStop.getId());
@@ -981,8 +913,7 @@ public class RoutesServiceImpl implements RouteService {
                         // Tạo phương án di chuyển cho chiều đi
                         Map<String, Object> outboundOption = createJourneyOption(
                                 optionId++, route, fromStop, toStop, fromStopOnOutbound, toStopOnOutbound,
-                                fromLat, fromLng, toLat, toLng
-                        );
+                                fromLat, fromLng, toLat, toLng);
                         // Đảm bảo direction được thiết lập đúng
                         outboundOption.put("direction", 1); // Chiều đi
 
@@ -990,7 +921,8 @@ public class RoutesServiceImpl implements RouteService {
                     }
 
                     // Kiểm tra cho direction 2 (chiều về)
-                    List<RouteStop> returnRouteStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(route.getId(), 2);
+                    List<RouteStop> returnRouteStops = routeStopRepository
+                            .findByRouteIdAndDirectionOrderByStopOrder(route.getId(), 2);
 
                     // Tìm vị trí của fromStop và toStop trên chiều về
                     RouteStop fromStopOnReturn = findRouteStopByStopId(returnRouteStops, fromStop.getId());
@@ -1003,8 +935,7 @@ public class RoutesServiceImpl implements RouteService {
                         // Tạo phương án di chuyển cho chiều về
                         Map<String, Object> returnOption = createJourneyOption(
                                 optionId++, route, fromStop, toStop, fromStopOnReturn, toStopOnReturn,
-                                fromLat, fromLng, toLat, toLng
-                        );
+                                fromLat, fromLng, toLat, toLng);
                         // Đảm bảo direction được thiết lập đúng
                         returnOption.put("direction", 2); // Chiều về
 
@@ -1051,12 +982,12 @@ public class RoutesServiceImpl implements RouteService {
 
         // Thông tin cơ bản
         option.put("id", optionId);
-        option.put("name", "Tuyến " + route.getName());
+        option.put("name", "Tuyến " + route.getRouteName()); // SỬA FIELD NAME
         option.put("routeId", route.getId());
 
         // Xác định direction dựa trên vị trí tương đối của các trạm
         Integer direction = determineDirectionForRoute(fromStop.getId(), toStop.getId(), route.getId());
-        option.put("direction", direction); // Thêm direction vào option
+        option.put("direction", direction);
 
         // Tính số trạm phải đi qua
         int numStops = toStopOnRoute.getStopOrder() - fromStopOnRoute.getStopOrder();
@@ -1066,7 +997,8 @@ public class RoutesServiceImpl implements RouteService {
         int busTime = numStops * 3;
 
         // Tính khoảng cách và thời gian đi bộ
-        double walkToFirstStop = calculateDistance(originLat, originLng, fromStop.getLatitude(), fromStop.getLongitude());
+        double walkToFirstStop = calculateDistance(originLat, originLng, fromStop.getLatitude(),
+                fromStop.getLongitude());
         double walkFromLastStop = calculateDistance(toStop.getLatitude(), toStop.getLongitude(), destLat, destLng);
 
         double walkDistanceMeters = (walkToFirstStop + walkFromLastStop) * 1000; // Đổi sang mét
@@ -1074,7 +1006,6 @@ public class RoutesServiceImpl implements RouteService {
 
         option.put("totalTime", busTime + walkTimeMinutes);
         option.put("walkingDistance", walkDistanceMeters);
-
         option.put("transfers", 0); // Không có chuyển tuyến
 
         // Thông tin chi tiết các chặng hành trình
@@ -1088,46 +1019,41 @@ public class RoutesServiceImpl implements RouteService {
         walkToStopLeg.put("from", Map.of(
                 "name", "Vị trí của bạn",
                 "lat", originLat,
-                "lng", originLng
-        ));
+                "lng", originLng));
         walkToStopLeg.put("to", Map.of(
                 "name", fromStop.getStopName(),
                 "lat", fromStop.getLatitude(),
                 "lng", fromStop.getLongitude(),
                 "id", fromStop.getId(),
-                "stopOrder", fromStopOnRoute.getStopOrder() // Thêm stopOrder
-        ));
+                "stopOrder", fromStopOnRoute.getStopOrder()));
         legs.add(walkToStopLeg);
 
         // Chặng 2: Đi xe buýt
         Map<String, Object> busLeg = new HashMap<>();
         double busDistanceKm = calculateDistance(
                 fromStop.getLatitude(), fromStop.getLongitude(),
-                toStop.getLatitude(), toStop.getLongitude()
-        );
+                toStop.getLatitude(), toStop.getLongitude());
         double busDistanceMeters = busDistanceKm * 1000;
 
         busLeg.put("type", "BUS");
         busLeg.put("distance", busDistanceMeters);
         busLeg.put("routeId", route.getId());
-        busLeg.put("routeName", route.getName());
+        busLeg.put("routeName", route.getRouteName()); // SỬA FIELD NAME
         busLeg.put("duration", busTime);
         busLeg.put("stops", numStops);
-        busLeg.put("direction", direction); // Thêm direction vào leg
+        busLeg.put("direction", direction);
         busLeg.put("from", Map.of(
                 "name", fromStop.getStopName(),
                 "lat", fromStop.getLatitude(),
                 "lng", fromStop.getLongitude(),
                 "id", fromStop.getId(),
-                "stopOrder", fromStopOnRoute.getStopOrder() // Thêm stopOrder
-        ));
+                "stopOrder", fromStopOnRoute.getStopOrder()));
         busLeg.put("to", Map.of(
                 "name", toStop.getStopName(),
                 "lat", toStop.getLatitude(),
                 "lng", toStop.getLongitude(),
                 "id", toStop.getId(),
-                "stopOrder", toStopOnRoute.getStopOrder() // Thêm stopOrder
-        ));
+                "stopOrder", toStopOnRoute.getStopOrder()));
         legs.add(busLeg);
 
         // Chặng 3: Đi bộ từ trạm đến điểm đích
@@ -1140,19 +1066,16 @@ public class RoutesServiceImpl implements RouteService {
                 "lat", toStop.getLatitude(),
                 "lng", toStop.getLongitude(),
                 "id", toStop.getId(),
-                "stopOrder", toStopOnRoute.getStopOrder()
-        ));
+                "stopOrder", toStopOnRoute.getStopOrder()));
         walkFromStopLeg.put("to", Map.of(
                 "name", "Điểm đến của bạn",
                 "lat", destLat,
-                "lng", destLng
-        ));
+                "lng", destLng));
         legs.add(walkFromStopLeg);
 
         // Tính tổng khoảng cách
         double totalDistance = walkDistanceMeters + busDistanceMeters;
         option.put("totalDistance", totalDistance);
-
         option.put("legs", legs);
 
         return option;
@@ -1184,7 +1107,7 @@ public class RoutesServiceImpl implements RouteService {
         // Haversine formula
         double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+                        * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
@@ -1236,8 +1159,7 @@ public class RoutesServiceImpl implements RouteService {
             // Đối với khoảng cách xa hơn, sử dụng OSRM API để tính đường đi tối ưu
             String url = String.format(
                     "https://router.project-osrm.org/route/v1/foot/%f,%f;%f,%f?overview=full&geometries=geojson&alternatives=true",
-                    fromLng, fromLat, toLng, toLat
-            );
+                    fromLng, fromLat, toLng, toLat);
 
             // Sử dụng RestTemplate để gọi API
             RestTemplate restTemplate = new RestTemplate();
@@ -1293,5 +1215,48 @@ public class RoutesServiceImpl implements RouteService {
         }
 
         return path;
+    }
+
+    @Override
+    public int countAll() {
+        return routesRepository.countAll();
+    }
+
+    @Override
+    public void updateTotalStops(Integer routeId) {
+        try {
+            System.out.println("Cập nhật tổng số trạm cho tuyến ID: " + routeId);
+
+            // Đếm số trạm duy nhất cho tuyến này
+            List<Stops> allStopsForRoute = routesRepository.findStopsByRouteId(routeId);
+            int totalStops = allStopsForRoute.size();
+
+            // Cập nhật total_stops vào database
+            String sql = "UPDATE routes SET total_stops = ? WHERE id = ?";
+            int rowsUpdated = jdbcTemplate.update(sql, totalStops, routeId);
+
+            System.out
+                    .println("Cập nhật " + rowsUpdated + " dòng: total_stops=" + totalStops + " cho tuyến " + routeId);
+
+        } catch (Exception e) {
+            System.err.println("Lỗi khi cập nhật tổng số trạm cho tuyến ID " + routeId + ": " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public int countByNameContaining(String keyword) {
+        return routesRepository.countByNameContaining(keyword);
+    }
+
+    // Thêm method findAllWithPagination nếu chưa có
+    @Override
+    public List<Routes> findAllWithPagination(int offset, int limit) {
+        return routesRepository.findAllWithPagination(offset, limit);
+    }
+
+    @Override
+    public List<Routes> searchRoutesByNameWithPagination(String keyword, int offset, int limit) {
+        return routesRepository.searchRoutesByNameWithPagination(keyword, offset, limit);
     }
 }

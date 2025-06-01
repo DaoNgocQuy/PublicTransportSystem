@@ -10,6 +10,8 @@ public interface RouteService {
 
     List<Routes> getAllRoutes();
 
+    int countAll();
+
     Optional<Routes> getRouteById(Integer id);
 
     Routes saveRoute(Routes route);
@@ -42,12 +44,25 @@ public interface RouteService {
 
     List<List<Double>> calculateOptimalWalkingPath(Double fromLat, Double fromLng, Double toLat, Double toLng);
 
-    List<Routes> getAllRoutesWithPagination(int page, int size);
-
-    int getTotalRoutes();
+    List<Routes> findAllWithPagination(int offset, int limit);
 
     // Phân trang cho tìm kiếm
-    List<Routes> searchRoutesByNameWithPagination(String keyword, int page, int size);
+    List<Routes> searchRoutesByNameWithPagination(String keyword, int offset, int limit);
 
-    int getTotalRoutesByKeyword(String keyword);
+    void updateTotalStops(Integer routeId);
+
+    int countByNameContaining(String keyword);
+
+    default List<Routes> getAllRoutesWithPagination(int page, int size) {
+        return findAllWithPagination(page * size, size);
+    }
+
+    default int getTotalRoutes() {
+        return countAll();
+    }
+
+    default int getTotalRoutesByKeyword(String keyword) {
+        return countByNameContaining(keyword);
+    }
+
 }

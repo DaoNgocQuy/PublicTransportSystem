@@ -137,15 +137,15 @@ public class ApiStopController {
             if (route != null) {
                 Map<String, Object> routeInfo = new HashMap<>();
                 routeInfo.put("id", route.getId());
-                routeInfo.put("name", route.getName());
+                routeInfo.put("name", route.getRouteName());
 
                 if (route.getStartLocation() != null && route.getEndLocation() != null) {
                     routeInfo.put("startLocation", route.getStartLocation());
                     routeInfo.put("endLocation", route.getEndLocation());
                     routeInfo.put("routePath", route.getStartLocation() + " - " + route.getEndLocation());
                 }
-                if (route.getRouteType() != null && route.getRouteType().getColorCode() != null) {
-                    routeInfo.put("color", route.getRouteType().getColorCode());
+                if (route.getRouteTypeId() != null && route.getRouteTypeId().getColorCode() != null) {
+                    routeInfo.put("color", route.getRouteTypeId().getColorCode());
                 } else {
                     routeInfo.put("color", "#4CAF50"); // Default color
                 }
@@ -201,8 +201,8 @@ public class ApiStopController {
                 Map<String, Object> routeInfo = new HashMap<>();
                 routeInfo.put("id", route.getId());
 
-                if (route.getName() != null) {
-                    routeInfo.put("name", route.getName());
+                if (route.getRouteName() != null) {
+                    routeInfo.put("name", route.getRouteName());
                 }
 
                 if (route.getStartLocation() != null && route.getEndLocation() != null) {
@@ -211,8 +211,8 @@ public class ApiStopController {
                     routeInfo.put("routePath", route.getStartLocation() + " - " + route.getEndLocation());
                 }
 
-                if (route.getRouteType() != null && route.getRouteType().getColorCode() != null) {
-                    routeInfo.put("color", route.getRouteType().getColorCode());
+                if (route.getRouteTypeId() != null && route.getRouteTypeId().getColorCode() != null) {
+                    routeInfo.put("color", route.getRouteTypeId().getColorCode());
                 } else {
                     routeInfo.put("color", "#4CAF50"); // Default color
                 }
@@ -248,8 +248,8 @@ public class ApiStopController {
                     Map<String, Object> routeInfo = new HashMap<>();
                     routeInfo.put("id", route.getId());
 
-                    if (route.getName() != null) {
-                        routeInfo.put("name", route.getName());
+                    if (route.getRouteName() != null) {
+                        routeInfo.put("name", route.getRouteName());
                     }
 
                     if (route.getStartLocation() != null && route.getEndLocation() != null) {
@@ -258,8 +258,8 @@ public class ApiStopController {
                         routeInfo.put("routePath", route.getStartLocation() + " - " + route.getEndLocation());
                     }
 
-                    if (route.getRouteType() != null && route.getRouteType().getColorCode() != null) {
-                        routeInfo.put("color", route.getRouteType().getColorCode());
+                    if (route.getRouteTypeId() != null && route.getRouteTypeId().getColorCode() != null) {
+                        routeInfo.put("color", route.getRouteTypeId().getColorCode());
                     } else {
                         routeInfo.put("color", "#4CAF50"); // Default color
                     }

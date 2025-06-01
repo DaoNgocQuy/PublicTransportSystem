@@ -4,21 +4,23 @@
  */
 package com.pts.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Basic;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
+import java.util.Set;
 
 /**
  *
@@ -27,14 +29,14 @@ import java.io.Serializable;
 @Entity
 @Table(name = "stops")
 @NamedQueries({
-    @NamedQuery(name = "Stops.findAll", query = "SELECT s FROM Stops s"),
-    @NamedQuery(name = "Stops.findById", query = "SELECT s FROM Stops s WHERE s.id = :id"),
-    @NamedQuery(name = "Stops.findByStopName", query = "SELECT s FROM Stops s WHERE s.stopName = :stopName"),
-    @NamedQuery(name = "Stops.findByLatitude", query = "SELECT s FROM Stops s WHERE s.latitude = :latitude"),
-    @NamedQuery(name = "Stops.findByLongitude", query = "SELECT s FROM Stops s WHERE s.longitude = :longitude"),
-    @NamedQuery(name = "Stops.findByStopOrder", query = "SELECT s FROM Stops s WHERE s.stopOrder = :stopOrder"),
-    @NamedQuery(name = "Stops.findByAddress", query = "SELECT s FROM Stops s WHERE s.address = :address"),
-    @NamedQuery(name = "Stops.findByIsAccessible", query = "SELECT s FROM Stops s WHERE s.isAccessible = :isAccessible")})
+        @NamedQuery(name = "Stops.findAll", query = "SELECT s FROM Stops s ORDER BY s.stopName"),
+        @NamedQuery(name = "Stops.findById", query = "SELECT s FROM Stops s WHERE s.id = :id"),
+        @NamedQuery(name = "Stops.findByStopName", query = "SELECT s FROM Stops s WHERE s.stopName = :stopName"),
+        @NamedQuery(name = "Stops.findByLatitude", query = "SELECT s FROM Stops s WHERE s.latitude = :latitude"),
+        @NamedQuery(name = "Stops.findByLongitude", query = "SELECT s FROM Stops s WHERE s.longitude = :longitude"),
+        @NamedQuery(name = "Stops.findByAddress", query = "SELECT s FROM Stops s WHERE s.address = :address"),
+        @NamedQuery(name = "Stops.findByIsAccessible", query = "SELECT s FROM Stops s WHERE s.isAccessible = :isAccessible")
+})
 public class Stops implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -48,23 +50,22 @@ public class Stops implements Serializable {
     @Size(min = 1, max = 255)
     @Column(name = "stop_name")
     private String stopName;
-    // @Max(value=?)  @Min(value=?)//if you know range of your decimal fields consider using these annotations to enforce field validation
     @Column(name = "latitude")
     private Float latitude;
     @Column(name = "longitude")
     private Float longitude;
-    @Column(name = "stop_order")
-    private Integer stopOrder;
-    @Transient
-    private Integer direction;
     @Size(max = 255)
     @Column(name = "address")
     private String address;
     @Column(name = "is_accessible")
     private Boolean isAccessible;
-    @JoinColumn(name = "route_id", referencedColumnName = "id")
-    @ManyToOne
-    private Routes routeId;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "stop")
+    @JsonIgnore
+    private Set<RouteStop> routeStopSet;
+    @Transient
+    private Integer stopOrder;
+    @Transient
+    private Integer direction;
 
     public Stops() {
     }
@@ -110,14 +111,6 @@ public class Stops implements Serializable {
         this.longitude = longitude;
     }
 
-    public Integer getStopOrder() {
-        return stopOrder;
-    }
-
-    public void setStopOrder(Integer stopOrder) {
-        this.stopOrder = stopOrder;
-    }
-
     public String getAddress() {
         return address;
     }
@@ -134,12 +127,20 @@ public class Stops implements Serializable {
         this.isAccessible = isAccessible;
     }
 
-    public Routes getRouteId() {
-        return routeId;
+    public Set<RouteStop> getRouteStopSet() {
+        return routeStopSet;
     }
 
-    public void setRouteId(Routes routeId) {
-        this.routeId = routeId;
+    public void setRouteStopSet(Set<RouteStop> routeStopSet) {
+        this.routeStopSet = routeStopSet;
+    }
+
+    public Integer getStopOrder() {
+        return stopOrder;
+    }
+
+    public void setStopOrder(Integer stopOrder) {
+        this.stopOrder = stopOrder;
     }
 
     public Integer getDirection() {
@@ -159,7 +160,6 @@ public class Stops implements Serializable {
 
     @Override
     public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
         if (!(object instanceof Stops)) {
             return false;
         }
@@ -174,5 +174,4 @@ public class Stops implements Serializable {
     public String toString() {
         return "com.pts.pojo.Stops[ id=" + id + " ]";
     }
-
 }

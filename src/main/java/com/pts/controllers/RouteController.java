@@ -1,12 +1,21 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package com.pts.controllers;
 
 import com.pts.pojo.Routes;
 import com.pts.pojo.RouteStop;
+import com.pts.pojo.RouteTypes;
 import com.pts.pojo.Schedules;
 import com.pts.pojo.Stops;
 import com.pts.services.RouteStopService;
+import com.pts.services.RouteTypeService;
 import com.pts.services.ScheduleService;
 import com.pts.services.StopService;
+
+import jakarta.servlet.http.HttpServletRequest;
+
 import com.pts.repositories.NotificationRepository;
 import com.pts.services.EmailService;
 import java.text.SimpleDateFormat;
@@ -40,6 +49,9 @@ public class RouteController {
     private RouteStopService routeStopService;
 
     @Autowired
+    private RouteTypeService routeTypeService;
+
+    @Autowired
     private ScheduleService scheduleService;
 
     @Autowired
@@ -68,13 +80,13 @@ public class RouteController {
 
         if (keyword != null && !keyword.isEmpty()) {
             // Tìm kiếm với phân trang
-            routes = routesService.searchRoutesByNameWithPagination(keyword, page, size);
-            totalItems = routesService.getTotalRoutesByKeyword(keyword);
+            routes = routesService.searchRoutesByNameWithPagination(keyword, page * size, size);
+            totalItems = routesService.countByNameContaining(keyword);
             model.addAttribute("keyword", keyword);
         } else {
             // Lấy tất cả với phân trang
-            routes = routesService.getAllRoutesWithPagination(page, size);
-            totalItems = routesService.getTotalRoutes();
+            routes = routesService.findAllWithPagination(page * size, size);
+            totalItems = routesService.countAll();
         }
 
         totalPages = (int) Math.ceil((double) totalItems / (double) size);
@@ -95,64 +107,33 @@ public class RouteController {
             // Lấy thông tin tuyến đường theo ID
             Optional<Routes> routeOptional = routesService.getRouteById(id);
 
-            // Kiểm tra tuyến có tồn tại không
             if (routeOptional.isPresent()) {
                 Routes route = routeOptional.get();
-
-                // Kiểm tra nếu bất kỳ trường nào là NULL, tính toán lại
-                if (route.getFrequencyMinutes() == 0
-                        || route.getOperationStartTime() == null
-                        || route.getOperationEndTime() == null) {
-
-                    // Lưu lại tuyến sẽ kích hoạt updateRouteCalculatedFields()
-                    routesService.saveRoute(route);
-
-                    // Lấy lại tuyến sau khi cập nhật
-                    routeOptional = routesService.getRouteById(id);
-                    route = routeOptional.get();
-
-                    System.out.println("Đã tự động tính thông tin cho tuyến ID " + id);
-                }
                 model.addAttribute("route", route);
-                model.addAttribute("title", "Chi tiết tuyến " + route.getName());
-                model.addAttribute("currentDirection", direction);
 
                 // Lấy danh sách trạm dừng theo chiều đã chọn
                 List<Stops> stops = stopService.findStopsByRouteIdAndDirection(id, direction);
 
                 if (stops == null || stops.isEmpty()) {
-                    // Nếu không tìm thấy dữ liệu cho chiều đã chọn, thử lấy dữ liệu cho mọi chiều
                     stops = stopService.findStopsByRouteId(id);
                 }
 
-                // Lấy thông tin về thứ tự dừng cho chiều đã chọn
-                List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(id, direction);
+                model.addAttribute("stops", stops != null ? stops : Collections.emptyList());
 
-                if (routeStops == null || routeStops.isEmpty()) {
-                    // Nếu không tìm thấy dữ liệu cho chiều đã chọn, thử lấy dữ liệu cho mọi chiều
-                    routeStops = routeStopService.findByRouteId(id);
-                }
-
-                // Tạo map ánh xạ từ stop_id đến stop_order để có thể hiển thị thứ tự
-                Map<Integer, Integer> stopOrderMap = routeStops.stream()
-                        .collect(Collectors.toMap(
-                                rs -> rs.getStop().getId(),
-                                RouteStop::getStopOrder,
-                                (existing, replacement) -> existing // Nếu trùng lặp, giữ giá trị đầu tiên
-                        ));
-
-                // Gắn thông tin về thứ tự dừng vào các Stop objects
-                for (Stops stop : stops) {
-                    Integer order = stopOrderMap.get(stop.getId());
-                    if (order != null) {
-                        stop.setStopOrder(order);
+                // TẠO COORDINATES CHO BẢN ĐỒ
+                List<double[]> coordinates = new ArrayList<>();
+                if (stops != null && !stops.isEmpty()) {
+                    for (Stops stop : stops) {
+                        if (stop.getLatitude() != null && stop.getLongitude() != null) {
+                            coordinates.add(new double[] { stop.getLatitude(), stop.getLongitude() });
+                            System.out.println("Added coordinate: [" + stop.getLatitude() + ", " + stop.getLongitude()
+                                    + "] for stop: " + stop.getStopName());
+                        }
                     }
                 }
 
-                // Sắp xếp trạm theo thứ tự
-                stops.sort(Comparator.comparing(Stops::getStopOrder));
-
-                model.addAttribute("stops", stops != null ? stops : Collections.emptyList());
+                System.out.println("Total coordinates: " + coordinates.size());
+                model.addAttribute("coordinates", coordinates);
 
                 // Lấy thông tin chiều đi và chiều về
                 boolean hasInbound = !routeStopService.findByRouteIdAndDirection(id, 1).isEmpty();
@@ -160,30 +141,17 @@ public class RouteController {
                 model.addAttribute("hasInbound", hasInbound);
                 model.addAttribute("hasOutbound", hasOutbound);
 
-                List<double[]> coordinates = new ArrayList<>();
-                if (stops != null) {
-                    for (Stops stop : stops) {
-                        if (stop.getLatitude() != null && stop.getLongitude() != null) {
-                            coordinates.add(new double[]{stop.getLatitude(), stop.getLongitude()});
-                        }
-                    }
-                }
-                model.addAttribute("coordinates", coordinates);
-
                 // Lấy danh sách lịch trình
                 List<Schedules> schedules = scheduleService.findSchedulesByRouteId(id);
                 model.addAttribute("schedules", schedules != null ? schedules : Collections.emptyList());
 
                 return "routes/viewRoute";
             } else {
-                // Nếu không tìm thấy tuyến, chuyển hướng về danh sách với thông báo lỗi
                 return "redirect:/routes?error=RouteNotFound";
             }
         } catch (Exception e) {
-            // Xử lý ngoại lệ, ghi log và hiển thị trang lỗi
             System.err.println("Lỗi khi xem chi tiết tuyến ID " + id + ": " + e.getMessage());
             e.printStackTrace();
-
             model.addAttribute("errorMessage", "Lỗi khi xem chi tiết tuyến: " + e.getMessage());
             return "error";
         }
@@ -204,11 +172,11 @@ public class RouteController {
             @RequestParam(value = "selectedStopsOutbound", required = false) String selectedStopsOutboundStr,
             Model model, RedirectAttributes redirectAttributes) {
         try {
-            System.out.println("Đang thêm tuyến: " + route.getName());
+            System.out.println("Đang thêm tuyến: " + route.getRouteName()); // SỬA FIELD NAME
 
             // Set default value for active
-            if (route.getActive() == null) {
-                route.setActive(true);
+            if (route.getIsActive() == null) { // SỬA FIELD NAME
+                route.setIsActive(true); // SỬA FIELD NAME
             }
 
             // Lưu thông tin tuyến
@@ -267,9 +235,10 @@ public class RouteController {
             }
 
             // Tính toán lại các thông số cho tuyến (như tổng số trạm)
-            routesService.recalculateRoute(savedRoute.getId());
+            routesService.updateTotalStops(savedRoute.getId()); // SỬA METHOD NAME
 
-            redirectAttributes.addFlashAttribute("successMessage", "Thêm tuyến " + savedRoute.getName() + " thành công!");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Thêm tuyến " + savedRoute.getRouteName() + " thành công!"); // SỬA FIELD NAME
             return "redirect:/routes/view/" + savedRoute.getId();
         } catch (Exception e) {
             e.printStackTrace();
@@ -290,9 +259,9 @@ public class RouteController {
             if (routeOptional.isPresent()) {
                 Routes route = routeOptional.get();
                 model.addAttribute("route", route);
-                model.addAttribute("title", "Chỉnh sửa tuyến " + route.getName());
+                model.addAttribute("title", "Chỉnh sửa tuyến " + route.getRouteName()); // SỬA FIELD NAME
                 model.addAttribute("currentDirection", direction);
-
+                model.addAttribute("routeTypes", routeTypeService.getAllRouteTypes());
                 // Lấy danh sách tất cả điểm dừng để chọn
                 model.addAttribute("allStops", stopService.getAllStops());
 
@@ -314,42 +283,84 @@ public class RouteController {
             return "redirect:/routes?error=" + e.getMessage();
         }
     }
-// Thêm phương thức này sau phương thức showEditRouteForm
 
     @PostMapping("/edit/{id}")
     public String updateRoute(@PathVariable("id") Integer id,
             @ModelAttribute Routes newRoute,
-            RedirectAttributes redirectAttributes) {
+            @RequestParam(value = "routeTypeId", required = false) Integer routeTypeIdParam,
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest request) { // Thêm để debug
         try {
+            System.out.println("====== CONTROLLER METHOD CALLED ======");
+            System.out.println("HTTP Method: " + request.getMethod());
+            System.out.println("Request URI: " + request.getRequestURI());
+
+            // In ra tất cả parameters
+            System.out.println("=== ALL REQUEST PARAMETERS ===");
+            for (String paramName : request.getParameterMap().keySet()) {
+                String[] values = request.getParameterMap().get(paramName);
+                System.out.println(paramName + " = " + String.join(", ", values));
+            }
+
+            System.out.println("=== DEBUG UPDATE ROUTE ===");
+            System.out.println("Route ID: " + id);
+            System.out.println("Route Name: " + newRoute.getRouteName());
+            System.out.println("Start Location: " + newRoute.getStartLocation());
+            System.out.println("End Location: " + newRoute.getEndLocation());
+            System.out.println("Is Active from object: " + newRoute.getIsActive());
+            System.out.println("Route Type ID Param: " + routeTypeIdParam);
+
             // Lấy thông tin tuyến cũ
             Optional<Routes> oldRouteOptional = routesService.getRouteById(id);
-
-            if (!oldRouteOptional.isPresent()) {
-                redirectAttributes.addFlashAttribute("errorMessage", "Không tìm thấy tuyến có ID " + id);
-                return "redirect:/routes";
+            if (oldRouteOptional.isPresent()) {
+                Routes oldRoute = oldRouteOptional.get();
+                newRoute.setIsActive(oldRoute.getIsActive());
+            } else {
+                newRoute.setIsActive(true); // giá trị mặc định
             }
 
             Routes oldRoute = oldRouteOptional.get();
 
+            // KIỂM TRA CÁC TRƯỜNG BẮT BUỘC
+            if (newRoute.getRouteName() == null || newRoute.getRouteName().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Tên tuyến không được để trống!");
+                return "redirect:/routes/edit/" + id;
+            }
+
+            if (newRoute.getStartLocation() == null || newRoute.getStartLocation().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Điểm bắt đầu không được để trống!");
+                return "redirect:/routes/edit/" + id;
+            }
+
+            if (newRoute.getEndLocation() == null || newRoute.getEndLocation().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Điểm kết thúc không được để trống!");
+                return "redirect:/routes/edit/" + id;
+            }
+
             // Giữ lại các trường được tính toán tự động
             newRoute.setId(id);
 
-            // Kiểu dữ liệu đã được chuyển đổi đúng
-            if (oldRoute.getOperationStartTime() != null) {
-                newRoute.setOperationStartTime(new java.sql.Time(oldRoute.getOperationStartTime().getTime()));
-            }
-            if (oldRoute.getOperationEndTime() != null) {
-                newRoute.setOperationEndTime(new java.sql.Time(oldRoute.getOperationEndTime().getTime()));
+            if (routeTypeIdParam != null && routeTypeIdParam > 0) {
+                RouteTypes routeType = new RouteTypes();
+                routeType.setId(routeTypeIdParam);
+                newRoute.setRouteTypeId(routeType);
+            } else {
+                // Giữ nguyên loại tuyến từ route cũ
+                newRoute.setRouteTypeId(oldRoute.getRouteTypeId());
             }
 
+            // Giữ nguyên các field thời gian
+            newRoute.setStartTime(oldRoute.getStartTime());
+            newRoute.setEndTime(oldRoute.getEndTime());
             newRoute.setFrequencyMinutes(oldRoute.getFrequencyMinutes());
             newRoute.setTotalStops(oldRoute.getTotalStops());
             newRoute.setCreatedAt(oldRoute.getCreatedAt());
 
+            System.out.println("Final isActive value: " + newRoute.getIsActive());
+            System.out.println("About to save route...");
+
             // Cập nhật tuyến
             Routes savedRoute = routesService.saveRoute(newRoute);
-
-            // Kiểm tra nếu có thay đổi đáng kể
             boolean significantChanges = hasRouteChanged(oldRoute, savedRoute);
 
             // Nếu có thay đổi đáng kể, gửi thông báo
@@ -362,17 +373,19 @@ public class RouteController {
             } else {
                 redirectAttributes.addFlashAttribute("successMessage", "Cập nhật tuyến thành công!");
             }
+            System.out.println("Route saved successfully with ID: " + savedRoute.getId());
 
+            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật tuyến thành công!");
             return "redirect:/routes/view/" + id;
 
         } catch (Exception e) {
+            System.err.println("ERROR in updateRoute: " + e.getMessage());
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi cập nhật tuyến: " + e.getMessage());
             return "redirect:/routes/edit/" + id;
         }
     }
 
-    // Xử lý cập nhật tuyến
     // Xóa tuyến
     @GetMapping("/delete/{id}")
     public String deleteRoute(@PathVariable("id") Integer id) {
@@ -385,7 +398,7 @@ public class RouteController {
     public String addStopToRoute(@PathVariable("routeId") Integer routeId,
             @RequestParam("stopId") Integer stopId,
             @RequestParam(value = "direction", required = false, defaultValue = "1") Integer direction,
-            @RequestParam(value = "stopOrder", required = false) Integer stopOrder) { // Thêm tham số stopOrder
+            @RequestParam(value = "stopOrder", required = false) Integer stopOrder) {
 
         routeStopService.addStopToRoute(routeId, stopId, direction, stopOrder);
         return "redirect:/routes/view/" + routeId + "?direction=" + direction;
@@ -396,11 +409,12 @@ public class RouteController {
     public String removeStopFromRoute(@PathVariable("routeId") Integer routeId,
             @PathVariable("stopId") Integer stopId,
             @RequestParam(value = "direction", required = false, defaultValue = "1") Integer direction) {
-        // Tìm RouteStop dựa trên route_id và stop_id và direction
+        // Tìm RouteStop dựa trên route_id, stop_id và direction
         List<RouteStop> routeStops = routeStopService.findByRouteIdAndDirection(routeId, direction);
         for (RouteStop rs : routeStops) {
             if (rs.getStop().getId().equals(stopId)) {
-                routeStopService.deleteById(rs.getId());
+                // Sử dụng deleteAndReorder thay vì deleteById để đảm bảo cập nhật thứ tự
+                routeStopService.deleteAndReorder(rs.getId());
                 break;
             }
         }
@@ -417,21 +431,22 @@ public class RouteController {
     }
 
     private boolean hasRouteChanged(Routes oldRoute, Routes newRoute) {
-        // Kiểm tra tên tuyến
-        boolean nameChanged = !Objects.equals(oldRoute.getName(), newRoute.getName());
+        // Kiểm tra tên tuyến - SỬA FIELD NAME
+        boolean nameChanged = !Objects.equals(oldRoute.getRouteName(), newRoute.getRouteName());
 
         // Kiểm tra lộ trình (start_location và end_location)
         boolean startLocationChanged = !Objects.equals(oldRoute.getStartLocation(), newRoute.getStartLocation());
         boolean endLocationChanged = !Objects.equals(oldRoute.getEndLocation(), newRoute.getEndLocation());
 
-        // Kiểm tra giờ hoạt động
-        boolean startTimeChanged = !Objects.equals(oldRoute.getOperationStartTime(), newRoute.getOperationStartTime());
-        boolean endTimeChanged = !Objects.equals(oldRoute.getOperationEndTime(), newRoute.getOperationEndTime());
+        // Kiểm tra giờ hoạt động - SỬA FIELD NAME
+        boolean startTimeChanged = !Objects.equals(oldRoute.getStartTime(), newRoute.getStartTime());
+        boolean endTimeChanged = !Objects.equals(oldRoute.getEndTime(), newRoute.getEndTime());
 
         // Kiểm tra tần suất
         boolean frequencyChanged = !Objects.equals(oldRoute.getFrequencyMinutes(), newRoute.getFrequencyMinutes());
 
-        return nameChanged || startLocationChanged || endLocationChanged || startTimeChanged || endTimeChanged || frequencyChanged;
+        return nameChanged || startLocationChanged || endLocationChanged || startTimeChanged || endTimeChanged
+                || frequencyChanged;
     }
 
     // Thêm phương thức gửi email thông báo
@@ -446,7 +461,7 @@ public class RouteController {
             }
 
             // Tạo tiêu đề email
-            String subject = "Thông báo thay đổi thông tin tuyến " + newRoute.getName();
+            String subject = "Thông báo thay đổi thông tin tuyến " + newRoute.getRouteName(); // SỬA FIELD NAME
 
             // Gửi email cho mỗi người đăng ký
             for (Map<String, Object> subscriber : subscribers) {
@@ -460,8 +475,7 @@ public class RouteController {
                     String content = createEmailContent(
                             fullName != null && !fullName.isEmpty() ? fullName : "Quý khách",
                             oldRoute,
-                            newRoute
-                    );
+                            newRoute);
 
                     // Gửi email
                     emailService.sendEmail(email, subject, content);
@@ -481,7 +495,7 @@ public class RouteController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Sửa từ findById thành getRouteById
+            // SỬA LỖI: Dùng routeId thay vì id
             Optional<Routes> routeOptional = routesService.getRouteById(routeId);
 
             if (routeOptional.isPresent()) {
@@ -496,7 +510,7 @@ public class RouteController {
                 List<double[]> coordinates = new ArrayList<>();
                 for (Stops stop : stops) {
                     if (stop.getLatitude() != null && stop.getLongitude() != null) {
-                        coordinates.add(new double[]{stop.getLatitude(), stop.getLongitude()});
+                        coordinates.add(new double[] { stop.getLatitude(), stop.getLongitude() });
                     }
                 }
                 response.put("coordinates", coordinates);
@@ -513,7 +527,6 @@ public class RouteController {
 
     // Tạo nội dung email
     private String createEmailContent(String fullName, Routes oldRoute, Routes newRoute) {
-        // Giữ nguyên phương thức này như trong code gốc
         SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
 
         StringBuilder html = new StringBuilder();
@@ -526,7 +539,9 @@ public class RouteController {
 
         html.append("<div style='padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd;'>");
         html.append("<p>Xin chào " + fullName + ",</p>");
-        html.append("<p>Thông tin tuyến <strong>" + newRoute.getName() + "</strong> đã được cập nhật.</p>");
+        html.append("<p>Thông tin tuyến <strong>" + newRoute.getRouteName() + "</strong> đã được cập nhật.</p>"); // SỬA
+                                                                                                                  // FIELD
+                                                                                                                  // NAME
 
         html.append("<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>");
         html.append("<tr style='background-color: #f2f2f2;'>");
@@ -535,12 +550,12 @@ public class RouteController {
         html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Sau khi thay đổi</th>");
         html.append("</tr>");
 
-        // Nếu tên tuyến thay đổi
-        if (!Objects.equals(oldRoute.getName(), newRoute.getName())) {
+        // Nếu tên tuyến thay đổi - SỬA FIELD NAME
+        if (!Objects.equals(oldRoute.getRouteName(), newRoute.getRouteName())) {
             html.append("<tr>");
             html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Tên tuyến</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldRoute.getName() + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newRoute.getName() + "</td>");
+            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldRoute.getRouteName() + "</td>");
+            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newRoute.getRouteName() + "</td>");
             html.append("</tr>");
         }
 
@@ -561,23 +576,29 @@ public class RouteController {
             html.append("</tr>");
         }
 
-        // Nếu giờ hoạt động thay đổi
-        if (!Objects.equals(oldRoute.getOperationStartTime(), newRoute.getOperationStartTime())
-                || !Objects.equals(oldRoute.getOperationEndTime(), newRoute.getOperationEndTime())) {
+        // Nếu giờ hoạt động thay đổi - SỬA FIELD NAME
+        if (!Objects.equals(oldRoute.getStartTime(), newRoute.getStartTime())
+                || !Objects.equals(oldRoute.getEndTime(), newRoute.getEndTime())) {
 
-            String oldStartTime = oldRoute.getOperationStartTime() != null
-                    ? timeFormat.format(oldRoute.getOperationStartTime()) : "N/A";
-            String oldEndTime = oldRoute.getOperationEndTime() != null
-                    ? timeFormat.format(oldRoute.getOperationEndTime()) : "N/A";
-            String newStartTime = newRoute.getOperationStartTime() != null
-                    ? timeFormat.format(newRoute.getOperationStartTime()) : "N/A";
-            String newEndTime = newRoute.getOperationEndTime() != null
-                    ? timeFormat.format(newRoute.getOperationEndTime()) : "N/A";
+            String oldStartTime = oldRoute.getStartTime() != null
+                    ? timeFormat.format(oldRoute.getStartTime())
+                    : "N/A";
+            String oldEndTime = oldRoute.getEndTime() != null
+                    ? timeFormat.format(oldRoute.getEndTime())
+                    : "N/A";
+            String newStartTime = newRoute.getStartTime() != null
+                    ? timeFormat.format(newRoute.getStartTime())
+                    : "N/A";
+            String newEndTime = newRoute.getEndTime() != null
+                    ? timeFormat.format(newRoute.getEndTime())
+                    : "N/A";
 
             html.append("<tr>");
             html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Giờ hoạt động</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldStartTime + " - " + oldEndTime + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newStartTime + " - " + newEndTime + "</td>");
+            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldStartTime + " - " + oldEndTime
+                    + "</td>");
+            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newStartTime + " - " + newEndTime
+                    + "</td>");
             html.append("</tr>");
         }
 

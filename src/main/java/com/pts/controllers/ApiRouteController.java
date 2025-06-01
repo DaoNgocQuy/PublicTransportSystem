@@ -55,8 +55,8 @@ public class ApiRouteController {
         // Lọc theo loại tuyến nếu có
         if (typeId != null) {
             routes = routes.stream()
-                    .filter(route -> route.getRouteType() != null
-                    && route.getRouteType().getId().equals(typeId))
+                    .filter(route -> route.getRouteTypeId() != null
+                            && route.getRouteTypeId().getId().equals(typeId))
                     .collect(Collectors.toList());
         }
 
@@ -70,11 +70,11 @@ public class ApiRouteController {
 
             // Thông tin cơ bản
             routeInfo.put("id", route.getId());
-            routeInfo.put("name", route.getName());
+            routeInfo.put("name", route.getRouteName());
             routeInfo.put("route", route.getStartLocation() + " - " + route.getEndLocation());
 
             // Thông tin về loại tuyến và biểu tượng
-            RouteTypes routeType = route.getRouteType();
+            RouteTypes routeType = route.getRouteTypeId();
             if (routeType != null) {
                 // Lấy URL biểu tượng từ RouteTypes
                 String iconUrl = routeType.getIconUrl();
@@ -94,10 +94,10 @@ public class ApiRouteController {
             }
 
             // Thời gian hoạt động
-            if (route.getOperationStartTime() != null && route.getOperationEndTime() != null) {
+            if (route.getStartTime() != null && route.getEndTime() != null) {
                 routeInfo.put("operatingHours",
-                        timeFormat.format(route.getOperationStartTime()) + " - "
-                        + timeFormat.format(route.getOperationEndTime()));
+                        timeFormat.format(route.getStartTime()) + " - "
+                                + timeFormat.format(route.getEndTime()));
             } else {
                 routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
             }
@@ -127,10 +127,10 @@ public class ApiRouteController {
 
         // Thông tin cơ bản
         routeInfo.put("id", route.getId());
-        routeInfo.put("name", route.getName());
+        routeInfo.put("name", route.getRouteName());
         routeInfo.put("route", route.getStartLocation() + " - " + route.getEndLocation());
 
-        RouteTypes routeType = route.getRouteType();
+        RouteTypes routeType = route.getRouteTypeId();
         if (routeType != null) {
 
             routeInfo.put("routeTypeId", routeType.getId());
@@ -151,10 +151,10 @@ public class ApiRouteController {
         }
 
         // Thời gian hoạt động
-        if (route.getOperationStartTime() != null && route.getOperationEndTime() != null) {
+        if (route.getStartTime() != null && route.getEndTime() != null) {
             routeInfo.put("operatingHours",
-                    timeFormat.format(route.getOperationStartTime()) + " - "
-                    + timeFormat.format(route.getOperationEndTime()));
+                    timeFormat.format(route.getStartTime()) + " - "
+                            + timeFormat.format(route.getEndTime()));
         } else {
             routeInfo.put("operatingHours", getRouteOperatingHours(route.getId(), timeFormat));
         }
@@ -162,7 +162,7 @@ public class ApiRouteController {
         // Thông tin bổ sung về tuyến
         routeInfo.put("totalStops", route.getTotalStops());
         routeInfo.put("frequencyMinutes", route.getFrequencyMinutes());
-        routeInfo.put("active", route.getActive());
+        routeInfo.put("active", route.getIsActive());
 
         // Lấy danh sách trạm dừng cho cả hai chiều
         List<Map<String, Object>> stopsInbound = getFormattedStops(route.getId(), 1);
@@ -251,7 +251,8 @@ public class ApiRouteController {
                             Map<String, Object> leg = legs.get(j);
                             System.out.println("    * Leg " + (j + 1) + ": " + leg.get("type"));
                             if ("BUS".equals(leg.get("type")) || "METRO".equals(leg.get("type"))) {
-                                System.out.println("      Route: " + leg.get("routeName") + " (ID: " + leg.get("routeId") + ")");
+                                System.out.println(
+                                        "      Route: " + leg.get("routeName") + " (ID: " + leg.get("routeId") + ")");
                                 System.out.println("      Direction: " + leg.get("direction"));
 
                                 // In thông tin về trạm đi và đến
@@ -261,8 +262,10 @@ public class ApiRouteController {
                                 Map<String, Object> toStop = (Map<String, Object>) leg.get("to");
 
                                 if (fromStop != null && toStop != null) {
-                                    System.out.println("      From: " + fromStop.get("name") + " (stopOrder: " + fromStop.get("stopOrder") + ")");
-                                    System.out.println("      To: " + toStop.get("name") + " (stopOrder: " + toStop.get("stopOrder") + ")");
+                                    System.out.println("      From: " + fromStop.get("name") + " (stopOrder: "
+                                            + fromStop.get("stopOrder") + ")");
+                                    System.out.println("      To: " + toStop.get("name") + " (stopOrder: "
+                                            + toStop.get("stopOrder") + ")");
                                 }
                             }
                         }
@@ -345,11 +348,11 @@ public class ApiRouteController {
             for (Routes route : routes) {
                 Map<String, Object> routeInfo = new HashMap<>();
                 routeInfo.put("id", route.getId());
-                routeInfo.put("name", route.getName());
+                routeInfo.put("name", route.getRouteName());
                 routeInfo.put("route", route.getStartLocation() + " - " + route.getEndLocation());
 
                 // Thông tin về loại tuyến
-                RouteTypes routeType = route.getRouteType();
+                RouteTypes routeType = route.getRouteTypeId();
                 if (routeType != null) {
                     routeInfo.put("icon", routeType.getIconUrl());
                     routeInfo.put("color", routeType.getColorCode());
@@ -405,10 +408,12 @@ public class ApiRouteController {
         byTime.sort(Comparator.comparingInt(o -> ((Number) o.getOrDefault("totalTime", Integer.MAX_VALUE)).intValue()));
 
         // Sắp xếp theo số lần chuyển tuyến
-        byTransfers.sort(Comparator.comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue()));
+        byTransfers.sort(
+                Comparator.comparingInt(o -> ((Number) o.getOrDefault("transfers", Integer.MAX_VALUE)).intValue()));
 
         // Sắp xếp theo khoảng cách đi bộ
-        byWalkingDistance.sort(Comparator.comparingDouble(o -> ((Number) o.getOrDefault("walkingDistance", Double.MAX_VALUE)).doubleValue()));
+        byWalkingDistance.sort(Comparator
+                .comparingDouble(o -> ((Number) o.getOrDefault("walkingDistance", Double.MAX_VALUE)).doubleValue()));
 
         // Tạo tập hợp các phương án tối ưu (dùng Set để tránh trùng lặp)
         Set<Map<String, Object>> optimizedOptions = new LinkedHashSet<>();
@@ -427,7 +432,8 @@ public class ApiRouteController {
             if (!byTime.get(0).equals(byTransfers.get(0))) {
                 optimizedOptions.add(byTime.get(0));
             }
-            if (!byWalkingDistance.get(0).equals(byTransfers.get(0)) && !byWalkingDistance.get(0).equals(byTime.get(0))) {
+            if (!byWalkingDistance.get(0).equals(byTransfers.get(0))
+                    && !byWalkingDistance.get(0).equals(byTime.get(0))) {
                 optimizedOptions.add(byWalkingDistance.get(0));
             }
         } else {
@@ -436,7 +442,8 @@ public class ApiRouteController {
             if (!byTransfers.get(0).equals(byTime.get(0))) {
                 optimizedOptions.add(byTransfers.get(0));
             }
-            if (!byWalkingDistance.get(0).equals(byTime.get(0)) && !byWalkingDistance.get(0).equals(byTransfers.get(0))) {
+            if (!byWalkingDistance.get(0).equals(byTime.get(0))
+                    && !byWalkingDistance.get(0).equals(byTransfers.get(0))) {
                 optimizedOptions.add(byWalkingDistance.get(0));
             }
         }
@@ -448,13 +455,14 @@ public class ApiRouteController {
                 break;
             }
         }
-        
+
         // Chuyển Set thành List và giới hạn tối đa 3 phương án
         List<Map<String, Object>> result = new ArrayList<>(optimizedOptions);
         return result.size() <= 3 ? result : result.subList(0, 3);
     }
 
-    private Map<String, Object> createWalkingOption(double fromLat, double fromLng, double toLat, double toLng, double distanceMeters) {
+    private Map<String, Object> createWalkingOption(double fromLat, double fromLng, double toLat, double toLng,
+            double distanceMeters) {
         // Tính thời gian đi bộ (giả sử tốc độ đi bộ là 4km/h = ~67m/phút)
         final double walkingSpeedMeterPerMinute = 67;
         int estimatedMinutes = (int) Math.ceil(distanceMeters / walkingSpeedMeterPerMinute);
@@ -478,13 +486,11 @@ public class ApiRouteController {
         walkLeg.put("from", Map.of(
                 "name", "Vị trí của bạn",
                 "lat", fromLat,
-                "lng", fromLng
-        ));
+                "lng", fromLng));
         walkLeg.put("to", Map.of(
                 "name", "Điểm đến của bạn",
                 "lat", toLat,
-                "lng", toLng
-        ));
+                "lng", toLng));
         legs.add(walkLeg);
 
         walkingOption.put("legs", legs);
@@ -503,7 +509,7 @@ public class ApiRouteController {
         // Haversine formula
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                        * Math.sin(dLon / 2) * Math.sin(dLon / 2);
 
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 

@@ -45,4 +45,9 @@ public interface RouteStopService {
 
     boolean deleteAllRouteStopsByStopId(Integer stopId);
 
+    boolean deleteAndReorder(Integer routeStopId);
+
+    int deleteByRouteIdStopIdAndDirection(Integer routeId, Integer stopId, Integer direction);
+
+    boolean reorderAfterDelete(Integer routeId, Integer direction);
 }

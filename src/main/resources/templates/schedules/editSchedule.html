@@ -1,65 +1,68 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <title>Chỉnh sửa lịch trình</title>
-        <th:block th:replace="base :: bootstrap"></th:block>
-    </head>
-    <body>
-        <main class="container">
-            <div th:replace="base :: header"></div>
-            <h1 class="text-center text-success mt-3">CHỈNH SỬA LỊCH TRÌNH</h1>
 
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Thông tin lịch trình #<span th:text="${schedule.id}"></span></h5>
-                </div>
-                <div class="card-body">
-                    <form th:action="@{/schedules/edit/{id}(id=${schedule.id})}" method="post" class="mt-4">
-                        <div class="mb-3">
-                            <label for="routeId" class="form-label">Tuyến:</label>
-                            <select class="form-select" id="routeId" name="routeId.id" required>
-                                <option value="">Chọn tuyến</option>
-                                <option th:each="route : ${routes}" 
-                                        th:value="${route.id}"
-                                        th:text="${route.name} + ' (' + ${route.startLocation} + ' - ' + ${route.endLocation} + ')'"
-                                        th:selected="${schedule.routeId != null && route.id == schedule.routeId.id}">
-                                </option>
-                            </select>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="vehicleId" class="form-label">Phương tiện:</label>
-                            <select class="form-select" id="vehicleId" name="vehicleId.id" required>
-                                <option value="">Chọn phương tiện</option>
-                                <option th:each="vehicle : ${vehicles}" 
-                                        th:value="${vehicle.id}"
-                                        th:text="${vehicle.licensePlate} + ' (' + ${vehicle.type} + ')'"
-                                        th:selected="${schedule.vehicleId != null && vehicle.id == schedule.vehicleId.id}">
-                                </option>
-                            </select>
-                        </div>
+<head>
+    <title>Chỉnh sửa lịch trình</title>
+    <th:block th:replace="base :: bootstrap"></th:block>
+</head>
 
-                        <div class="mb-3">
-                            <label for="departureTime" class="form-label">Thời gian đi:</label>
-                            <input type="time" class="form-control" id="departureTime" name="departureTime" 
-                                   th:value="${schedule.departureTime != null ? #dates.format(schedule.departureTime, 'HH:mm') : ''}" required>
-                        </div>
+<body>
+    <main class="container">
+        <div th:replace="base :: header"></div>
+        <h1 class="text-center text-success mt-3">CHỈNH SỬA LỊCH TRÌNH</h1>
 
-                        <div class="mb-3">
-                            <label for="arrivalTime" class="form-label">Thời gian đến:</label>
-                            <input type="time" class="form-control" id="arrivalTime" name="arrivalTime" 
-                                   th:value="${schedule.arrivalTime != null ? #dates.format(schedule.arrivalTime, 'HH:mm') : ''}" required>
-                        </div>
-                        
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-success">Lưu thay đổi</button>
-                            <a th:href="@{/schedules}" class="btn btn-secondary ms-2">Hủy</a>
-                        </div>
-                    </form>
-                </div>
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Thông tin lịch trình #<span th:text="${schedule.id}"></span></h5>
             </div>
+            <div class="card-body">
+                <form th:action="@{/schedules/edit/{id}(id=${schedule.id})}" method="post" class="mt-4">
+                    <div class="mb-3">
+                        <label for="routeId" class="form-label">Tuyến:</label>
+                        <select class="form-select" id="routeId" name="routeId.id" required>
+                            <option value="">Chọn tuyến</option>
+                            <option th:each="route : ${routes}" th:value="${route.id}"
+                                th:text="${route.routeName} + ' (' + ${route.startLocation} + ' - ' + ${route.endLocation} + ')'"
+                                th:selected="${schedule.routeId != null && route.id == schedule.routeId.id}">
+                            </option>
+                        </select>
+                    </div>
 
-            <div th:replace="base :: footer"></div>
-        </main>
-    </body>
+                    <div class="mb-3">
+                        <label for="vehicleId" class="form-label">Phương tiện:</label>
+                        <select class="form-select" id="vehicleId" name="vehicleId.id" required>
+                            <option value="">Chọn phương tiện</option>
+                            <option th:each="vehicle : ${vehicles}" th:value="${vehicle.id}"
+                                th:text="${vehicle.licensePlate} + ' (' + ${vehicle.type} + ')'"
+                                th:selected="${schedule.vehicleId != null && vehicle.id == schedule.vehicleId.id}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="departureTime" class="form-label">Thời gian đi:</label>
+                        <input type="time" class="form-control" id="departureTime" name="departureTime"
+                            th:value="${schedule.departureTime != null ? #dates.format(schedule.departureTime, 'HH:mm') : ''}"
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="arrivalTime" class="form-label">Thời gian đến:</label>
+                        <input type="time" class="form-control" id="arrivalTime" name="arrivalTime"
+                            th:value="${schedule.arrivalTime != null ? #dates.format(schedule.arrivalTime, 'HH:mm') : ''}"
+                            required>
+                    </div>
+
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-success">Lưu thay đổi</button>
+                        <a th:href="@{/schedules}" class="btn btn-secondary ms-2">Hủy</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div th:replace="base :: footer"></div>
+    </main>
+</body>
+
 </html>

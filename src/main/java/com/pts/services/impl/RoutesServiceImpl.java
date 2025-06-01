@@ -1245,6 +1245,43 @@ public class RoutesServiceImpl implements RouteService {
     }
 
     @Override
+    public Map<String, Object> getRoutesWithPagination(String keyword, int page) {
+        // Cố định số lượng mỗi trang là 5
+        final int size = 5;
+
+        // Validate input params
+        if (page < 0) {
+            page = 0;
+        }
+
+        List<Routes> routes;
+        int totalItems;
+        int totalPages;
+
+        if (keyword != null && !keyword.isEmpty()) {
+            // Tìm kiếm với phân trang
+            routes = searchRoutesByNameWithPagination(keyword, page * size, size);
+            totalItems = countByNameContaining(keyword);
+        } else {
+            // Lấy tất cả với phân trang
+            routes = findAllWithPagination(page * size, size);
+            totalItems = countAll();
+        }
+
+        totalPages = (int) Math.ceil((double) totalItems / (double) size);
+
+        // Trả về Map chứa tất cả dữ liệu cần thiết
+        Map<String, Object> result = new HashMap<>();
+        result.put("routes", routes);
+        result.put("currentPage", page);
+        result.put("totalPages", totalPages);
+        result.put("totalItems", totalItems);
+        result.put("keyword", keyword);
+
+        return result;
+    }
+
+    @Override
     public int countByNameContaining(String keyword) {
         return routesRepository.countByNameContaining(keyword);
     }

@@ -65,4 +65,6 @@ public interface RouteService {
         return countByNameContaining(keyword);
     }
 
+    Map<String, Object> getRoutesWithPagination(String keyword, int page);
+
 }

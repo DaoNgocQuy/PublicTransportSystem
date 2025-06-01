@@ -32,4 +32,11 @@ public interface StopRepository {
 
     List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder);
 
+    List<Stops> findAllWithPagination(int offset, int limit);
+
+    List<Stops> searchStopsWithPagination(String keyword, int offset, int limit);
+
+    int countAll();
+
+    int countByKeyword(String keyword);
 }

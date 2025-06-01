@@ -21,10 +21,10 @@ export const withLazy = (importFunc) => {
 
 //Chính
 export const LazyHome = withLazy(() => import('./components/Home'));
-export const LazyLogin = withLazy(() => import('./components/Login'));
-export const LazyRegister = withLazy(() => import('./components/Register'));
-export const LazyReset = withLazy(() => import('./components/Reset'));
-export const LazyUserInfo = withLazy(() => import('./components/userInfo'));
+export const LazyLogin = withLazy(() => import('./components/User/Login'));
+export const LazyRegister = withLazy(() => import('./components/User/Register'));
+export const LazyReset = withLazy(() => import('./components/User/Reset'));
+export const LazyUserInfo = withLazy(() => import('./components/User/userInfo'));
 //Pages
 export const LazyTrafficMapPage = withLazy(() => import('./pages/TrafficMapPage'));
 export const LazyTrafficAdminPage = withLazy(() => import('./pages/TrafficAdminPage'));

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Tab, Tabs, Spinner, Alert } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import { authApi } from '../configs/Apis';
+import { authApi } from '../../configs/Apis';
 import { FaEnvelope, FaPhone, FaCalendar, FaClock } from 'react-icons/fa';
 import './userInfo.css';
 
@@ -536,10 +536,7 @@ const Userinfo = () => {
                                 <p className="route-path text-muted mb-1">
                                   {favorite.start_location} - {favorite.end_location}
                                 </p>
-                                <div className="operation-time small">
-                                  <i className="far fa-clock me-1"></i>
-                                  {favorite.operation_start_time} - {favorite.operation_end_time}
-                                </div>
+                                {/* Removed the operation time display */}
                               </div>
                               <div>
                                 <Button 

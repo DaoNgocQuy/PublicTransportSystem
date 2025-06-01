@@ -28,12 +28,15 @@ const TrafficAdminPage = () => {
     const [trafficConditions, setTrafficConditions] = useState([]);
     // State cho danh sách tình trạng giao thông chờ duyệt
     const [pendingConditions, setPendingConditions] = useState([]);
-    
+
     const [loading, setLoading] = useState(true);
     const [pendingLoading, setPendingLoading] = useState(true);
     const [alert, setAlert] = useState({ show: false, variant: '', message: '' });
     const [position, setPosition] = useState(null);
-
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
+    const [pendingCurrentPage, setPendingCurrentPage] = useState(1);
+    const [pendingItemsPerPage] = useState(10);
     // State cho modal xác nhận xóa
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedConditionId, setSelectedConditionId] = useState(null);
@@ -49,6 +52,37 @@ const TrafficAdminPage = () => {
         description: ''
     });
 
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = trafficConditions.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(trafficConditions.length / itemsPerPage);
+    const pendingIndexOfLastItem = pendingCurrentPage * pendingItemsPerPage;
+    const pendingIndexOfFirstItem = pendingIndexOfLastItem - pendingItemsPerPage;
+    const currentPendingItems = pendingConditions.slice(pendingIndexOfFirstItem, pendingIndexOfLastItem);
+    const pendingTotalPages = Math.ceil(pendingConditions.length / pendingItemsPerPage);
+    // Hàm chuyển trang
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+    const nextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+    const prevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+    const paginatePending = (pageNumber) => setPendingCurrentPage(pageNumber);
+    const nextPendingPage = () => {
+        if (pendingCurrentPage < pendingTotalPages) {
+            setPendingCurrentPage(pendingCurrentPage + 1);
+        }
+    };
+    const prevPendingPage = () => {
+        if (pendingCurrentPage > 1) {
+            setPendingCurrentPage(pendingCurrentPage - 1);
+        }
+    };
     // Thêm hàm xử lý khi nhấn nút Sửa
     const handleEdit = (condition) => {
         setEditFormData({
@@ -154,7 +188,7 @@ const TrafficAdminPage = () => {
         loadTrafficConditions();
         loadPendingConditions();
     }, []);
-    
+
     const LocationMarker = ({ position, setPosition }) => {
         const map = useMapEvents({
             dblclick(e) {
@@ -189,7 +223,7 @@ const TrafficAdminPage = () => {
             }));
         }
     }, [position]);
-    
+
     // Hàm tải dữ liệu tình trạng giao thông
     const loadTrafficConditions = async () => {
         try {
@@ -387,7 +421,32 @@ const TrafficAdminPage = () => {
             default: return 'secondary';
         }
     };
+    const formatTimestamp = (timestamp) => {
+        if (!timestamp) return 'N/A';
 
+        // Kiểm tra nếu timestamp là Firestore Timestamp (có phương thức toDate())
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+            return timestamp.toDate().toLocaleString();
+        }
+
+        // Nếu timestamp đã là Date object
+        if (timestamp instanceof Date) {
+            return timestamp.toLocaleString();
+        }
+
+        // Nếu timestamp là seconds (số)
+        if (typeof timestamp === 'number') {
+            return new Date(timestamp * 1000).toLocaleString();
+        }
+
+        // Nếu timestamp là object với seconds và nanoseconds (định dạng Firestore)
+        if (timestamp.seconds) {
+            return new Date(timestamp.seconds * 1000).toLocaleString();
+        }
+
+        // Trường hợp khác, chuyển về string
+        return String(timestamp);
+    };
     return (
         <Container className="py-4">
             {alert.show && (
@@ -412,10 +471,10 @@ const TrafficAdminPage = () => {
                     <Col>
                         <div className="pending-reports-container">
                             <h3 className="mb-3">
-                                Báo cáo chờ duyệt 
+                                Báo cáo chờ duyệt
                                 <Badge bg="danger" className="ms-2">{pendingConditions.length}</Badge>
                             </h3>
-                            
+
                             {pendingLoading ? (
                                 <div className="text-center py-4">
                                     <div className="spinner-border text-primary" role="status">
@@ -440,7 +499,7 @@ const TrafficAdminPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {pendingConditions.map(condition => (
+                                            {currentPendingItems.map(condition => (
                                                 <tr key={condition.id}>
                                                     <td>{condition.id.substring(0, 8)}...</td>
                                                     <td>{getConditionTypeName(condition.type)}</td>
@@ -456,10 +515,10 @@ const TrafficAdminPage = () => {
                                                     <td>
                                                         {condition.imageUrl ? (
                                                             <a href={condition.imageUrl} target="_blank" rel="noreferrer">
-                                                                <img 
-                                                                    src={condition.imageUrl} 
-                                                                    alt="Hình ảnh báo cáo" 
-                                                                    style={{ maxWidth: '100px', maxHeight: '60px' }} 
+                                                                <img
+                                                                    src={condition.imageUrl}
+                                                                    alt="Hình ảnh báo cáo"
+                                                                    style={{ maxWidth: '100px', maxHeight: '60px' }}
                                                                 />
                                                             </a>
                                                         ) : (
@@ -467,11 +526,11 @@ const TrafficAdminPage = () => {
                                                         )}
                                                     </td>
                                                     <td>
-                                                        {condition.timestamp?.toLocaleString() || 'N/A'}
+                                                        {formatTimestamp(condition.timestamp)}
                                                     </td>
                                                     <td>
-                                                        {condition.reportedBy === 'anonymous' ? 
-                                                            'Ẩn danh' : 
+                                                        {condition.reportedBy === 'anonymous' ?
+                                                            'Ẩn danh' :
                                                             condition.reportedBy
                                                         }
                                                     </td>
@@ -497,6 +556,61 @@ const TrafficAdminPage = () => {
                                             ))}
                                         </tbody>
                                     </Table>
+                                    {pendingConditions.length > pendingItemsPerPage && (
+                                        <div className="d-flex justify-content-between align-items-center mt-3">
+                                            <div>
+                                                Hiển thị {pendingIndexOfFirstItem + 1}-{Math.min(pendingIndexOfLastItem, pendingConditions.length)} trong tổng số {pendingConditions.length} báo cáo
+                                            </div>
+                                            <ul className="pagination mb-0">
+                                                <li className={`page-item ${pendingCurrentPage === 1 ? 'disabled' : ''}`}>
+                                                    <button className="page-link" onClick={prevPendingPage}>
+                                                        <i className="bi bi-chevron-left"></i>
+                                                    </button>
+                                                </li>
+
+                                                {Array.from({ length: pendingTotalPages }, (_, i) => {
+                                                    // Hiển thị 5 trang xung quanh trang hiện tại
+                                                    if (
+                                                        i === 0 || // Trang đầu tiên
+                                                        i === pendingTotalPages - 1 || // Trang cuối cùng
+                                                        (i >= pendingCurrentPage - 2 && i <= pendingCurrentPage + 2) // 2 trang trước và 2 trang sau
+                                                    ) {
+                                                        return (
+                                                            <li
+                                                                key={i + 1}
+                                                                className={`page-item ${pendingCurrentPage === i + 1 ? 'active' : ''}`}
+                                                            >
+                                                                <button
+                                                                    className="page-link"
+                                                                    onClick={() => paginatePending(i + 1)}
+                                                                >
+                                                                    {i + 1}
+                                                                </button>
+                                                            </li>
+                                                        );
+                                                    }
+                                                    // Hiển thị dấu ... nếu có khoảng cách
+                                                    else if (
+                                                        i === 1 && pendingCurrentPage > 3 ||
+                                                        i === pendingTotalPages - 2 && pendingCurrentPage < pendingTotalPages - 2
+                                                    ) {
+                                                        return (
+                                                            <li key={i + 1} className="page-item disabled">
+                                                                <span className="page-link">...</span>
+                                                            </li>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })}
+
+                                                <li className={`page-item ${pendingCurrentPage === pendingTotalPages ? 'disabled' : ''}`}>
+                                                    <button className="page-link" onClick={nextPendingPage}>
+                                                        <i className="bi bi-chevron-right"></i>
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -643,12 +757,13 @@ const TrafficAdminPage = () => {
                                         <th>Mức độ</th>
                                         <th>Mô tả</th>
                                         <th>Vị trí</th>
+                                        <th>Hình ảnh</th>
                                         <th>Thời gian</th>
                                         <th>Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {trafficConditions.map(condition => (
+                                    {currentItems.map(condition => (
                                         <tr key={condition.id}>
                                             <td>{condition.id.substring(0, 8)}...</td>
                                             <td>{getConditionTypeName(condition.type)}</td>
@@ -662,7 +777,20 @@ const TrafficAdminPage = () => {
                                                 {condition.latitude.toFixed(5)}, {condition.longitude.toFixed(5)}
                                             </td>
                                             <td>
-                                                {condition.timestamp?.toLocaleString() || 'N/A'}
+                                                {condition.imageUrl ? (
+                                                    <a href={condition.imageUrl} target="_blank" rel="noreferrer">
+                                                        <img
+                                                            src={condition.imageUrl}
+                                                            alt="Hình ảnh báo cáo"
+                                                            style={{ maxWidth: '100px', maxHeight: '60px' }}
+                                                        />
+                                                    </a>
+                                                ) : (
+                                                    <span className="text-muted">Không có</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {formatTimestamp(condition.timestamp)}
                                             </td>
                                             <td>
                                                 <div className="d-flex gap-2">
@@ -686,6 +814,63 @@ const TrafficAdminPage = () => {
                                     ))}
                                 </tbody>
                             </Table>
+
+                            {/* Phân trang */}
+                            {trafficConditions.length > 0 && (
+                                <div className="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        Hiển thị {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, trafficConditions.length)} trong tổng số {trafficConditions.length} mục
+                                    </div>
+                                    <ul className="pagination mb-0">
+                                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                                            <button className="page-link" onClick={prevPage}>
+                                                <i className="bi bi-chevron-left"></i>
+                                            </button>
+                                        </li>
+
+                                        {Array.from({ length: totalPages }, (_, i) => {
+                                            // Hiển thị 5 trang xung quanh trang hiện tại
+                                            if (
+                                                i === 0 || // Trang đầu tiên
+                                                i === totalPages - 1 || // Trang cuối cùng
+                                                (i >= currentPage - 2 && i <= currentPage + 2) // 2 trang trước và 2 trang sau
+                                            ) {
+                                                return (
+                                                    <li
+                                                        key={i + 1}
+                                                        className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}
+                                                    >
+                                                        <button
+                                                            className="page-link"
+                                                            onClick={() => paginate(i + 1)}
+                                                        >
+                                                            {i + 1}
+                                                        </button>
+                                                    </li>
+                                                );
+                                            }
+                                            // Hiển thị dấu ... nếu có khoảng cách
+                                            else if (
+                                                i === 1 && currentPage > 3 ||
+                                                i === totalPages - 2 && currentPage < totalPages - 2
+                                            ) {
+                                                return (
+                                                    <li key={i + 1} className="page-item disabled">
+                                                        <span className="page-link">...</span>
+                                                    </li>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+
+                                        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                                            <button className="page-link" onClick={nextPage}>
+                                                <i className="bi bi-chevron-right"></i>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     )}
                 </Col>

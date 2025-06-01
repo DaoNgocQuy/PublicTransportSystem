@@ -65,8 +65,11 @@ const RoutePath = React.memo(({ busStops, selectedRoute, direction }) => {
     const prevBusStopsRef = React.useRef(null);
     const map = useMap();
     const [mapHasMoved, setMapHasMoved] = useState(false);
+    console.log("RoutePath nhận direction:", direction, "kiểu dữ liệu:", typeof direction);
     const cacheKey = useMemo(() => {
-        return direction === 'return' ? 'return' : 'outbound';
+        // Đảm bảo direction luôn là số 1 hoặc 2
+        console.log("Direction trong cacheKey:", direction, "type:", typeof direction);
+        return direction === 2 ? 2 : 1;
     }, [direction]);
     // Xác định loại tuyến và màu sắc
     const routeTypeId = useMemo(() => {

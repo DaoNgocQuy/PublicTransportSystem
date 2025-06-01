@@ -219,29 +219,55 @@ public class RoutesRepositoryImpl implements RoutesRepository {
     public List<Stops> findStopsByRouteId(Integer routeId) {
         Session s = this.factory.getObject().getCurrentSession();
 
-        String jpql = "SELECT DISTINCT s FROM Stops s " +
+        // Modified query to include stop_order in the SELECT clause when using DISTINCT
+        String jpql = "SELECT DISTINCT s, rs.stopOrder FROM Stops s " +
                 "JOIN s.routeStopSet rs " +
                 "WHERE rs.route.id = :routeId " +
                 "ORDER BY rs.stopOrder";
 
-        Query query = s.createQuery(jpql, Stops.class);
+        Query query = s.createQuery(jpql);
         query.setParameter("routeId", routeId);
-        return query.getResultList();
+
+        List<Object[]> results = query.getResultList();
+        List<Stops> stops = new ArrayList<>();
+
+        // Extract Stops objects from results
+        for (Object[] result : results) {
+            Stops stop = (Stops) result[0];
+            Integer stopOrder = (Integer) result[1];
+            stop.setStopOrder(stopOrder); // Set the stop order if your Stops class has this field
+            stops.add(stop);
+        }
+
+        return stops;
     }
 
     @Override
     public List<Stops> findStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
         Session s = this.factory.getObject().getCurrentSession();
 
-        String jpql = "SELECT DISTINCT s FROM Stops s " +
+        // Modified query to include stop_order in the SELECT clause
+        String jpql = "SELECT DISTINCT s, rs.stopOrder FROM Stops s " +
                 "JOIN s.routeStopSet rs " +
                 "WHERE rs.route.id = :routeId AND rs.direction = :direction " +
                 "ORDER BY rs.stopOrder";
 
-        Query query = s.createQuery(jpql, Stops.class);
+        Query query = s.createQuery(jpql);
         query.setParameter("routeId", routeId);
         query.setParameter("direction", direction);
-        return query.getResultList();
+
+        List<Object[]> results = query.getResultList();
+        List<Stops> stops = new ArrayList<>();
+
+        // Extract Stops objects from results
+        for (Object[] result : results) {
+            Stops stop = (Stops) result[0];
+            Integer stopOrder = (Integer) result[1];
+            stop.setStopOrder(stopOrder);
+            stops.add(stop);
+        }
+
+        return stops;
     }
 
     @Override

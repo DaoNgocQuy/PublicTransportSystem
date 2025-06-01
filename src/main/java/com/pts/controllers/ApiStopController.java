@@ -29,18 +29,28 @@ public class ApiStopController {
     private RouteStopService routeStopService;
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getStops(
-            @RequestParam(required = false) String keyword) {
+    public ResponseEntity<?> getStops(@RequestParam(required = false) String keyword) {
+        try {
+            List<Stops> stops;
+            if (keyword != null && !keyword.isEmpty()) {
+                stops = stopService.searchStops(keyword);
+            } else {
+                stops = stopService.getAllStops();
+            }
 
-        List<Stops> stops;
-        if (keyword != null && !keyword.isEmpty()) {
-            stops = stopService.searchStops(keyword);
-        } else {
-            stops = stopService.getAllStops();
+            if (stops == null) {
+                stops = new ArrayList<>();
+            }
+
+            List<Map<String, Object>> result = formatStopsList(stops);
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace(); // In lỗi vào log
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Lỗi khi lấy danh sách điểm dừng: " + e.getMessage());
+            error.put("stackTrace", e.getStackTrace().toString());
+            return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-        List<Map<String, Object>> result = formatStopsList(stops);
-        return new ResponseEntity<>(result, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
@@ -165,7 +175,9 @@ public class ApiStopController {
      */
     private Map<String, Object> formatStop(Stops stop) {
         Map<String, Object> stopData = new HashMap<>();
-
+        if (stop == null) {
+            return stopData;
+        }
         stopData.put("id", stop.getId());
         stopData.put("name", stop.getStopName());
         stopData.put("latitude", stop.getLatitude());
@@ -341,15 +353,27 @@ public class ApiStopController {
     private List<Map<String, Object>> formatStopsList(List<Stops> stops) {
         List<Map<String, Object>> result = new ArrayList<>();
 
+        if (stops == null) {
+            return result;
+        }
+
         for (Stops stop : stops) {
-            Map<String, Object> stopData = formatStop(stop);
+            try {
+                if (stop != null) {
+                    Map<String, Object> stopData = formatStop(stop);
 
-            // Đảm bảo direction luôn được đưa vào kết quả nếu có trong stop
-            if (stop.getDirection() != null) {
-                stopData.put("direction", stop.getDirection());
+                    // Đảm bảo direction luôn được đưa vào kết quả nếu có trong stop
+                    if (stop.getDirection() != null) {
+                        stopData.put("direction", stop.getDirection());
+                    }
+
+                    result.add(stopData);
+                }
+            } catch (Exception e) {
+                // Log lỗi nhưng vẫn tiếp tục xử lý các stop khác
+                System.err.println("Error formatting stop with ID: " +
+                        (stop != null ? stop.getId() : "null") + ": " + e.getMessage());
             }
-
-            result.add(stopData);
         }
 
         return result;

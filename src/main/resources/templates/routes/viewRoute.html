@@ -359,22 +359,37 @@
                 }).addTo(map);
 
                 // Xác định loại tuyến (1 = bus, 2 = metro)
-                var routeTypeId = route.routeTypeIdValue || (route.routeTypeId ? route.routeTypeId.id : 1);
-                var isMetro = (routeTypeId === 2);
+                var routeTypeId;
+
+                // Kiểm tra và log chi tiết để tìm nguồn thông tin chính xác
+
+                if (route.routeType && route.routeType.id !== undefined) {
+                    routeTypeId = route.routeType.id;
+                } else if (route.routeTypeId && route.routeTypeId.id !== undefined) {
+                    routeTypeId = route.routeTypeId.id;
+                } else if (route.routeTypeIdValue !== undefined) {
+                    routeTypeId = route.routeTypeIdValue;
+                } else if (route.id == 2) { // Nếu ID route = 2, đây là tuyến metro
+                    routeTypeId = 2;
+                } else if (route.routeName && route.routeName.toLowerCase().includes('metro')) {
+                    routeTypeId = 2;
+                } else {
+                    routeTypeId = 1; // Mặc định là bus
+                }
+
+                var isMetro = (parseInt(routeTypeId) === 2);
                 var routeColor = route.routeType && route.routeType.colorCode ?
                     route.routeType.colorCode :
                     (isMetro ? '#FF0000' : '#0000FF');
 
                 // Kiểm tra tọa độ
                 if (coordinates && coordinates.length > 1) {
-                    console.log('Coordinates found:', coordinates); // Debug
                     var markers = [];
                     var validCoordinates = coordinates.filter(function (coord) {
                         return Array.isArray(coord) && coord.length === 2 &&
                             !isNaN(coord[0]) && !isNaN(coord[1]);
                     });
 
-                    console.log('Valid coordinates:', validCoordinates); // Debug
 
                     if (validCoordinates.length > 1) {
                         // Tạo một polyline tạm thời (sẽ bị xóa sau)
@@ -402,7 +417,6 @@
                                 waypointsStr +
                                 '?overview=full&geometries=polyline&steps=false';
 
-                            console.log('OSRM URL:', osrmUrl); // Debug
 
                             $.ajax({
                                 url: osrmUrl,
@@ -425,7 +439,6 @@
                                         };
 
                                         var busLine = L.polyline(routeCoordinates, busLineOptions).addTo(map);
-                                        console.log('Route drawn successfully'); // Debug
                                     } else {
                                         console.error("OSRM API error:", data);
                                         // Fallback: vẽ đường thẳng giữa các điểm
@@ -618,15 +631,16 @@
             }).addTo(map);
 
             if (isMetro) {
-                // Metro: Vẽ đường ray trực tiếp
+                console.log("Đây là tuyến METRO, routeTypeId =", routeTypeId);
                 map.removeLayer(tempPolyline);
                 drawMetroRailsDirectly(map, validCoordinates, routeColor);
             } else {
                 // Bus: Sử dụng OSRM
+                console.log("Đây là tuyến BUS, routeTypeId =", routeTypeId);
+
                 var waypointsStr = validCoordinates.map(function (coord) {
                     return coord[1] + ',' + coord[0];
                 }).join(';');
-
                 var osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' +
                     waypointsStr +
                     '?overview=full&geometries=polyline&steps=false';
@@ -796,41 +810,56 @@
 
         // Hàm vẽ đường ray metro trực tiếp giữa các điểm
         function drawMetroRailsDirectly(map, coordinates, color) {
-            // Vẽ đường chính
+            // Đảm bảo tọa độ hợp lệ
+            if (!coordinates || coordinates.length < 2) {
+                console.error("Không đủ tọa độ để vẽ đường ray metro");
+                return;
+            }
+
+            console.log("Vẽ đường ray metro với", coordinates.length, "điểm");
+
+            // Vẽ đường chính rõ ràng hơn
             var mainRail = L.polyline(coordinates, {
                 color: color,
                 weight: 6,
-                opacity: 0.8,
-                dashArray: '15,10'
+                opacity: 1.0,
+                // Bỏ đi dashArray để vẽ đường thẳng liên tục
             }).addTo(map);
 
-            // Vẽ đường ray phụ (song song)
-            var secondaryRail = L.polyline(coordinates, {
-                color: '#000',
-                weight: 1,
-                opacity: 0.5,
-                dashArray: '5,10'
-            }).addTo(map);
+            // Vẽ các đường ngang giữa các trạm để tạo hiệu ứng đường ray
+            for (var i = 0; i < coordinates.length - 1; i++) {
+                var pointA = coordinates[i];
+                var pointB = coordinates[i + 1];
 
-            // Thêm chi tiết đường ray nếu có thư viện polylineDecorator
-            if (window.L.polylineDecorator) {
-                var decorator = L.polylineDecorator(mainRail, {
-                    patterns: [
-                        {
-                            offset: '5%',
-                            repeat: '15%',
-                            symbol: L.Symbol.dash({
-                                pixelSize: 10,
-                                pathOptions: {
-                                    color: '#000',
-                                    weight: 2,
-                                    opacity: 0.7
-                                }
-                            })
-                        }
-                    ]
-                }).addTo(map);
+                // Tính khoảng cách giữa hai điểm
+                var dx = pointB[0] - pointA[0];
+                var dy = pointB[1] - pointA[1];
+                var distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Tính số lượng gạch ngang (railroad ties) giữa hai điểm
+                var numTies = Math.floor(distance * 111000 / 30); // Khoảng 30m một gạch
+                numTies = Math.min(Math.max(numTies, 5), 50); // Tối thiểu 5, tối đa 50 gạch
+
+                for (var j = 1; j < numTies; j++) {
+                    var ratio = j / numTies;
+                    var x = pointA[0] + dx * ratio;
+                    var y = pointA[1] + dy * ratio;
+
+                    // Thêm điểm đánh dấu nhỏ tại mỗi vị trí để tạo hiệu ứng đường ray
+                    L.circleMarker([x, y], {
+                        radius: 1,
+                        color: '#333',
+                        weight: 1,
+                        opacity: 0.7,
+                        fill: true,
+                        fillColor: '#000',
+                        fillOpacity: 0.7
+                    }).addTo(map);
+                }
             }
+
+            // Trả về đối tượng polyline chính để có thể sử dụng sau này nếu cần
+            return mainRail;
         }
 
         // Utility function to decode polyline from OSRM

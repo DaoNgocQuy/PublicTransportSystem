@@ -11,5 +11,4 @@ public interface RouteTypeRepository {
 
     RouteTypes save(RouteTypes routeType);
 
-    int reorderStopOrders(Integer routeId, Integer direction);
 }

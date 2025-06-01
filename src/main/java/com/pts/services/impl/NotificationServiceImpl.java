@@ -80,10 +80,10 @@ public class NotificationServiceImpl implements NotificationService {
                     String emailContent = createRouteChangeEmailContent(fullName, oldRoute, newRoute);
                     
                     // Gửi email
-                    emailService.sendEmail(email, "Thông báo thay đổi tuyến " + newRoute.getName(), emailContent);
+                    emailService.sendEmail(email, "Thông báo thay đổi tuyến " + newRoute.getRouteName(), emailContent);
                     
                     // Lưu thông báo vào database
-                    String message = "Tuyến " + newRoute.getName() + " đã có thay đổi thông tin. Vui lòng kiểm tra lại.";
+                    String message = "Tuyến " + newRoute.getRouteName() + " đã có thay đổi thông tin. Vui lòng kiểm tra lại.";
                     saveNotificationToDatabase(userId, newRoute.getId(), "Thay đổi tuyến", message, "ROUTE_CHANGE");
                 }
             }
@@ -110,10 +110,10 @@ public class NotificationServiceImpl implements NotificationService {
                     String emailContent = createScheduleChangeEmailContent(fullName, oldSchedules, newSchedules, route);
                     
                     // Gửi email
-                    emailService.sendEmail(email, "Thông báo thay đổi lịch trình tuyến " + route.getName(), emailContent);
+                    emailService.sendEmail(email, "Thông báo thay đổi lịch trình tuyến " + route.getRouteName(), emailContent);
                     
                     // Lưu thông báo vào database
-                    String message = "Lịch trình tuyến " + route.getName() + " đã có thay đổi. Vui lòng kiểm tra lại.";
+                    String message = "Lịch trình tuyến " + route.getRouteName() + " đã có thay đổi. Vui lòng kiểm tra lại.";
                     saveNotificationToDatabase(userId, route.getId(), "Thay đổi lịch trình", message, "SCHEDULE_CHANGE");
                 }
             }
@@ -177,7 +177,7 @@ public class NotificationServiceImpl implements NotificationService {
         content.append("</div>");
         
         content.append("<p>Kính chào <strong>").append(fullName).append("</strong>,</p>");
-        content.append("<p>Chúng tôi thông báo đến bạn về những thay đổi lịch trình của tuyến <strong style='color: #667eea;'>").append(route.getName()).append("</strong>:</p>");
+        content.append("<p>Chúng tôi thông báo đến bạn về những thay đổi lịch trình của tuyến <strong style='color: #667eea;'>").append(route.getRouteName()).append("</strong>:</p>");
         
         content.append("<div class='schedule-box'>");
         content.append("<h3>Lịch trình mới:</h3>");
@@ -224,15 +224,15 @@ public class NotificationServiceImpl implements NotificationService {
         content.append("</div>");
         
         content.append("<p>Kính chào <strong>").append(fullName).append("</strong>,</p>");
-        content.append("<p>Chúng tôi thông báo đến bạn về những thay đổi trong tuyến <strong style='color: #ff6b6b;'>").append(newRoute.getName()).append("</strong>:</p>");
+        content.append("<p>Chúng tôi thông báo đến bạn về những thay đổi trong tuyến <strong style='color: #ff6b6b;'>").append(newRoute.getRouteName()).append("</strong>:</p>");
         
         content.append("<div class='change-box'>");
         content.append("<h3>Những thay đổi:</h3>");
         
-        if (!Objects.equals(oldRoute.getName(), newRoute.getName())) {
+        if (!Objects.equals(oldRoute.getRouteName(), newRoute.getRouteName())) {
             content.append("<p><strong>Tên tuyến:</strong><br>");
-            content.append("<span class='old'>").append(oldRoute.getName()).append("</span><br>");
-            content.append("<span class='new'>→ ").append(newRoute.getName()).append("</span></p>");
+            content.append("<span class='old'>").append(oldRoute.getRouteName()).append("</span><br>");
+            content.append("<span class='new'>→ ").append(newRoute.getRouteName()).append("</span></p>");
         }
         
         if (!Objects.equals(oldRoute.getStartLocation(), newRoute.getStartLocation())) {

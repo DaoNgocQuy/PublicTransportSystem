@@ -287,7 +287,7 @@ public class UserRepositoryImpl implements UserRepository {
                 user.setLastLogin(new Date(lastLoginTs.getTime()));
             }
         } catch (SQLException e) {
-            // Bỏ qua nếu không có các trường này
+            e.printStackTrace();
         }
         
         return user;

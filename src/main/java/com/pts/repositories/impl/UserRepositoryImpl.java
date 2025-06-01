@@ -55,26 +55,25 @@ public class UserRepositoryImpl implements UserRepository {
             u.setIsActive(rs.getBoolean("is_active"));
             return u;
         }
-    };    @Override
+    };    
+    
+    //login không được fail
+    @Override
     public Optional<Users> findByUsername(String username) {
         try {
-            // Using JPA Criteria API - a type-safe way to construct queries
             CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
             CriteriaQuery<Users> criteriaQuery = criteriaBuilder.createQuery(Users.class);
             
             Root<Users> root = criteriaQuery.from(Users.class);
-            criteriaQuery.select(root)
-                         .where(criteriaBuilder.equal(root.get("username"), username));
+            criteriaQuery.select(root).where(criteriaBuilder.equal(root.get("username"), username));
             
-            List<Users> results = entityManager.createQuery(criteriaQuery)
-                                              .getResultList();
+            List<Users> results = entityManager.createQuery(criteriaQuery).getResultList();
             
             return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
         } catch (Exception e) {
             System.err.println("Error finding user by username with JPA Criteria: " + e.getMessage());
             e.printStackTrace();
-            
-            // Fall back to JDBC implementation if JPA fails
+            // JDBC fallback
             try {
                 String sql = "SELECT * FROM users WHERE username = ?";
                 List<Users> results = jdbcTemplate.query(sql, userMapper, username);
@@ -89,6 +88,10 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public Optional<Users> findByEmail(String email) {
+        // Dùng pure JDBC vì:
+        // 1. Email lookup ít dùng hơn (chỉ khi forgot password, registration validation)
+        // 2. Performance quan trọng hơn type-safety cho case này
+        // 3. Đơn giản, không cần fallback phức tạp
         String sql = "SELECT * FROM users WHERE email = ?";
         List<Users> results = jdbcTemplate.query(sql, userMapper, email);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
@@ -96,6 +99,10 @@ public class UserRepositoryImpl implements UserRepository {
     
     @Override
     public Optional<Users> findByPhone(String phone) {
+        // Dùng pure JDBC vì:
+        // 1. Phone lookup rất ít dùng (optional field)
+        // 2. Consistency với findByEmail pattern
+        // 3. Simple use case không cần reliability cao như username
         String sql = "SELECT * FROM users WHERE phone = ?";
         List<Users> results = jdbcTemplate.query(sql, userMapper, phone);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
@@ -103,6 +110,10 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public boolean existsByUsername(String username) {
+        // Tất cả exists methods đều dùng pure JDBC vì:
+        // 1. Chỉ cần kiểm tra tồn tại (COUNT query) → JDBC optimal
+        // 2. Performance cao hơn JPA (không load entity)
+        // 3. Reliable cho validation (registration, uniqueness check)
         try {
             System.out.println("Checking if username exists: " + username);
             String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
@@ -118,6 +129,8 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public boolean existsByEmail(String email) {
+        // Consistency với existsByUsername pattern
+        // Pure JDBC cho performance tối ưu
         try {
             String sql = "SELECT COUNT(*) FROM users WHERE email = ?";
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
@@ -132,6 +145,8 @@ public class UserRepositoryImpl implements UserRepository {
     
     @Override
     public boolean existsByPhone(String phone) {
+        // Consistency với các exists methods khác
+        // JDBC pattern cho validation queries
         try {
         String sql = "SELECT COUNT(*) FROM users WHERE phone = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, phone);
@@ -146,6 +161,10 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public Users getUserByUsername(String username) {
+        // Pure JDBC cho method này vì:
+        // 1. Đã có findByUsername với JPA+fallback rồi
+        // 2. Method này dùng cho business logic đơn giản
+        // 3. Không cần reliability cao như findByUsername (for authentication)
         String sql = "SELECT * FROM users WHERE username = ?";
         List<Users> results = jdbcTemplate.query(sql, userMapper, username);
         return results.isEmpty() ? null : results.get(0);
@@ -153,11 +172,21 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public List<Users> getAllUsers() {
+        // Pure JDBC cho list operations vì:
+        // 1. Performance cao hơn JPA cho bulk data
+        // 2. Không cần entity relationships cho listing
+        // 3. Memory efficient (không load vào persistence context)
         String sql = "SELECT * FROM users";
         return jdbcTemplate.query(sql, userMapper);
     }    @Override
     @Transactional
     public boolean addUser(Users user) {
+        // Strategy pattern: JPA đầu tiên, JDBC fallback
+        // Tại sao mix approach:
+        // 1. JPA: Tự động handle relationships, validation, cache
+        // 2. JDBC fallback: Đảm bảo user registration không fail
+        // 3. Critical operation - phải có backup plan
+        
         // Try to use JPA EntityManager first if available
         if (entityManager != null) {
             try {
@@ -181,6 +210,7 @@ public class UserRepositoryImpl implements UserRepository {
         }
         
         // Fall back to JDBC implementation
+        // Raw SQL cho reliability cao khi JPA có vấn đề
         String sql = "INSERT INTO users(username, password, email, role, avatar_url, full_name, phone, is_active, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         try {
@@ -355,6 +385,9 @@ public class UserRepositoryImpl implements UserRepository {
         }
     }    @Override
     public Users getUserById(Integer userId) {
+        // Mix JPA + JDBC fallback pattern giống addUser
+        // Tại sao: getUserById cũng là critical operation (authentication, session)
+        
         // Try to use JPA EntityManager if available
         if (entityManager != null) {
             try {
@@ -367,6 +400,7 @@ public class UserRepositoryImpl implements UserRepository {
         }
         
         // Fall back to JDBC implementation
+        // Reliable backup cho session management
         try {
             String sql = "SELECT * FROM users WHERE id = ?";
             return jdbcTemplate.queryForObject(sql, userRowMapper, userId);

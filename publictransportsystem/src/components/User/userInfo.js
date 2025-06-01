@@ -263,11 +263,8 @@ const Userinfo = () => {
 
   const handleViewRoute = (routeId) => {
     console.log("Viewing route with ID:", routeId);
-    
     // Lưu ID tuyến vào sessionStorage
     sessionStorage.setItem('selectedRouteId', routeId);
-    
-    // Chuyển về trang chủ
     navigate('/');
   };
 

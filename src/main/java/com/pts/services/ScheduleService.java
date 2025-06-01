@@ -32,6 +32,8 @@ public interface ScheduleService {
     
     Map<String, Object> findSchedulesByRouteIdWithPagination(Integer routeId, int page, int size);
 
+    Map<String, Object> searchSchedulesWithPagination(Integer routeId, Integer vehicleId, String startTime, String endTime, int page, int size);
+
     Schedules createSchedule(Schedules schedule);
 
     Schedules updateSchedule(Integer id, Schedules scheduleDetails);

@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.pts.filters;
 
 import com.pts.utils.JwtUtils;
@@ -41,8 +37,13 @@ public class JwtFilter implements Filter {
         
         String uri = httpRequest.getRequestURI();
         String contextPath = httpRequest.getContextPath();
-        
-        // Kiểm tra các địa chỉ cần JWT (API secure hoặc các endpoint liên quan đến thông báo và yêu thích)
+
+        if (SecurityContextHolder.getContext().getAuthentication() != null && 
+            SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
+            chain.doFilter(request, response);
+            return;
+        }
+    
         boolean requiresJwt = uri.startsWith(contextPath + "/api/secure/") || 
                      uri.startsWith(contextPath + "/api/notifications") || 
                      uri.startsWith(contextPath + "/api/favorites") ||
@@ -62,9 +63,6 @@ public class JwtFilter implements Filter {
                 String token = header.substring(TOKEN_PREFIX.length()); // Bỏ "Bearer " ở đầu
                 String username = JwtUtils.validateTokenAndGetUsername(token);
                   if (username != null) {
-                    // Tạo authentication object và thiết lập vào SecurityContextHolder
-                    // Đây là bước quan trọng để Spring Security biết user đã được xác thực
-                    
                     // Tìm thông tin người dùng và vai trò của họ
                     Users user = userRepository.getUserByUsername(username);
                     List<GrantedAuthority> authorities = new ArrayList<>();
@@ -81,6 +79,7 @@ public class JwtFilter implements Filter {
                         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
                     }
                     
+                    // Tạo authentication object và thiết lập vào SecurityContextHolder
                     UsernamePasswordAuthenticationToken authToken = 
                         new UsernamePasswordAuthenticationToken(username, null, authorities);
                     SecurityContextHolder.getContext().setAuthentication(authToken);

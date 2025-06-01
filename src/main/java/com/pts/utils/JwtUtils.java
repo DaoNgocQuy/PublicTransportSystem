@@ -42,7 +42,9 @@ public class JwtUtils {
         signedJWT.sign(signer);
 
         return signedJWT.serialize();
-    }    /**
+    }    
+    
+    /**
      * Xác thực JWT token và trích xuất username
      * 
      * @param token JWT token cần xác thực

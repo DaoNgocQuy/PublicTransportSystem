@@ -24,7 +24,6 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.cors.CorsConfiguration;
@@ -63,12 +62,8 @@ public class SpringSecurityConfigs {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Tạo MVC matcher
-        MvcRequestMatcher.Builder mvcMatcherBuilder = new MvcRequestMatcher.Builder(mvcHandlerMappingIntrospector());
-
         http.cors(cors -> cors.configurationSource(corsConfigurationSource())).csrf(c -> c.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                // Sử dụng AntPathRequestMatcher rõ ràng
                 .requestMatchers(new AntPathRequestMatcher("/login")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/css/**")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/js/**")).permitAll()
@@ -160,7 +155,7 @@ public class SpringSecurityConfigs {
             dataSource.setDriverClassName("com.mysql.cj.jdbc.Driver");
             dataSource.setUrl("jdbc:mysql://localhost:3306/pts");
             dataSource.setUsername("root");
-            dataSource.setPassword("132456");
+            dataSource.setPassword("huyduong2004");
             return dataSource;
         }
 

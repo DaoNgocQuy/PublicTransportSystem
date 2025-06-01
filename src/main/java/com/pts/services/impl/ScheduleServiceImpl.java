@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Time;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         result.put("currentPage", page);
         result.put("totalItems", totalItems);
         result.put("totalPages", totalPages);
+        result.put("searchUrl", "/schedules");
         
         return result;
     }
@@ -72,6 +74,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         result.put("currentPage", page);
         result.put("totalItems", totalItems);
         result.put("totalPages", totalPages);
+        result.put("vehicleId", vehicleId.getId());
+        result.put("searchUrl", "/schedules/search");
         
         return result;
     }
@@ -94,6 +98,8 @@ public class ScheduleServiceImpl implements ScheduleService {
         result.put("currentPage", page);
         result.put("totalItems", totalItems);
         result.put("totalPages", totalPages);
+        result.put("routeId", routeId.getId());
+        result.put("searchUrl", "/schedules/search");
         
         return result;
     }
@@ -116,6 +122,9 @@ public class ScheduleServiceImpl implements ScheduleService {
         result.put("currentPage", page);
         result.put("totalItems", totalItems);
         result.put("totalPages", totalPages);
+        result.put("startTime", startTime.toString());
+        result.put("endTime", endTime.toString());
+        result.put("searchUrl", "/schedules/search");
         
         return result;
     }
@@ -138,16 +147,93 @@ public class ScheduleServiceImpl implements ScheduleService {
         result.put("currentPage", page);
         result.put("totalItems", totalItems);
         result.put("totalPages", totalPages);
+        result.put("routeId", routeId);
+        result.put("searchUrl", "/schedules/search");
         
         return result;
     }
 
     @Override
+    public Map<String, Object> searchSchedulesWithPagination(Integer routeId, Integer vehicleId, 
+                                                            String startTime, String endTime, 
+                                                            int page, int size) {
+        try {
+            Map<String, Object> response;
+
+            // Chuyển đổi startTime và endTime từ String thành Time nếu có
+            Time startTimeObj = null;
+            Time endTimeObj = null;
+            if (startTime != null && !startTime.isEmpty()) {
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+                startTimeObj = new Time(sdf.parse(startTime).getTime());
+            }
+            if (endTime != null && !endTime.isEmpty()) {
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm");
+                endTimeObj = new Time(sdf.parse(endTime).getTime());
+            }
+
+            // Tìm kiếm dựa trên các điều kiện
+            if (routeId != null) {
+                Routes route = new Routes();
+                route.setId(routeId);
+                response = getSchedulesByRouteWithPagination(route, page, size);
+                System.out.println("Search by route: " + routeId);
+            } else if (vehicleId != null) {
+                Vehicles vehicle = new Vehicles();
+                vehicle.setId(vehicleId);
+                response = getSchedulesByVehicleWithPagination(vehicle, page, size);
+                System.out.println("Search by vehicle: " + vehicleId);
+            } else if (startTimeObj != null && endTimeObj != null) {
+                response = getSchedulesByTimeRangeWithPagination(startTimeObj, endTimeObj, page, size);
+                System.out.println("Search by time range: " + startTime + " - " + endTime);
+            } else {
+                response = getSchedulesWithPagination(page, size);
+                System.out.println("No search criteria, showing all with pagination");
+            }
+
+            // Add search parameters for pagination links
+            if (routeId != null) {
+                response.put("routeId", routeId);
+                System.out.println("Added routeId to response: " + routeId);
+            }
+            if (vehicleId != null) {
+                response.put("vehicleId", vehicleId);
+                System.out.println("Added vehicleId to response: " + vehicleId);
+            }
+            if (startTime != null) {
+                response.put("startTime", startTime);
+                System.out.println("Added startTime to response: " + startTime);
+            }
+            if (endTime != null) {
+                response.put("endTime", endTime);
+                System.out.println("Added endTime to response: " + endTime);
+            }
+
+            response.put("pageSize", size);
+            response.put("searchUrl", "/schedules/search");
+
+            return response;
+        } catch (Exception e) {
+            e.printStackTrace();
+            // In case of error, fallback to regular pagination
+            Map<String, Object> response = getSchedulesWithPagination(page, size);
+            response.put("error", e.getMessage());
+            return response;
+        }
+    }
+
+    @Override
     @Transactional
     public Schedules createSchedule(Schedules schedule) {
+        if (schedule.getCreatedAt() == null) {
+            schedule.setCreatedAt(new Date());
+        }
+        
         validateSchedule(schedule);
         return scheduleRepository.save(schedule);
-    }    @Override
+    }
+    
+    @Override
     @Transactional
     public Schedules updateSchedule(Integer id, Schedules scheduleDetails) {
         Schedules schedule = scheduleRepository.findById(id)

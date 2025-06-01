@@ -967,24 +967,48 @@ public class RoutesServiceImpl implements RouteService {
                 List<Routes> routes = findDirectRoutesForStops(fromStop.getId(), toStop.getId());
 
                 for (Routes route : routes) {
-                    // Lấy thông tin chi tiết về trạm trên tuyến
-                    List<RouteStop> routeStops = routeStopRepository.findByRouteIdOrderByStopOrder(route.getId());
+                    // Kiểm tra cho direction 1 (chiều đi)
+                    List<RouteStop> outboundRouteStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(route.getId(), 1);
 
-                    // Tìm vị trí của fromStop và toStop trên tuyến
-                    RouteStop fromStopOnRoute = findRouteStopByStopId(routeStops, fromStop.getId());
-                    RouteStop toStopOnRoute = findRouteStopByStopId(routeStops, toStop.getId());
+                    // Tìm vị trí của fromStop và toStop trên chiều đi
+                    RouteStop fromStopOnOutbound = findRouteStopByStopId(outboundRouteStops, fromStop.getId());
+                    RouteStop toStopOnOutbound = findRouteStopByStopId(outboundRouteStops, toStop.getId());
 
-                    // Nếu trạm đi phải nằm trước trạm đến trên tuyến đường
-                    if (fromStopOnRoute != null && toStopOnRoute != null
-                            && fromStopOnRoute.getStopOrder() < toStopOnRoute.getStopOrder()) {
+                    // Nếu cả hai trạm đều nằm trên chiều đi và trạm đi đứng trước trạm đến
+                    if (fromStopOnOutbound != null && toStopOnOutbound != null
+                            && fromStopOnOutbound.getStopOrder() < toStopOnOutbound.getStopOrder()) {
 
-                        // Tạo phương án di chuyển
-                        Map<String, Object> option = createJourneyOption(
-                                optionId++, route, fromStop, toStop, fromStopOnRoute, toStopOnRoute,
+                        // Tạo phương án di chuyển cho chiều đi
+                        Map<String, Object> outboundOption = createJourneyOption(
+                                optionId++, route, fromStop, toStop, fromStopOnOutbound, toStopOnOutbound,
                                 fromLat, fromLng, toLat, toLng
                         );
+                        // Đảm bảo direction được thiết lập đúng
+                        outboundOption.put("direction", 1); // Chiều đi
 
-                        journeyOptions.add(option);
+                        journeyOptions.add(outboundOption);
+                    }
+
+                    // Kiểm tra cho direction 2 (chiều về)
+                    List<RouteStop> returnRouteStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(route.getId(), 2);
+
+                    // Tìm vị trí của fromStop và toStop trên chiều về
+                    RouteStop fromStopOnReturn = findRouteStopByStopId(returnRouteStops, fromStop.getId());
+                    RouteStop toStopOnReturn = findRouteStopByStopId(returnRouteStops, toStop.getId());
+
+                    // Nếu cả hai trạm đều nằm trên chiều về và trạm đi đứng trước trạm đến
+                    if (fromStopOnReturn != null && toStopOnReturn != null
+                            && fromStopOnReturn.getStopOrder() < toStopOnReturn.getStopOrder()) {
+
+                        // Tạo phương án di chuyển cho chiều về
+                        Map<String, Object> returnOption = createJourneyOption(
+                                optionId++, route, fromStop, toStop, fromStopOnReturn, toStopOnReturn,
+                                fromLat, fromLng, toLat, toLng
+                        );
+                        // Đảm bảo direction được thiết lập đúng
+                        returnOption.put("direction", 2); // Chiều về
+
+                        journeyOptions.add(returnOption);
                     }
                 }
             }

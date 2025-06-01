@@ -105,6 +105,8 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                             if (routeDetail) {
                                 const enhancedRoute = {
                                     ...routeDetail,
+                                    // Thêm direction từ option vào route để truyền lên component cha
+                                    direction: option.direction, // Thêm dòng này
                                     journeySegment: {
                                         routeId: busLegs[0].routeId,
                                         boardStop: busLegs[0].boardStop || busLegs[0].from,
@@ -124,6 +126,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                             id: option.id || "walk-route",
                             name: option.name || "Walking route",
                             walkingOnly: true,
+                            direction: option.direction, // Thêm dòng này
                             journeySegment: {
                                 boardStop: busLegs[0].boardStop || busLegs[0].from,
                                 alightStop: busLegs[0].alightStop || busLegs[0].to

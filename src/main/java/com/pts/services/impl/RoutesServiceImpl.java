@@ -60,8 +60,6 @@ public class RoutesServiceImpl implements RouteService {
             route.setActive(true);
         }
 
-        
-
         // Save route without calculated fields first
         Routes savedRoute = routesRepository.save(route);
 
@@ -99,16 +97,11 @@ public class RoutesServiceImpl implements RouteService {
         return routesRepository.findByName(name);
     }
 
-    
-
-   
-
     @Override
     public List<Routes> findActiveRoutes() {
         return routesRepository.findByIsActive(true);
     }
 
-  
     @Override
     public List<Routes> findRoutesByRouteType(Integer routeTypeId) {
         return routesRepository.findByRouteTypeId(routeTypeId);
@@ -160,8 +153,6 @@ public class RoutesServiceImpl implements RouteService {
     public List<Stops> getStopsByRouteIdAndDirection(Integer routeId, Integer direction) {
         return routesRepository.findStopsByRouteIdAndDirection(routeId, direction);
     }
-
-    
 
     // Find direct routes (no transfers needed)
     private List<Routes> findDirectRoutes(List<Map<String, Object>> fromStops, List<Map<String, Object>> toStops) {
@@ -857,6 +848,64 @@ public class RoutesServiceImpl implements RouteService {
         return routesRepository.countByNameContaining(keyword);
     }
 
+    private Integer determineDirectionForRoute(Integer fromStopId, Integer toStopId, Integer routeId) {
+        System.out.println("Đang xác định direction cho tuyến " + routeId + " từ trạm " + fromStopId + " đến trạm " + toStopId);
+
+        // Kiểm tra chiều đi (direction = 1)
+        List<RouteStop> outboundStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(routeId, 1);
+        System.out.println("Tìm thấy " + outboundStops.size() + " trạm thuộc direction=1 (chiều đi)");
+
+        // Tìm vị trí của trạm đầu và trạm cuối trong chiều đi
+        Integer fromStopOrderInOutbound = null;
+        Integer toStopOrderInOutbound = null;
+
+        for (RouteStop rs : outboundStops) {
+            if (rs.getStop().getId().equals(fromStopId)) {
+                fromStopOrderInOutbound = rs.getStopOrder();
+            }
+            if (rs.getStop().getId().equals(toStopId)) {
+                toStopOrderInOutbound = rs.getStopOrder();
+            }
+        }
+
+        // Nếu cả hai trạm đều nằm trong chiều đi và trạm đầu có thứ tự nhỏ hơn trạm cuối
+        if (fromStopOrderInOutbound != null && toStopOrderInOutbound != null
+                && fromStopOrderInOutbound < toStopOrderInOutbound) {
+            System.out.println("Xác định direction=1 vì trạm " + fromStopId + " (thứ tự " + fromStopOrderInOutbound
+                    + ") đứng trước trạm " + toStopId + " (thứ tự " + toStopOrderInOutbound + ") trong chiều đi");
+            return 1;
+        }
+
+        // Kiểm tra chiều về (direction = 2)
+        List<RouteStop> returnStops = routeStopRepository.findByRouteIdAndDirectionOrderByStopOrder(routeId, 2);
+        System.out.println("Tìm thấy " + returnStops.size() + " trạm thuộc direction=2 (chiều về)");
+
+        // Tìm vị trí của trạm đầu và trạm cuối trong chiều về
+        Integer fromStopOrderInReturn = null;
+        Integer toStopOrderInReturn = null;
+
+        for (RouteStop rs : returnStops) {
+            if (rs.getStop().getId().equals(fromStopId)) {
+                fromStopOrderInReturn = rs.getStopOrder();
+            }
+            if (rs.getStop().getId().equals(toStopId)) {
+                toStopOrderInReturn = rs.getStopOrder();
+            }
+        }
+
+        // Nếu cả hai trạm đều nằm trong chiều về và trạm đầu có thứ tự nhỏ hơn trạm cuối
+        if (fromStopOrderInReturn != null && toStopOrderInReturn != null
+                && fromStopOrderInReturn < toStopOrderInReturn) {
+            System.out.println("Xác định direction=2 vì trạm " + fromStopId + " (thứ tự " + fromStopOrderInReturn
+                    + ") đứng trước trạm " + toStopId + " (thứ tự " + toStopOrderInReturn + ") trong chiều về");
+            return 2;
+        }
+
+        // Nếu không xác định được, ưu tiên chiều đi
+        System.out.println("Không thể xác định direction chính xác, mặc định chọn direction=1");
+        return 1;
+    }
+
     @Override
     public Map<String, Object> findJourneyOptions(
             Double fromLat, Double fromLng, Double toLat, Double toLng,
@@ -969,9 +1018,6 @@ public class RoutesServiceImpl implements RouteService {
         return result;
     }
 
-    /**
-     * Tạo thông tin chi tiết một phương án di chuyển
-     */
     private Map<String, Object> createJourneyOption(
             int optionId, Routes route, Stops fromStop, Stops toStop,
             RouteStop fromStopOnRoute, RouteStop toStopOnRoute,
@@ -983,6 +1029,10 @@ public class RoutesServiceImpl implements RouteService {
         option.put("id", optionId);
         option.put("name", "Tuyến " + route.getName());
         option.put("routeId", route.getId());
+
+        // Xác định direction dựa trên vị trí tương đối của các trạm
+        Integer direction = determineDirectionForRoute(fromStop.getId(), toStop.getId(), route.getId());
+        option.put("direction", direction); // Thêm direction vào option
 
         // Tính số trạm phải đi qua
         int numStops = toStopOnRoute.getStopOrder() - fromStopOnRoute.getStopOrder();
@@ -1020,44 +1070,39 @@ public class RoutesServiceImpl implements RouteService {
                 "name", fromStop.getStopName(),
                 "lat", fromStop.getLatitude(),
                 "lng", fromStop.getLongitude(),
-                "id", fromStop.getId()
+                "id", fromStop.getId(),
+                "stopOrder", fromStopOnRoute.getStopOrder() // Thêm stopOrder
         ));
         legs.add(walkToStopLeg);
 
         // Chặng 2: Đi xe buýt
         Map<String, Object> busLeg = new HashMap<>();
-        double busDistanceKm = 0;
-// Calculate bus distance between fromStop and toStop based on route path
-// Simplified: use straight-line distance between stops
-        busDistanceKm = calculateDistance(
+        double busDistanceKm = calculateDistance(
                 fromStop.getLatitude(), fromStop.getLongitude(),
                 toStop.getLatitude(), toStop.getLongitude()
         );
         double busDistanceMeters = busDistanceKm * 1000;
 
-// Set distance on the bus leg
-        busLeg.put("distance", busDistanceMeters);
-
-// Calculate and set total distance
-        double totalDistance = walkDistanceMeters + busDistanceMeters;
-        option.put("totalDistance", totalDistance);
         busLeg.put("type", "BUS");
+        busLeg.put("distance", busDistanceMeters);
         busLeg.put("routeId", route.getId());
-        busLeg.put("routeNumber", route.getName());
         busLeg.put("routeName", route.getName());
         busLeg.put("duration", busTime);
         busLeg.put("stops", numStops);
+        busLeg.put("direction", direction); // Thêm direction vào leg
         busLeg.put("from", Map.of(
                 "name", fromStop.getStopName(),
                 "lat", fromStop.getLatitude(),
                 "lng", fromStop.getLongitude(),
-                "id", fromStop.getId()
+                "id", fromStop.getId(),
+                "stopOrder", fromStopOnRoute.getStopOrder() // Thêm stopOrder
         ));
         busLeg.put("to", Map.of(
                 "name", toStop.getStopName(),
                 "lat", toStop.getLatitude(),
                 "lng", toStop.getLongitude(),
-                "id", toStop.getId()
+                "id", toStop.getId(),
+                "stopOrder", toStopOnRoute.getStopOrder() // Thêm stopOrder
         ));
         legs.add(busLeg);
 
@@ -1070,7 +1115,8 @@ public class RoutesServiceImpl implements RouteService {
                 "name", toStop.getStopName(),
                 "lat", toStop.getLatitude(),
                 "lng", toStop.getLongitude(),
-                "id", toStop.getId()
+                "id", toStop.getId(),
+                "stopOrder", toStopOnRoute.getStopOrder()
         ));
         walkFromStopLeg.put("to", Map.of(
                 "name", "Điểm đến của bạn",
@@ -1078,6 +1124,10 @@ public class RoutesServiceImpl implements RouteService {
                 "lng", destLng
         ));
         legs.add(walkFromStopLeg);
+
+        // Tính tổng khoảng cách
+        double totalDistance = walkDistanceMeters + busDistanceMeters;
+        option.put("totalDistance", totalDistance);
 
         option.put("legs", legs);
 

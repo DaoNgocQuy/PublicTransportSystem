@@ -311,7 +311,14 @@ const Home = () => {
             try {
                 // Fetch stops based on selected direction
                 const direction = tripDirection === 'outbound' ? 'outbound' : 'return';
+                console.log("Gửi request với direction =", direction);
                 const response = await authApi.get(`/api/stops/route/${selectedRoute.id}?direction=${direction}`);
+
+                console.log("Nhận response từ backend:", response.data);
+                // Kiểm tra direction trong dữ liệu trả về
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                    console.log("Direction từ backend:", response.data[0].direction);
+                }
 
                 if (Array.isArray(response.data)) {
                     setRouteStops(response.data);
@@ -367,7 +374,15 @@ const Home = () => {
     // Xử lý tìm tuyến từ component RouteSearch
     const handleRouteFound = (route) => {
         setSelectedRoute(route);
-        setTripDirection('outbound'); // Reset to outbound when finding a new route
+
+        // Kiểm tra xem direction có tồn tại không và có giá trị là 2 hay không
+        if (route && route.direction === 2) {
+            setTripDirection('return');
+        } else {
+            setTripDirection('outbound'); // Mặc định hoặc khi direction = 1 hoặc null
+        }
+
+        console.log("Đã chọn tuyến với direction =", route?.direction || "undefined");
     };
 
     // Lọc tuyến khi tìm kiếm trong tab TRA CỨU

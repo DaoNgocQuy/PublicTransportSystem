@@ -65,25 +65,33 @@ public class ApiStopController {
         List<Stops> stops;
         Integer directionValue = null;
 
-        // Xác định giá trị direction (0: outbound/chiều đi, 1: return/chiều về) 
+        // Xác định giá trị direction (0: outbound/chiều đi, 1: return/chiều về)
         if (direction != null) {
             if (direction.equalsIgnoreCase("outbound")) {
-                directionValue = 1; // Sửa từ 0 thành 1
+                directionValue = 1; // Chuyển từ chuỗi "outbound" thành số 1
+                System.out.println("API nhận direction=outbound, chuyển thành directionValue=" + directionValue);
             } else if (direction.equalsIgnoreCase("return")) {
-                directionValue = 2; // Sửa từ 1 thành 2
+                directionValue = 2; // Chuyển từ chuỗi "return" thành số 2
+                System.out.println("API nhận direction=return, chuyển thành directionValue=" + directionValue);
             }
+        } else {
+            System.out.println("API không nhận được tham số direction");
         }
 
         // Lấy thông tin route_stops trước, vì nó chứa thứ tự và hướng đi
         List<RouteStop> routeStops;
         if (directionValue != null) {
             routeStops = routeStopService.findByRouteIdAndDirection(routeId, directionValue);
+            System.out.println(
+                    "Tìm thấy " + routeStops.size() + " trạm với routeId=" + routeId + ", direction=" + directionValue);
         } else {
             routeStops = routeStopService.findByRouteId(routeId);
             // Mặc định lấy chiều đi nếu không chỉ định direction
             routeStops = routeStops.stream()
                     .filter(rs -> rs.getDirection() == null || rs.getDirection() == 1) // Sửa từ 0 thành 1
                     .collect(Collectors.toList());
+            System.out.println(
+                    "Không chỉ định direction, lấy mặc định " + routeStops.size() + " trạm với routeId=" + routeId);
         }
 
         // Sắp xếp routeStops theo thứ tự tăng dần
@@ -94,7 +102,6 @@ public class ApiStopController {
                 .map(RouteStop::getStop)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-
 
         // Gán thông tin từ route_stop vào mỗi stop
         for (int i = 0; i < stops.size(); i++) {
@@ -126,8 +133,7 @@ public class ApiStopController {
             stopData.put("longitude", stop.getLongitude());
             stopData.put("address", stop.getAddress());
             stopData.put("stopOrder", rs.getStopOrder());
-            stopData.put("direction", rs.getDirection() != null ? rs.getDirection() : 0);
-
+            stopData.put("direction", stop.getDirection());
             if (stop.getIsAccessible() != null) {
                 stopData.put("isAccessible", stop.getIsAccessible());
             } else {
@@ -157,6 +163,7 @@ public class ApiStopController {
 
             result.add(stopData);
         }
+        System.out.println("API trả về " + result.size() + " trạm với direction = " + directionValue);
 
         return new ResponseEntity<>(result, HttpStatus.OK);
     }

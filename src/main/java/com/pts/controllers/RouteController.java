@@ -7,9 +7,8 @@ import com.pts.pojo.Stops;
 import com.pts.services.RouteStopService;
 import com.pts.services.ScheduleService;
 import com.pts.services.StopService;
-import com.pts.repositories.NotificationRepository;
-import com.pts.services.EmailService;
-import java.text.SimpleDateFormat;
+import com.pts.services.NotificationService;
+
 import java.util.Objects;
 import java.util.Collections;
 import java.util.List;
@@ -43,10 +42,7 @@ public class RouteController {
     private ScheduleService scheduleService;
 
     @Autowired
-    private NotificationRepository notificationRepository;
-
-    @Autowired
-    private EmailService emailService;
+    private NotificationService notificationService;
 
     // Hiển thị danh sách tuyến
     @GetMapping
@@ -434,44 +430,8 @@ public class RouteController {
         return nameChanged || startLocationChanged || endLocationChanged || startTimeChanged || endTimeChanged || frequencyChanged;
     }
 
-    // Thêm phương thức gửi email thông báo
     private void sendChangeEmails(Routes oldRoute, Routes newRoute) {
-        try {
-            // Lấy danh sách người dùng đăng ký nhận thông báo cho tuyến này
-            List<Map<String, Object>> subscribers = notificationRepository.getUsersSubscribedToRoute(newRoute.getId());
-
-            if (subscribers.isEmpty()) {
-                System.out.println("Không có người đăng ký nhận thông báo cho tuyến " + newRoute.getId());
-                return;
-            }
-
-            // Tạo tiêu đề email
-            String subject = "Thông báo thay đổi thông tin tuyến " + newRoute.getName();
-
-            // Gửi email cho mỗi người đăng ký
-            for (Map<String, Object> subscriber : subscribers) {
-                String email = (String) subscriber.get("email");
-                String fullName = (String) subscriber.get("full_name");
-                Boolean notifyScheduleChanges = (Boolean) subscriber.get("notify_schedule_changes");
-
-                // Chỉ gửi cho người dùng đăng ký nhận thông báo và có email
-                if (email != null && !email.isEmpty() && Boolean.TRUE.equals(notifyScheduleChanges)) {
-                    // Tạo nội dung email
-                    String content = createEmailContent(
-                            fullName != null && !fullName.isEmpty() ? fullName : "Quý khách",
-                            oldRoute,
-                            newRoute
-                    );
-
-                    // Gửi email
-                    emailService.sendEmail(email, subject, content);
-                    System.out.println("Đã gửi email thông báo thay đổi tuyến cho: " + email);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Lỗi khi gửi email thông báo: " + e.getMessage());
-            e.printStackTrace();
-        }
+        notificationService.sendRouteChangeNotification(oldRoute, newRoute);
     }
 
     @GetMapping("/api/getRouteData")
@@ -509,103 +469,5 @@ public class RouteController {
             response.put("error", e.getMessage());
             return response;
         }
-    }
-
-    // Tạo nội dung email
-    private String createEmailContent(String fullName, Routes oldRoute, Routes newRoute) {
-        // Giữ nguyên phương thức này như trong code gốc
-        SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-
-        StringBuilder html = new StringBuilder();
-
-        html.append("<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body>");
-        html.append("<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>");
-        html.append("<div style='background-color: #4CAF50; color: white; padding: 20px; text-align: center;'>");
-        html.append("<h1>Thông báo thay đổi thông tin tuyến</h1>");
-        html.append("</div>");
-
-        html.append("<div style='padding: 20px; background-color: #f9f9f9; border: 1px solid #ddd;'>");
-        html.append("<p>Xin chào " + fullName + ",</p>");
-        html.append("<p>Thông tin tuyến <strong>" + newRoute.getName() + "</strong> đã được cập nhật.</p>");
-
-        html.append("<table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>");
-        html.append("<tr style='background-color: #f2f2f2;'>");
-        html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Thông tin</th>");
-        html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Trước khi thay đổi</th>");
-        html.append("<th style='padding: 10px; text-align: left; border: 1px solid #ddd;'>Sau khi thay đổi</th>");
-        html.append("</tr>");
-
-        // Nếu tên tuyến thay đổi
-        if (!Objects.equals(oldRoute.getName(), newRoute.getName())) {
-            html.append("<tr>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Tên tuyến</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldRoute.getName() + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newRoute.getName() + "</td>");
-            html.append("</tr>");
-        }
-
-        // Nếu điểm đầu/cuối thay đổi
-        if (!Objects.equals(oldRoute.getStartLocation(), newRoute.getStartLocation())) {
-            html.append("<tr>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Điểm đầu</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldRoute.getStartLocation() + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newRoute.getStartLocation() + "</td>");
-            html.append("</tr>");
-        }
-
-        if (!Objects.equals(oldRoute.getEndLocation(), newRoute.getEndLocation())) {
-            html.append("<tr>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Điểm cuối</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldRoute.getEndLocation() + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newRoute.getEndLocation() + "</td>");
-            html.append("</tr>");
-        }
-
-        // Nếu giờ hoạt động thay đổi
-        if (!Objects.equals(oldRoute.getOperationStartTime(), newRoute.getOperationStartTime())
-                || !Objects.equals(oldRoute.getOperationEndTime(), newRoute.getOperationEndTime())) {
-
-            String oldStartTime = oldRoute.getOperationStartTime() != null
-                    ? timeFormat.format(oldRoute.getOperationStartTime()) : "N/A";
-            String oldEndTime = oldRoute.getOperationEndTime() != null
-                    ? timeFormat.format(oldRoute.getOperationEndTime()) : "N/A";
-            String newStartTime = newRoute.getOperationStartTime() != null
-                    ? timeFormat.format(newRoute.getOperationStartTime()) : "N/A";
-            String newEndTime = newRoute.getOperationEndTime() != null
-                    ? timeFormat.format(newRoute.getOperationEndTime()) : "N/A";
-
-            html.append("<tr>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Giờ hoạt động</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldStartTime + " - " + oldEndTime + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newStartTime + " - " + newEndTime + "</td>");
-            html.append("</tr>");
-        }
-
-        // Nếu tần suất thay đổi
-        if (!Objects.equals(oldRoute.getFrequencyMinutes(), newRoute.getFrequencyMinutes())) {
-            String oldFreq = oldRoute.getFrequencyMinutes() != null ? oldRoute.getFrequencyMinutes() + " phút" : "N/A";
-            String newFreq = newRoute.getFrequencyMinutes() != null ? newRoute.getFrequencyMinutes() + " phút" : "N/A";
-
-            html.append("<tr>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>Tần suất chạy</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + oldFreq + "</td>");
-            html.append("<td style='padding: 10px; border: 1px solid #ddd;'>" + newFreq + "</td>");
-            html.append("</tr>");
-        }
-
-        html.append("</table>");
-
-        html.append("<p>Vui lòng lưu ý thông tin mới khi sử dụng tuyến này.</p>");
-        html.append("<p>Trân trọng,<br>Hệ thống Vận tải Công cộng</p>");
-        html.append("</div>");
-
-        html.append("<div style='text-align: center; padding: 10px; color: #777; font-size: 12px;'>");
-        html.append("<p>© 2025 Hệ thống Vận tải Công cộng<br>");
-        html.append("Đây là email tự động, vui lòng không trả lời.</p>");
-        html.append("</div>");
-
-        html.append("</div></body></html>");
-
-        return html.toString();
     }
 }

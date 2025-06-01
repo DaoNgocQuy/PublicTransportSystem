@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from 'react-toastify';
 import { Form, Card, Button, Spinner } from 'react-bootstrap';
-import { authApi, endpoints } from "../configs/Apis";
+import { authApi, endpoints } from "../../configs/Apis";
 
 const Reset = () => {
   const [token, setToken] = useState("");

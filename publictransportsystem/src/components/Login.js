@@ -71,7 +71,7 @@ const Login = () => {
       dispatch({
         type: "login",
         payload: user
-      });      // Hiển thị thông báo thành công
+      });   
       toast.success("Đăng nhập thành công! Chào mừng " + user.fullName)
 
       // Chuyển hướng sau khi hiển thị thông báo

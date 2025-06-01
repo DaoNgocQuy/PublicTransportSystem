@@ -65,12 +65,12 @@ public class ApiStopController {
         List<Stops> stops;
         Integer directionValue = null;
 
-        // Xác định giá trị direction (0: outbound/chiều đi, 1: return/chiều về) 
+        // Xác định giá trị direction (0: outbound/chiều đi, 1: return/chiều về)
         if (direction != null) {
             if (direction.equalsIgnoreCase("outbound")) {
-                directionValue = 1; // Sửa từ 0 thành 1
+                directionValue = 1; // Chuyển từ chuỗi "outbound" thành số 1
             } else if (direction.equalsIgnoreCase("return")) {
-                directionValue = 2; // Sửa từ 1 thành 2
+                directionValue = 2; // Chuyển từ chuỗi "return" thành số 2
             }
         }
 
@@ -82,7 +82,7 @@ public class ApiStopController {
             routeStops = routeStopService.findByRouteId(routeId);
             // Mặc định lấy chiều đi nếu không chỉ định direction
             routeStops = routeStops.stream()
-                    .filter(rs -> rs.getDirection() == null || rs.getDirection() == 1) // Sửa từ 0 thành 1
+                    .filter(rs -> rs.getDirection() == null || rs.getDirection() == 1)
                     .collect(Collectors.toList());
         }
 
@@ -94,7 +94,6 @@ public class ApiStopController {
                 .map(RouteStop::getStop)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-
 
         // Gán thông tin từ route_stop vào mỗi stop
         for (int i = 0; i < stops.size(); i++) {
@@ -109,7 +108,7 @@ public class ApiStopController {
                 stop.setDirection(rs.getDirection());
             } else {
                 // Mặc định là chiều đi (1) nếu không có direction
-                stop.setDirection(1); // Sửa từ 0 thành 1
+                stop.setDirection(1);
             }
         }
 
@@ -126,8 +125,7 @@ public class ApiStopController {
             stopData.put("longitude", stop.getLongitude());
             stopData.put("address", stop.getAddress());
             stopData.put("stopOrder", rs.getStopOrder());
-            stopData.put("direction", rs.getDirection() != null ? rs.getDirection() : 0);
-
+            stopData.put("direction", stop.getDirection());
             if (stop.getIsAccessible() != null) {
                 stopData.put("isAccessible", stop.getIsAccessible());
             } else {
@@ -227,9 +225,9 @@ public class ApiStopController {
                     routeInfo.put("direction", rs.getDirection());
 
                     // Thêm mô tả hướng đi nếu cần
-                    if (rs.getDirection() == 1) { // Sửa từ 0 thành 1
+                    if (rs.getDirection() == 1) {
                         routeInfo.put("directionName", "Chiều đi");
-                    } else if (rs.getDirection() == 2) { // Sửa từ 1 thành 2
+                    } else if (rs.getDirection() == 2) {
                         routeInfo.put("directionName", "Chiều về");
                     } else {
                         routeInfo.put("directionName", "Chưa xác định");

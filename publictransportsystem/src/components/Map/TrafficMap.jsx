@@ -42,32 +42,53 @@ const TrafficMap = () => {
         return String(timestamp);
     };
     // Lấy màu dựa trên severity
-    const getSeverityColor = (severity, type) => {
-        // Màu sắc dựa trên loại sự cố
-        switch (type) {
-            case 'congestion':
-                return { color: '#ff0000', fillColor: '#ff3333' }; // Đỏ cho kẹt xe
-            case 'accident':
-                return { color: '#ff9900', fillColor: '#ffcc00' }; // Cam cho tai nạn
-            case 'roadblock':
-                return { color: '#3366ff', fillColor: '#6699ff' }; // Xanh dương cho đường bị chặn
-            case 'construction':
-                return { color: '#9933ff', fillColor: '#b366ff' }; // Tím cho công trình
+    const getSeverityColor = (severity) => {
+        // Màu sắc dựa chỉ trên mức độ nghiêm trọng
+        switch (severity) {
+            case 'high':
+                return {
+                    color: '#dc3545',         // Màu đỏ cho nghiêm trọng
+                    fillColor: '#dc3545',
+                    fillOpacity: 0.8,
+                    weight: 3
+                };
+            case 'medium':
+                return {
+                    color: '#fd7e14',         // Màu cam cho trung bình
+                    fillColor: '#fd7e14',
+                    fillOpacity: 0.6,
+                    weight: 2
+                };
+            case 'low':
+                return {
+                    color: '#28a745',         // Màu xanh lá cho nhẹ
+                    fillColor: '#28a745',
+                    fillOpacity: 0.4,
+                    weight: 1.5
+                };
             default:
-                // Nếu không xác định loại, dựa vào severity
-                switch (severity) {
-                    case 'high':
-                        return { color: '#ff0000', fillColor: '#ff3333' };
-                    case 'medium':
-                        return { color: '#ff9900', fillColor: '#ffcc00' };
-                    case 'low':
-                        return { color: '#33cc33', fillColor: '#66ff66' };
-                    default:
-                        return { color: '#3388ff', fillColor: '#3388ff' };
-                }
+                return {
+                    color: '#6c757d',         // Màu xám cho không xác định
+                    fillColor: '#6c757d',
+                    fillOpacity: 0.5,
+                    weight: 2
+                };
         }
     };
+    const adjustColorLightness = (hex, percent) => {
+        // Convert hex to RGB
+        let r = parseInt(hex.slice(1, 3), 16);
+        let g = parseInt(hex.slice(3, 5), 16);
+        let b = parseInt(hex.slice(5, 7), 16);
 
+        // Make lighter by increasing RGB values
+        r = Math.min(255, r + Math.floor(percent * 2.55));
+        g = Math.min(255, g + Math.floor(percent * 2.55));
+        b = Math.min(255, b + Math.floor(percent * 2.55));
+
+        // Convert back to hex
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    };
     // Lấy kích thước dựa trên loại và severity
     const getCircleSize = (type, severity) => {
 
@@ -148,22 +169,20 @@ const TrafficMap = () => {
     return (
         <div className="traffic-map-container">
             <div className="map-legend">
-                <h6>Chú thích</h6>
-                <div className="legend-item">
-                    <div className="legend-color congestion"></div>
-                    <span>Kẹt xe</span>
-                </div>
-                <div className="legend-item">
-                    <div className="legend-color accident"></div>
-                    <span>Tai nạn</span>
-                </div>
-                <div className="legend-item">
-                    <div className="legend-color roadblock"></div>
-                    <span>Đường bị chặn</span>
-                </div>
-                <div className="legend-item">
-                    <div className="legend-color construction"></div>
-                    <span>Công trình</span>
+                <div className="severity-levels">
+                    <h6>Mức độ</h6>
+                    <div className="legend-item">
+                        <span className="severity-dot high-severity"></span>
+                        <span>Nghiêm trọng</span>
+                    </div>
+                    <div className="legend-item">
+                        <span className="severity-dot medium-severity"></span>
+                        <span>Trung bình</span>
+                    </div>
+                    <div className="legend-item">
+                        <span className="severity-dot low-severity"></span>
+                        <span>Nhẹ</span>
+                    </div>
                 </div>
             </div>
 
@@ -188,18 +207,23 @@ const TrafficMap = () => {
                         <Circle
                             key={condition.id}
                             center={[condition.latitude, condition.longitude]}
-                            radius={radius}
+                            radius={getCircleSize(condition.type, condition.severity)}
                             pathOptions={{
                                 color: colors.color,
                                 fillColor: colors.fillColor,
-                                fillOpacity: 0.6,
-                                weight: 2
+                                fillOpacity: colors.fillOpacity,
+                                weight: colors.weight
                             }}
                         >
                             <Popup>
                                 <div className="traffic-popup">
                                     <h5>{getTypeName(condition.type)}</h5>
-                                    <p><strong>Mức độ:</strong> {getSeverityName(condition.severity)}</p>
+                                    <p>
+                                        <strong>Mức độ:</strong>{' '}
+                                        <span className={`severity-badge ${condition.severity}`}>
+                                            {getSeverityName(condition.severity)}
+                                        </span>
+                                    </p>
                                     <p><strong>Mô tả:</strong> {condition.description}</p>
                                     {condition.imageUrl && (
                                         <div className="traffic-image">

@@ -203,7 +203,7 @@ public class ApiRouteController {
         try {
             // Calculate direct distance between origin and destination
             double directDistance = calculateHaversineDistance(fromLat, fromLng, toLat, toLng);
-            System.out.println("Direct distance between points: " + directDistance + " meters");
+            System.out.println("DEBUG - Direct distance between points: " + directDistance + " meters");
 
             Map<String, Object> result = new HashMap<>();
             List<Map<String, Object>> allOptions = new ArrayList<>();
@@ -213,26 +213,75 @@ public class ApiRouteController {
                 Map<String, Object> walkingOption = createWalkingOption(
                         fromLat, fromLng, toLat, toLng, directDistance);
                 allOptions.add(walkingOption);
+                System.out.println("DEBUG - Added walking option: " + walkingOption);
             }
 
             // Get regular public transport options
+            System.out.println("DEBUG - Calling routeService.findJourneyOptions");
             Map<String, Object> ptOptions = routeService.findJourneyOptions(
                     fromLat, fromLng, toLat, toLng, maxWalkDistance, priority);
+
+            System.out.println("DEBUG - Public transport options result structure: " + ptOptions.keySet());
 
             // If there are public transport options, add them to our list
             if (ptOptions.containsKey("options") && ptOptions.get("options") instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> options = (List<Map<String, Object>>) ptOptions.get("options");
+                System.out.println("DEBUG - Found " + options.size() + " public transport options");
+
+                // In chi tiết từng option
+                for (int i = 0; i < options.size(); i++) {
+                    Map<String, Object> option = options.get(i);
+                    System.out.println("\nDEBUG - PT Option " + (i + 1) + ":");
+                    System.out.println("  - ID: " + option.get("id"));
+                    System.out.println("  - Name: " + option.get("name"));
+                    System.out.println("  - Total time: " + option.get("totalTime") + " minutes");
+                    System.out.println("  - Total distance: " + option.get("totalDistance") + " meters");
+                    System.out.println("  - Walking distance: " + option.get("walkingDistance") + " meters");
+                    System.out.println("  - Transfers: " + option.get("transfers"));
+                    System.out.println("  - Direction: " + option.get("direction"));
+
+                    // In chi tiết các chặng (legs)
+                    if (option.containsKey("legs") && option.get("legs") instanceof List) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> legs = (List<Map<String, Object>>) option.get("legs");
+                        System.out.println("  - Legs: " + legs.size());
+
+                        for (int j = 0; j < legs.size(); j++) {
+                            Map<String, Object> leg = legs.get(j);
+                            System.out.println("    * Leg " + (j + 1) + ": " + leg.get("type"));
+                            if ("BUS".equals(leg.get("type")) || "METRO".equals(leg.get("type"))) {
+                                System.out.println("      Route: " + leg.get("routeName") + " (ID: " + leg.get("routeId") + ")");
+                                System.out.println("      Direction: " + leg.get("direction"));
+
+                                // In thông tin về trạm đi và đến
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> fromStop = (Map<String, Object>) leg.get("from");
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> toStop = (Map<String, Object>) leg.get("to");
+
+                                if (fromStop != null && toStop != null) {
+                                    System.out.println("      From: " + fromStop.get("name") + " (stopOrder: " + fromStop.get("stopOrder") + ")");
+                                    System.out.println("      To: " + toStop.get("name") + " (stopOrder: " + toStop.get("stopOrder") + ")");
+                                }
+                            }
+                        }
+                    }
+                }
+
                 allOptions.addAll(options);
             }
 
             // If we have options, optimize them to show only the best
             if (!allOptions.isEmpty()) {
                 List<Map<String, Object>> optimizedOptions = optimizeRouteOptions(allOptions, priority);
+                System.out.println("\nDEBUG - Optimized options: " + optimizedOptions.size());
+
                 result.put("status", "success");
                 result.put("options", optimizedOptions);
                 result.put("count", optimizedOptions.size());
             } else {
+                System.out.println("DEBUG - No route options found");
                 result.put("error", "Không tìm thấy phương án di chuyển phù hợp");
                 result.put("options", Collections.emptyList());
             }
@@ -240,6 +289,7 @@ public class ApiRouteController {
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("DEBUG - Error in findJourney: " + e.getMessage());
             return ResponseEntity
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Collections.singletonMap("error", "Lỗi khi tìm phương án di chuyển: " + e.getMessage()));
@@ -398,7 +448,7 @@ public class ApiRouteController {
                 break;
             }
         }
-
+        
         // Chuyển Set thành List và giới hạn tối đa 3 phương án
         List<Map<String, Object>> result = new ArrayList<>(optimizedOptions);
         return result.size() <= 3 ? result : result.subList(0, 3);

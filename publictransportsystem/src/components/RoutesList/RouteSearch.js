@@ -105,6 +105,8 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                             if (routeDetail) {
                                 const enhancedRoute = {
                                     ...routeDetail,
+                                    // Thêm direction từ option vào route để truyền lên component cha
+                                    direction: option.direction, // Thêm dòng này
                                     journeySegment: {
                                         routeId: busLegs[0].routeId,
                                         boardStop: busLegs[0].boardStop || busLegs[0].from,
@@ -124,6 +126,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                             id: option.id || "walk-route",
                             name: option.name || "Walking route",
                             walkingOnly: true,
+                            direction: option.direction, // Thêm dòng này
                             journeySegment: {
                                 boardStop: busLegs[0].boardStop || busLegs[0].from,
                                 alightStop: busLegs[0].alightStop || busLegs[0].to
@@ -148,13 +151,11 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 setLoading(true);
 
                 // Gọi cả API stops và landmarks
-                const [stopsResponse, landmarksResponse] = await Promise.all([
+                const [stopsResponse] = await Promise.all([
                     authApi.get('/api/stops'),
-                    authApi.get('/api/landmarks')
                 ]);
 
                 console.log('API stops response:', stopsResponse);
-                console.log('API landmarks response:', landmarksResponse);
 
                 // Xử lý kết quả từ API stops
                 let allSuggestions = [];
@@ -180,28 +181,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 }
 
                 // Xử lý kết quả từ API landmarks
-                if (Array.isArray(landmarksResponse.data)) {
-                    console.log('Got landmark suggestions:', landmarksResponse.data.length, 'items');
-                    setLandmarks(landmarksResponse.data);
 
-                    // Định dạng landmarks để phù hợp với cấu trúc suggestion
-                    const formattedLandmarks = landmarksResponse.data.map(landmark => ({
-                        id: `landmark-${landmark.id}`,
-                        stop_name: landmark.name,
-                        address: landmark.address,
-                        latitude: landmark.latitude,
-                        longitude: landmark.longitude,
-                        landmark_id: landmark.id,
-                        suggestionType: 'LANDMARK',
-                        displayIcon: <FaLandmark />,
-                        landmarkData: landmark
-                    }));
-
-                    // Thêm landmarks vào danh sách gợi ý
-                    allSuggestions = [...allSuggestions, ...formattedLandmarks];
-                } else {
-                    console.error('API landmarks response is not an array:', landmarksResponse.data);
-                }
 
                 // Cập nhật state với tất cả các gợi ý
                 setSuggestions(allSuggestions);

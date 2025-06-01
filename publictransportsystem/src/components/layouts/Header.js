@@ -37,7 +37,6 @@ const Header = () => {
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/">Trang chủ</Nav.Link>
-            <Nav.Link as={Link} to="/map">Bản đồ</Nav.Link>
             <Nav.Link as={Link} to="/traffic">Tình trạng giao thông</Nav.Link>
 
             {/* Chỉ hiển thị menu quản lý giao thông nếu là admin */}

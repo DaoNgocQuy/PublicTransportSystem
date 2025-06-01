@@ -69,29 +69,21 @@ public class ApiStopController {
         if (direction != null) {
             if (direction.equalsIgnoreCase("outbound")) {
                 directionValue = 1; // Chuyển từ chuỗi "outbound" thành số 1
-                System.out.println("API nhận direction=outbound, chuyển thành directionValue=" + directionValue);
             } else if (direction.equalsIgnoreCase("return")) {
                 directionValue = 2; // Chuyển từ chuỗi "return" thành số 2
-                System.out.println("API nhận direction=return, chuyển thành directionValue=" + directionValue);
             }
-        } else {
-            System.out.println("API không nhận được tham số direction");
         }
 
         // Lấy thông tin route_stops trước, vì nó chứa thứ tự và hướng đi
         List<RouteStop> routeStops;
         if (directionValue != null) {
             routeStops = routeStopService.findByRouteIdAndDirection(routeId, directionValue);
-            System.out.println(
-                    "Tìm thấy " + routeStops.size() + " trạm với routeId=" + routeId + ", direction=" + directionValue);
         } else {
             routeStops = routeStopService.findByRouteId(routeId);
             // Mặc định lấy chiều đi nếu không chỉ định direction
             routeStops = routeStops.stream()
-                    .filter(rs -> rs.getDirection() == null || rs.getDirection() == 1) // Sửa từ 0 thành 1
+                    .filter(rs -> rs.getDirection() == null || rs.getDirection() == 1)
                     .collect(Collectors.toList());
-            System.out.println(
-                    "Không chỉ định direction, lấy mặc định " + routeStops.size() + " trạm với routeId=" + routeId);
         }
 
         // Sắp xếp routeStops theo thứ tự tăng dần
@@ -116,7 +108,7 @@ public class ApiStopController {
                 stop.setDirection(rs.getDirection());
             } else {
                 // Mặc định là chiều đi (1) nếu không có direction
-                stop.setDirection(1); // Sửa từ 0 thành 1
+                stop.setDirection(1);
             }
         }
 
@@ -163,7 +155,6 @@ public class ApiStopController {
 
             result.add(stopData);
         }
-        System.out.println("API trả về " + result.size() + " trạm với direction = " + directionValue);
 
         return new ResponseEntity<>(result, HttpStatus.OK);
     }
@@ -234,9 +225,9 @@ public class ApiStopController {
                     routeInfo.put("direction", rs.getDirection());
 
                     // Thêm mô tả hướng đi nếu cần
-                    if (rs.getDirection() == 1) { // Sửa từ 0 thành 1
+                    if (rs.getDirection() == 1) {
                         routeInfo.put("directionName", "Chiều đi");
-                    } else if (rs.getDirection() == 2) { // Sửa từ 1 thành 2
+                    } else if (rs.getDirection() == 2) {
                         routeInfo.put("directionName", "Chiều về");
                     } else {
                         routeInfo.put("directionName", "Chưa xác định");

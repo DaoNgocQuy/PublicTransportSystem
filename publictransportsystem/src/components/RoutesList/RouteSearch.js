@@ -151,13 +151,11 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 setLoading(true);
 
                 // Gọi cả API stops và landmarks
-                const [stopsResponse, landmarksResponse] = await Promise.all([
+                const [stopsResponse] = await Promise.all([
                     authApi.get('/api/stops'),
-                    authApi.get('/api/landmarks')
                 ]);
 
                 console.log('API stops response:', stopsResponse);
-                console.log('API landmarks response:', landmarksResponse);
 
                 // Xử lý kết quả từ API stops
                 let allSuggestions = [];
@@ -183,28 +181,7 @@ const RouteSearch = ({ onRouteFound, selectedMapLocation, onMapSelectionChange }
                 }
 
                 // Xử lý kết quả từ API landmarks
-                if (Array.isArray(landmarksResponse.data)) {
-                    console.log('Got landmark suggestions:', landmarksResponse.data.length, 'items');
-                    setLandmarks(landmarksResponse.data);
 
-                    // Định dạng landmarks để phù hợp với cấu trúc suggestion
-                    const formattedLandmarks = landmarksResponse.data.map(landmark => ({
-                        id: `landmark-${landmark.id}`,
-                        stop_name: landmark.name,
-                        address: landmark.address,
-                        latitude: landmark.latitude,
-                        longitude: landmark.longitude,
-                        landmark_id: landmark.id,
-                        suggestionType: 'LANDMARK',
-                        displayIcon: <FaLandmark />,
-                        landmarkData: landmark
-                    }));
-
-                    // Thêm landmarks vào danh sách gợi ý
-                    allSuggestions = [...allSuggestions, ...formattedLandmarks];
-                } else {
-                    console.error('API landmarks response is not an array:', landmarksResponse.data);
-                }
 
                 // Cập nhật state với tất cả các gợi ý
                 setSuggestions(allSuggestions);

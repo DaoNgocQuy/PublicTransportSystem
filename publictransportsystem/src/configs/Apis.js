@@ -22,12 +22,17 @@ export const endpoints = {
     notificationSettingsById: (id) => `api/notifications/settings/${id}`,
     routeSearch: "api/routes/search",
     routeDirections: "api/directions",
-    routeDetails: (id) => `api/routes/${id}`
+    routeDetails: (id) => `api/routes/${id}`,
+    stops: "api/stops",
+    stopById: (id) => `api/stops/${id}`,
+    stopsByRoute: (routeId) => `api/stops/route/${routeId}`,
+    nearbyStops: "api/stops/nearby",
 }
 
 export const authApi = axios.create({
     baseURL: BASE_URL,
-    withCredentials: true
+    withCredentials: true,
+    timeout: 30000,
 });
 
 authApi.interceptors.request.use(config => {
@@ -55,5 +60,6 @@ authApi.interceptors.request.use(config => {
 
 
 export default axios.create({
-    baseURL: BASE_URL
+    baseURL: BASE_URL,
+    timeout: 30000
 });

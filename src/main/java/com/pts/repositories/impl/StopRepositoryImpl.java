@@ -136,16 +136,36 @@ public class StopRepositoryImpl implements StopRepository {
 
     @Override
     public List<Stops> findByRouteId(Integer routeId) {
-        Session s = this.factory.getObject().getCurrentSession();
+        try {
+            Session s = this.factory.getObject().getCurrentSession();
 
-        String jpql = "SELECT DISTINCT s FROM Stops s " +
-                "JOIN s.routeStopSet rs " +
-                "WHERE rs.route.id = :routeId " +
-                "ORDER BY rs.stopOrder";
+            // Thay đổi truy vấn để lấy cả stopOrder và không dùng DISTINCT
+            String jpql = "SELECT s, rs.stopOrder FROM Stops s " +
+                    "JOIN RouteStop rs ON s.id = rs.stop.id " +
+                    "WHERE rs.route.id = :routeId " +
+                    "ORDER BY rs.stopOrder";
 
-        Query query = s.createQuery(jpql, Stops.class);
-        query.setParameter("routeId", routeId);
-        return query.getResultList();
+            Query query = s.createQuery(jpql);
+            query.setParameter("routeId", routeId);
+
+            @SuppressWarnings("unchecked")
+            List<Object[]> results = query.getResultList();
+
+            // Chuyển đổi kết quả và set stopOrder cho mỗi Stop
+            List<Stops> stops = new ArrayList<>();
+            for (Object[] result : results) {
+                Stops stop = (Stops) result[0];
+                Integer stopOrder = (Integer) result[1];
+                stop.setStopOrder(stopOrder); // Set stopOrder cho Stop object
+                stops.add(stop);
+            }
+
+            return stops;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tìm stops theo route: " + e.getMessage());
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 
     @Override
@@ -205,18 +225,38 @@ public class StopRepositoryImpl implements StopRepository {
 
     @Override
     public List<Stops> findStopsByRouteIdAndStopOrderRange(Integer routeId, Integer startOrder, Integer endOrder) {
-        Session s = this.factory.getObject().getCurrentSession();
+        try {
+            Session s = this.factory.getObject().getCurrentSession();
 
-        String jpql = "SELECT DISTINCT s FROM Stops s " +
-                "JOIN s.routeStopSet rs " +
-                "WHERE rs.route.id = :routeId " +
-                "AND rs.stopOrder BETWEEN :startOrder AND :endOrder " +
-                "ORDER BY rs.stopOrder";
+            // Thay đổi truy vấn để lấy cả stopOrder và không dùng DISTINCT
+            String jpql = "SELECT s, rs.stopOrder FROM Stops s " +
+                    "JOIN RouteStop rs ON s.id = rs.stop.id " +
+                    "WHERE rs.route.id = :routeId " +
+                    "AND rs.stopOrder BETWEEN :startOrder AND :endOrder " +
+                    "ORDER BY rs.stopOrder";
 
-        Query query = s.createQuery(jpql, Stops.class);
-        query.setParameter("routeId", routeId);
-        query.setParameter("startOrder", startOrder);
-        query.setParameter("endOrder", endOrder);
-        return query.getResultList();
+            Query query = s.createQuery(jpql);
+            query.setParameter("routeId", routeId);
+            query.setParameter("startOrder", startOrder);
+            query.setParameter("endOrder", endOrder);
+
+            @SuppressWarnings("unchecked")
+            List<Object[]> results = query.getResultList();
+
+            // Chuyển đổi kết quả và set stopOrder cho mỗi Stop
+            List<Stops> stops = new ArrayList<>();
+            for (Object[] result : results) {
+                Stops stop = (Stops) result[0];
+                Integer stopOrder = (Integer) result[1];
+                stop.setStopOrder(stopOrder); // Set stopOrder cho Stop object
+                stops.add(stop);
+            }
+
+            return stops;
+        } catch (Exception e) {
+            System.err.println("Lỗi khi tìm stops theo route và khoảng stopOrder: " + e.getMessage());
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 }

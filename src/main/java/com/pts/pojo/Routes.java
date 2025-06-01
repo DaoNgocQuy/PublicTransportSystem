@@ -84,15 +84,8 @@ public class Routes implements Serializable {
     private Date lastUpdated;
     @OneToMany(mappedBy = "routeId")
     private Collection<Favorites> favoritesCollection;
-    @OneToMany(mappedBy = "routeId")
-    private Collection<RouteSegments> routeSegmentsCollection;
-    @JoinColumn(name = "route_type_id", referencedColumnName = "id")
     @ManyToOne
     private RouteTypes routeTypeId;
-    @OneToMany(mappedBy = "fromRouteId")
-    private Collection<Transfers> transfersCollection;
-    @OneToMany(mappedBy = "toRouteId")
-    private Collection<Transfers> transfersCollection1;
     @OneToMany(mappedBy = "routeId")
     private Collection<Schedules> schedulesCollection;
     @OneToMany(mappedBy = "routeId")
@@ -214,14 +207,6 @@ public class Routes implements Serializable {
         this.favoritesCollection = favoritesCollection;
     }
 
-    public Collection<RouteSegments> getRouteSegmentsCollection() {
-        return routeSegmentsCollection;
-    }
-
-    public void setRouteSegmentsCollection(Collection<RouteSegments> routeSegmentsCollection) {
-        this.routeSegmentsCollection = routeSegmentsCollection;
-    }
-
     public RouteTypes getRouteType() {
         return this.routeTypeId;
     }
@@ -252,22 +237,6 @@ public class Routes implements Serializable {
 
     public String getRouteTypeColor() {
         return (this.routeTypeId != null) ? this.routeTypeId.getColorCode() : null;
-    }
-
-    public Collection<Transfers> getTransfersCollection() {
-        return transfersCollection;
-    }
-
-    public void setTransfersCollection(Collection<Transfers> transfersCollection) {
-        this.transfersCollection = transfersCollection;
-    }
-
-    public Collection<Transfers> getTransfersCollection1() {
-        return transfersCollection1;
-    }
-
-    public void setTransfersCollection1(Collection<Transfers> transfersCollection1) {
-        this.transfersCollection1 = transfersCollection1;
     }
 
     public Collection<Schedules> getSchedulesCollection() {
